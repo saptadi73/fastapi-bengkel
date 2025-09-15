@@ -1,3 +1,10 @@
+CREATE TABLE IF NOT EXISTS workorder_activity_log (
+    id UUID PRIMARY KEY,
+    workorder_id UUID REFERENCES workorder(id),
+    action VARCHAR NOT NULL,
+    timestamp TIMESTAMP NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS workorder (
     id UUID PRIMARY KEY,
     no_wo VARCHAR NOT NULL,
@@ -14,5 +21,6 @@ CREATE TABLE IF NOT EXISTS workorder_activity_log (
     id UUID PRIMARY KEY,
     workorder_id UUID REFERENCES workorder(id),
     action VARCHAR NOT NULL,
-    timestamp TIMESTAMP NOT NULL
+    timestamp TIMESTAMP NOT NULL,
+    performed_by VARCHAR NOT NULL
 );

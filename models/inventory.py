@@ -12,7 +12,6 @@ class Inventory(Base):
     product = relationship('Product', back_populates='inventory')
 
     quantity = Column(Numeric(10,2), nullable=False)
-    price = Column(Numeric(10,2), nullable=False)
     cost = Column(Numeric(10,2), nullable=False)
 
     created_at = Column(DateTime, nullable=False)

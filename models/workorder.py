@@ -34,7 +34,8 @@ class Product(Base):
     type = Column(String, nullable=False)
     description = Column(String, nullable=True)
     price = Column(Numeric(10,2), nullable=False)
-    cost = Column(Numeric(10,2), nullable=False)
+    min_stock = Column(Numeric(10,2), nullable=False)
+    
 
     brand_id = Column(UUID(as_uuid=True),ForeignKey('brand.id'))
     brand = relationship('Brand', back_populates='products')
