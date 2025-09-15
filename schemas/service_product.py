@@ -1,5 +1,8 @@
-from datetime import datetime
-# ...existing code...
+from pydantic import BaseModel
+from typing import List, Optional
+from uuid import UUID
+from decimal import Decimal
+from datetime import date,datetime
 
 class CreateProductMove(BaseModel):
     product_id: UUID
