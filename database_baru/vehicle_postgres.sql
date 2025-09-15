@@ -1,6 +1,5 @@
 CREATE TABLE IF NOT EXISTS vehicle (
     id UUID PRIMARY KEY,
-    merk VARCHAR NOT NULL,
     model VARCHAR NOT NULL,
     brand_id UUID REFERENCES brand(id),
     type VARCHAR,

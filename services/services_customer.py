@@ -45,7 +45,6 @@ def create_customer_with_vehicles(db: Session, customer_data: CreateCustomerWith
     # Create a new vehicle associated with the customer
     new_vehicle = Vehicle(
         id=str(uuid.uuid4()),
-        merk=customer_data.merk,
         model=customer_data.model,
         brand_id=customer_data.brand_id,
         type=customer_data.type,

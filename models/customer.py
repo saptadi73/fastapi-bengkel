@@ -20,7 +20,6 @@ class Customer(Base):
 class Vehicle(Base):
     __tablename__ = 'vehicle'
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, index=True)
-    merk = Column(String, nullable=False)
     model = Column(String, nullable=False)
 
     brand_id = Column(UUID(as_uuid=True), ForeignKey('brand.id'))

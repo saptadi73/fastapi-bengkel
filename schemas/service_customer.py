@@ -9,7 +9,6 @@ class CreateCustomerWithVehicles(BaseModel):
     hp: str
     alamat: str
     email: str
-    merk: str
     model: str
     brand_id: UUID
     type: str
@@ -20,7 +19,6 @@ class CreateCustomerWithVehicles(BaseModel):
 
 class VehicleResponse(BaseModel):
     id: UUID
-    merk: str
     model: str
     brand_id: UUID
     type: str
