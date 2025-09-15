@@ -68,7 +68,12 @@ def getListCustomersWithvehicles(db: Session):
     result = []
     for customer in customers:
         customer_dict = to_dict(customer)
-        vehicles = [to_dict(vehicle) for vehicle in customer.vehicles]
+        vehicles = []
+        for vehicle in customer.vehicles:
+            v_dict = to_dict(vehicle)
+            # Tambahkan brand_name jika relasi brand ada
+            v_dict['brand_name'] = vehicle.brand.name if vehicle.brand else None
+            vehicles.append(v_dict)
         customer_dict['vehicles'] = vehicles
         result.append(customer_dict)
     return result
@@ -78,6 +83,10 @@ def getListCustomersWithVehiclesCustomersID(db: Session, customer_id: str):
     if not customer:
         return None
     customer_dict = to_dict(customer)
-    vehicles = [to_dict(vehicle) for vehicle in customer.vehicles]
+    vehicles = []
+    for vehicle in customer.vehicles:
+        v_dict = to_dict(vehicle)
+        v_dict['brand_name'] = vehicle.brand.name if vehicle.brand else None
+        vehicles.append(v_dict)
     customer_dict['vehicles'] = vehicles
     return customer_dict
