@@ -1,0 +1,53 @@
+-- PostgreSQL version of penjualan table and data
+DROP TABLE IF EXISTS penjualan;
+CREATE TABLE penjualan (
+    no INTEGER PRIMARY KEY,
+    kode_cart VARCHAR(50),
+    token VARCHAR(50),
+    invoice VARCHAR(50),
+    faktur VARCHAR(50),
+    tgl DATE,
+    jam TIME,
+    id_brg VARCHAR(50),
+    barcode VARCHAR(50),
+    id_part VARCHAR(50),
+    nama_brg VARCHAR(255),
+    satuan VARCHAR(20),
+    hpp NUMERIC,
+    hrg_satuan NUMERIC,
+    jml NUMERIC,
+    diskon NUMERIC,
+    persen_disc NUMERIC,
+    disc_sale NUMERIC,
+    subtotal NUMERIC,
+    ppn NUMERIC,
+    bayar NUMERIC,
+    tipe_byr VARCHAR(20),
+    card_type VARCHAR(20),
+    card_number VARCHAR(50),
+    approve_code VARCHAR(50),
+    tgl_jthtmp VARCHAR(50),
+    tgl_byr DATE,
+    jam_byr TIME,
+    kasir VARCHAR(50),
+    salesman VARCHAR(50),
+    id_pembeli VARCHAR(50),
+    nama_pembeli VARCHAR(100),
+    alamat_pembeli VARCHAR(255),
+    hp_pembeli VARCHAR(30),
+    retur VARCHAR(10),
+    waktu_retur VARCHAR(50),
+    kasir_retur VARCHAR(50)
+);
+TRUNCATE TABLE penjualan RESTART IDENTITY;
+INSERT INTO penjualan (no, kode_cart, token, invoice, faktur, tgl, jam, id_brg, barcode, id_part, nama_brg, satuan, hpp, hrg_satuan, jml, diskon, persen_disc, disc_sale, subtotal, ppn, bayar, tipe_byr, card_type, card_number, approve_code, tgl_jthtmp, tgl_byr, jam_byr, kasir, salesman, id_pembeli, nama_pembeli, alamat_pembeli, hp_pembeli, retur, waktu_retur, kasir_retur) VALUES
+(3,'1','25010432020','SO-00001','FJ-00001/SPR/SELL/01/2025','2025-01-04','09:11:46','S00090','SR-64193','','BULB 64193 6055W 12V P43T OSRAM','Pcs',21696,45000,1,0,0,0,45000,0,45000,'TUNAI','','','','0000-00-00','2025-01-04','09:12:53','ADMIN2','','CT-0001','AVANZA PUTIH - TRANSFER BNI','YOGYAKARTA','0','0','0000-00-00',''),
+(5,'1','25010493455','SO-00002','FJ-00002/SPR/SELL/01/2025','2025-01-04','09:13:59','S00111','550069887','DALAM','OIL RIMULA R4 PLUS 15W-40 1LT SHELL','Ltr',53000,70000,2,0,0,0,140000,0,140000,'TUNAI','','','','0000-00-00','2025-01-04','09:34:26','ADMIN2','','CT-0002','EKO','TUNTUNGAN UH3, TAHUNAN, UMBULHARJO','081646862086','0','0000-00-00',''),
+(8,'1','250120TAEY','SO-00003','FJ-00003/SPR/SELL/01/2025','2025-01-20','11:53:28','S00124','550066772','GELORA','OIL HELIX HX6 10W-40 SN 1LT SHELL','Pcs',68000,85000,3,0,0,0,255000,0,255000,'TUNAI','','','','0000-00-00','2025-01-20','11:54:19','ADMIN2','','CT-0003','HERI','YOGYAKARTA','0','0','0000-00-00',''),
+(12,'1','250213C6AX','SO-00004','FJ-00004/SPR/SELL/02/2025','2025-02-13','14:01:39','S00124','550066772','GELORA','OIL HELIX HX6 10W-40 SN 1LT SHELL','Pcs',68000,85000,2,0,0,0,170000,0,170000,'TUNAI','','','','0000-00-00','2025-02-13','14:02:49','ADMIN2','','CT-0004','EKO YULIANTO','PANDAN PURO, HARGO BINANGUN, PAKEM','08970909935','0','0000-00-00',''),
+(19,'1','250305FFCS','SO-00005','FJ-00005/SPR/SELL/03/2025','2025-03-05','16:58:35','S00161','AWBSH-621','CARSPEED','WIPER BLADE 21 INCH AISIN','Pcs',34625,52000,1,0,0,0,52000,0,138000,'QRIS','','','','0000-00-00','2025-03-05','16:59:03','ADMIN2','','IKHSAN','','UNDEFINED','undefined','0','0000-00-00',''),
+(18,'1','250305FFCS','SO-00005','FJ-00005/SPR/SELL/03/2025','2025-03-05','16:58:30','S00056','AWBSH-618','AWBSH-618','WIPER BLADE 18 INCH AISIN','Pcs',30388,45000,1,0,0,0,45000,0,138000,'QRIS','','','','0000-00-00','2025-03-05','16:59:03','ADMIN2','','IKHSAN','','UNDEFINED','undefined','0','0000-00-00',''),
+(17,'1','250305FFCS','SO-00005','FJ-00005/SPR/SELL/03/2025','2025-03-05','16:58:25','S00160','AWBSH-612','CARSPEED','WIPER BLADE 12 INCH AISIN','Pcs',27150,41000,1,0,0,0,41000,0,138000,'QRIS','','','','0000-00-00','2025-03-05','16:59:03','ADMIN2','','IKHSAN','','UNDEFINED','undefined','0','0000-00-00',''),
+(25,'1','250409Y6BQ','SO-00007','FJ-00007/SPR/SELL/04/2025','2025-04-09','13:21:19','S00045','AF2033L-IDP','PRESTONE','READY TO USE COOLANT PINK 1LT AF PRESTONE','Pcs',30625,45000,1,0,0,0,45000,0,45000,'TUNAI','','','','0000-00-00','2025-04-09','13:21:36','ADMIN2','','lutfi','','UNDEFINED','undefined','0','0000-00-00',''),
+(23,'1','250329UHAX','SO-00006','FJ-00006/SPR/SELL/03/2025','2025-03-29','12:46:34','S00045','AF2033L-IDP','PRESTONE','READY TO USE COOLANT PINK 1LT AF PRESTONE','Pcs',30625,45000,1,0,0,0,45000,0,45000,'QRIS','','','','0000-00-00','2025-03-29','12:51:14','ADMIN2','','CT-0005','DENIS','JOGJA','082111466925','0','0000-00-00','');
+-- Lanjutkan data sesuai file sumber
