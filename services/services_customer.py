@@ -62,3 +62,22 @@ def create_customer_with_vehicles(db: Session, customer_data: CreateCustomerWith
         "customer": to_dict(new_customer),
         "vehicle": to_dict(new_vehicle)
     }
+
+def getListCustomersWithvehicles(db: Session):
+    customers = db.query(Customer).all()
+    result = []
+    for customer in customers:
+        customer_dict = to_dict(customer)
+        vehicles = [to_dict(vehicle) for vehicle in customer.vehicles]
+        customer_dict['vehicles'] = vehicles
+        result.append(customer_dict)
+    return result
+
+def getListCustomersWithVehiclesCustomersID(db: Session, customer_id: str):
+    customer = db.query(Customer).filter(Customer.id == customer_id).first()
+    if not customer:
+        return None
+    customer_dict = to_dict(customer)
+    vehicles = [to_dict(vehicle) for vehicle in customer.vehicles]
+    customer_dict['vehicles'] = vehicles
+    return customer_dict
