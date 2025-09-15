@@ -2,13 +2,10 @@ from sqlalchemy.orm import Session
 from models.customer import Customer, Vehicle
 import uuid
 from schemas.service_customer import CreateCustomerWithVehicles
-from fastapi import APIRouter, Depends
 from models.database import get_db
 from schemas.service_customer import CustomerWithVehicleResponse
 import decimal
 import datetime
-
-router = APIRouter()
 
 def to_dict(obj):
     result = {}
