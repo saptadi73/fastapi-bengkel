@@ -1,7 +1,7 @@
 import jwt
 from datetime import datetime, timedelta, timezone
 
-SECRET_KEY = "your_secret_key"
+SECRET_KEY = "BengkelGagakRimang2025"
 ALGORITHM = "HS256"
 
 JAKARTA_TZ = timezone(timedelta(hours=7))
@@ -9,7 +9,7 @@ JAKARTA_TZ = timezone(timedelta(hours=7))
 # Generate JWT token
 def create_access_token(data: dict, expires_delta: timedelta = timedelta(hours=12)):
     to_encode = data.copy()
-    expire = datetime.now(JAKARTA_TZ) + expires_delta
+    expire = datetime.now(timezone.utc) + expires_delta
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt

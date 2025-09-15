@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from models.database import SessionLocal
 from services.services_customer import create_customer_with_vehicles,getListCustomersWithvehicles, getListCustomersWithVehiclesCustomersID
-from services.services_product import CreateProduct, get_all_products, get_product_by_id, createServie,get_all_services
+from services.services_product import CreateProduct, get_all_products, get_product_by_id, createServie,get_all_services, createBrand, createCategory, createSatuan, getAllBrands, getAllCategories, getAllSatuans
 from schemas.service_product import CreateProduct, ProductResponse, CreateService, ServiceResponse
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
@@ -100,3 +100,86 @@ def get_service(
         return error_response(message=str(e))
     finally:
         db.close()
+
+@router.post("/brand/create/new", dependencies=[Depends(jwt_required)])
+def create_brand_router(
+    brand_name: str,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = createBrand(db, brand_name)
+        if not result:
+            return error_response(message="Failed to create brand")
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()
+
+@router.post("/category/create/new", dependencies=[Depends(jwt_required)])
+def create_category_router(
+    category_name: str,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = createCategory(db, category_name)
+        if not result:
+            return error_response(message="Failed to create category")
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()
+
+@router.post("/satuan/create/new", dependencies=[Depends(jwt_required)])
+def create_satuan_router(
+    satuan_name: str,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = createSatuan(db, satuan_name)
+        if not result:
+            return error_response(message="Failed to create satuan")
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()
+
+@router.get("/brands/all")
+def list_all_brands(
+    db: Session = Depends(get_db)
+):
+    try:
+        result = getAllBrands(db)
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()
+
+@router.get("/satuans/all")
+def listSatuans(
+    db: Session = Depends(get_db)
+):
+    try:
+        result = getAllSatuans(db)
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()
+
+@router.get("/categories/all")
+def listCategories(
+    db: Session = Depends(get_db)
+):
+    try:
+        result = getAllCategories(db)
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()
+
+

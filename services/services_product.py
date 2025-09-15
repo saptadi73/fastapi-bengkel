@@ -300,6 +300,53 @@ def updateWorkorderOrders(db: Session, update_data: 'UpdateWorkorderOrders'):
     db.commit()
     return {'workorder_id': workorder_id, 'status': 'updated'}
 
+def createBrand(db: Session, brand_name: str):
+    new_brand = Brand(
+        id=str(uuid.uuid4()),
+        name=brand_name
+    )
+    db.add(new_brand)
+    db.commit()
+    db.refresh(new_brand)
+    return to_dict(new_brand)
+
+def createCategory(db: Session, category_name: str):
+    new_category = Category(
+        id=str(uuid.uuid4()),
+        name=category_name
+    )
+    db.add(new_category)
+    db.commit()
+    db.refresh(new_category)
+    return to_dict(new_category)
+
+def createSatuan(db: Session, satuan_name: str):
+    new_satuan = Satuan(
+        id=str(uuid.uuid4()),
+        name=satuan_name
+    )
+    db.add(new_satuan)
+    db.commit()
+    db.refresh(new_satuan)
+    return to_dict(new_satuan)
+
+def getAllBrands(db: Session):
+    brands = db.query(Brand).all()
+    result = [to_dict(brand) for brand in brands]
+    return result
+
+def getAllSatuans(db: Session):
+    satuans = db.query(Satuan).all()
+    result = [to_dict(satuan) for satuan in satuans]
+    return result
+
+def getAllCategories(db: Session):
+    categories = db.query(Category).all()
+    result = [to_dict(category) for category in categories]
+    return result
+
+
+
 
 
 

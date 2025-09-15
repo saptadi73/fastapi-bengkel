@@ -4,19 +4,6 @@ from uuid import UUID
 from decimal import Decimal
 from datetime import date,datetime
 
-class CreateProductMove(BaseModel):
-    product_id: UUID
-    type: str  # 'incoming' atau 'outgoing'
-    quantity: Decimal
-    performed_by: str
-    notes: Optional[str] = None
-    timestamp: Optional[datetime] = None
-from pydantic import BaseModel
-from typing import List, Optional
-from uuid import UUID
-from decimal import Decimal
-from datetime import date
-
 class CreateProduct(BaseModel):
     name: str
     type: str
@@ -82,3 +69,12 @@ class ServiceResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
+
+class CreateProductMove(BaseModel):
+    id: UUID
+    product_id: UUID
+    type: str  # 'incoming' atau 'outgoing'
+    quantity: Decimal
+    performed_by: str
+    notes: Optional[str] = None
+    timestamp: Optional[datetime] = None
