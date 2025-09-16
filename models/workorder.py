@@ -89,8 +89,8 @@ class Workorder(Base):
     __tablename__ = 'workorder'
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, index=True)
     no_wo = Column(String, nullable=False)
-    tanggal_masuk = Column(Date, nullable=False)
-    tanggal_keluar = Column(Date, nullable=True)
+    tanggal_masuk = Column(DateTime, nullable=False)
+    tanggal_keluar = Column(DateTime, nullable=True)
     keluhan = Column(String, nullable=False)
     status = Column(String, nullable=False)
     total_discount = Column(Numeric(10,2), nullable=True, default=0)

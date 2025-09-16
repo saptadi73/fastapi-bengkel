@@ -1,12 +1,15 @@
+
 CREATE TABLE IF NOT EXISTS vehicle (
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     model VARCHAR NOT NULL,
     brand_id UUID REFERENCES brand(id),
-    type VARCHAR,
+    type VARCHAR NOT NULL,
     kapasitas VARCHAR NOT NULL,
     no_pol VARCHAR NOT NULL,
-    tahun NUMERIC,
+    tahun NUMERIC NOT NULL,
     warna VARCHAR NOT NULL,
+    no_mesin VARCHAR,
+    no_rangka VARCHAR,
     customer_id UUID REFERENCES customer(id)
 );
 

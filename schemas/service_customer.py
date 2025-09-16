@@ -16,6 +16,8 @@ class CreateCustomerWithVehicles(BaseModel):
     no_pol: str
     tahun: int
     warna: str
+    no_mesin: Optional[str] = None
+    no_rangka: Optional[str] = None
 
 class VehicleResponse(BaseModel):
     id: UUID
@@ -26,6 +28,8 @@ class VehicleResponse(BaseModel):
     no_pol: str
     tahun: int
     warna: str
+    no_mesin: Optional[str] = None
+    no_rangka: Optional[str] = None
     customer_id: UUID
 
     model_config = {

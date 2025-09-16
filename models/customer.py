@@ -30,6 +30,8 @@ class Vehicle(Base):
     no_pol = Column(String, nullable=False)
     tahun = Column(Numeric, nullable=False)
     warna = Column(String, nullable=False)
+    no_mesin = Column(String, nullable=True)
+    no_rangka = Column(String, nullable=True)
     customer_id = Column(UUID(as_uuid=True), ForeignKey('customer.id'))
     customer = relationship('Customer', back_populates='vehicles')
     workorders = relationship('Workorder', back_populates='vehicle')
