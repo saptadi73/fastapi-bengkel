@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from models.database import SessionLocal
 from services.services_customer import create_customer_with_vehicles,getListCustomersWithvehicles, getListCustomersWithVehiclesCustomersID
-from services.services_product import CreateProductNew, get_all_products, get_product_by_id, createServie,get_all_services, createBrand, createCategory, createSatuan, getAllBrands, getAllCategories, getAllSatuans, getAllInventoryProducts, getInventoryByProductID
+from services.services_product import CreateProductNew, get_all_products, get_product_by_id, createServie,get_all_services, createBrand, createCategory, createSatuan, getAllBrands, getAllCategories, getAllSatuans, getAllInventoryProducts, getInventoryByProductID, createProductMoveHistoryNew
+from schemas.service_inventory import CreateProductMovedHistory
 from schemas.service_product import CreateProduct, ProductResponse, CreateService, ServiceResponse
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
@@ -211,7 +212,20 @@ def getInventoryByProductIDRouter(
     finally:
         db.close()
 
-
+@router.post("/inventory/move/new", dependencies=[Depends(jwt_required)])
+def createProductMoveHistoryRouter(
+    move_data: CreateProductMovedHistory,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = createProductMoveHistoryNew(db, move_data)
+        if not result:
+            return error_response(message="Failed to create product move history")
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()
 
 
 

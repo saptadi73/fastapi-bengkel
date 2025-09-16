@@ -152,7 +152,7 @@ def createProductMoveHistoryNew(db: Session, move_data: CreateProductMovedHistor
     db.add(new_move)
     db.commit()
     db.refresh(new_move)
-    return new_move
+    return to_dict(new_move)
 
 
 
@@ -189,7 +189,7 @@ def createWorkorderWithProductsServices(db: Session, workorder_data):
             performed_by=getattr(workorder_data, 'performed_by', 'system'),
             notes=f'Workorder {new_workorder.id} - ProductOrdered'
         )
-        createProductMove(db, move_data)
+        createProductMoveHistoryNew(db, move_data)
 
     # Tambah layanan yang dipesan
     for serv in workorder_data.services:
@@ -278,7 +278,7 @@ def updateWorkorderOrders(db: Session, update_data: 'UpdateWorkorderOrders'):
                 performed_by=getattr(update_data, 'performed_by', 'system'),
                 notes=f'Update Workorder {workorder_id} - ProductOrdered'
             )
-            createProductMove(db, move_data)
+            createProductMoveHistoryNew(db, move_data)
 
     # Update ServiceOrdered
     if update_data.services:
