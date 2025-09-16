@@ -1,5 +1,6 @@
 from schemas.service_workorder_update import UpdateWorkorderOrders, UpdateProductOrder, UpdateServiceOrder
 from schemas.service_workorder import CreateWorkorderOnly
+from schemas.service_inventory import CreateProductMovedHistory
 from models.inventory import Inventory, ProductMovedHistory
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
@@ -100,64 +101,60 @@ def getAllInventoryProducts(db: Session):
         result.append(p_dict)
     return result
 
-def createProductMove(db: Session, move_data):
-    # move_data: CreateProductMove
-    id = str(uuid.uuid4())
-    product_id = str(move_data.product_id)
-    type_move = move_data.type.lower()
-    qty = float(move_data.quantity)
-    performed_by = move_data.performed_by
-    notes = move_data.notes
-    timestamp = move_data.timestamp or datetime.utcnow()
+def getInventoryByProductID(db: Session, product_id: str):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        return None
+    p_dict = to_dict(product)
+    p_dict['category_name'] = product.category.name if product.category else None
+    p_dict['brand_name'] = product.brand.name if product.brand else None
+    p_dict['satuan_name'] = product.satuan.name if product.satuan else None
+    # Hitung total stock dari inventory
+    total_stock = sum(inv.stock for inv in product.inventory) if product.inventory else 0
+    p_dict['total_stock'] = float(total_stock)  # Konversi Decimal ke float
+    return p_dict
 
-    # Cari inventory untuk produk terkait
-    inventory = db.query(Inventory).filter(Inventory.product_id == product_id).first()
-    if not inventory:
-        if type_move == 'incoming':
-            # Buat inventory baru jika belum ada dan incoming
+def createProductMoveHistoryNew(db: Session, move_data: CreateProductMovedHistory):
+    inventory = db.query(Inventory).filter(Inventory.product_id == move_data.product_id).first()
+    if move_data.type.lower() == 'income':
+        if not inventory:
+            # Buat inventory baru
             inventory = Inventory(
                 id=str(uuid.uuid4()),
-                product_id=product_id,
-                quantity=qty,
+                product_id=move_data.product_id,
+                quantity=move_data.quantity,
                 cost=0,
-                created_at=timestamp,
-                updated_at=timestamp
+                created_at=move_data.timestamp or datetime.utcnow(),
+                updated_at=move_data.timestamp or datetime.utcnow()
             )
             db.add(inventory)
         else:
-            # Tidak bisa outgoing jika inventory tidak ada
-            raise ValueError('Inventory untuk produk ini belum ada, tidak bisa outgoing!')
-    else:
-        if type_move == 'incoming':
-            inventory.quantity += qty
-        elif type_move == 'outgoing':
-            if inventory.quantity < qty:
-                raise ValueError('Stock tidak cukup untuk outgoing!')
-            inventory.quantity -= qty
-        inventory.updated_at = timestamp
-
-    # Catat ke product_moved_history
-    moved = ProductMovedHistory(
+            # Update quantity lama + quantity baru
+            inventory.quantity += move_data.quantity
+            inventory.updated_at = move_data.timestamp or datetime.utcnow()
+    elif move_data.type.lower() == 'outcome':
+        if not inventory:
+            raise ValueError('Inventory untuk produk ini belum ada, tidak bisa outcome!')
+        if inventory.quantity < move_data.quantity:
+            raise ValueError('Stock tidak cukup untuk outcome!')
+        inventory.quantity -= move_data.quantity
+        inventory.updated_at = move_data.timestamp or datetime.utcnow()
+    # Catat ke ProductMovedHistory
+    new_move = ProductMovedHistory(
         id=str(uuid.uuid4()),
-        product_id=product_id,
-        type=type_move,
-        quantity=qty,
-        timestamp=timestamp,
-        performed_by=performed_by,
-        notes=notes
+        product_id=move_data.product_id,
+        type=move_data.type,
+        quantity=move_data.quantity,
+        performed_by=move_data.performed_by,
+        notes=move_data.notes,
+        timestamp=move_data.timestamp or datetime.utcnow()
     )
-    db.add(moved)
-    try:
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise
-    db.refresh(inventory)
-    db.refresh(moved)
-    return {
-        'inventory': to_dict(inventory),
-        'move_history': to_dict(moved)
-    }
+    db.add(new_move)
+    db.commit()
+    db.refresh(new_move)
+    return new_move
+
+
 
 def createWorkorderWithProductsServices(db: Session, workorder_data):
     # workorder_data: CreateWorkorderWithProductsServices

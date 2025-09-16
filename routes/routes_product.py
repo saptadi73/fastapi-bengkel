@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from models.database import SessionLocal
 from services.services_customer import create_customer_with_vehicles,getListCustomersWithvehicles, getListCustomersWithVehiclesCustomersID
-from services.services_product import CreateProductNew, get_all_products, get_product_by_id, createServie,get_all_services, createBrand, createCategory, createSatuan, getAllBrands, getAllCategories, getAllSatuans
+from services.services_product import CreateProductNew, get_all_products, get_product_by_id, createServie,get_all_services, createBrand, createCategory, createSatuan, getAllBrands, getAllCategories, getAllSatuans, getAllInventoryProducts, getInventoryByProductID
 from schemas.service_product import CreateProduct, ProductResponse, CreateService, ServiceResponse
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
@@ -183,5 +183,35 @@ def listCategories(
         return error_response(message=str(e))
     finally:
         db.close()
+
+@router.get("/inventory/all")
+def getAllInventoryProduct(
+    db: Session = Depends(get_db)
+):
+    try:
+        result = getAllInventoryProducts(db)
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()
+
+@router.get("/inventory/{product_id}")
+def getInventoryByProductIDRouter(
+    product_id: str,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = getInventoryByProductID(db, product_id)
+        if not result:
+            return error_response(message="Inventory not found for the given product ID", status_code=404)
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()
+
+
+
 
 

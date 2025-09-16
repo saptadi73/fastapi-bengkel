@@ -69,12 +69,3 @@ class ServiceResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
-
-class CreateProductMove(BaseModel):
-    id: Optional[UUID] = None
-    product_id: UUID
-    type: str  # 'incoming' atau 'outgoing'
-    quantity: Decimal
-    performed_by: str
-    notes: Optional[str] = None
-    timestamp: Optional[datetime] = None
