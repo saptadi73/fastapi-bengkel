@@ -96,7 +96,7 @@ def getAllInventoryProducts(db: Session):
         p_dict['brand_name'] = product.brand.name if product.brand else None
         p_dict['satuan_name'] = product.satuan.name if product.satuan else None
         # Hitung total stock dari inventory
-        total_stock = sum(inv.stock for inv in product.inventory) if product.inventory else 0
+        total_stock = sum(inv.quantity for inv in product.inventory) if product.inventory else 0
         p_dict['total_stock'] = float(total_stock)  # Konversi Decimal ke float
         result.append(p_dict)
     return result
