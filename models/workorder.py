@@ -64,6 +64,7 @@ class ProductOrdered(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, index=True)
     quantity = Column(Numeric(10,2), nullable=False)
     subtotal = Column(Numeric(10,2), nullable=False)
+    discount = Column(Numeric(10,2), nullable=True, default=0)
 
     product_id = Column(UUID(as_uuid=True), ForeignKey('product.id'))
     product = relationship('Product', back_populates='product_ordereds')
@@ -76,6 +77,7 @@ class ServiceOrdered(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, index=True)
     quantity = Column(Numeric(10,2), nullable=False)
     subtotal = Column(Numeric(10,2), nullable=False)
+    discount = Column(Numeric(10,2), nullable=True, default=0)
 
     service_id = Column(UUID(as_uuid=True), ForeignKey('service.id'))
     service = relationship('Service', back_populates='service_ordereds')
@@ -91,6 +93,7 @@ class Workorder(Base):
     tanggal_keluar = Column(Date, nullable=True)
     keluhan = Column(String, nullable=False)
     status = Column(String, nullable=False)
+    total_discount = Column(Numeric(10,2), nullable=True, default=0)
     total_biaya = Column(Numeric(10,2), nullable=False)
 
     customer_id = Column(UUID(as_uuid=True), ForeignKey('customer.id'))
