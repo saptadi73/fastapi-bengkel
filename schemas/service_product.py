@@ -71,7 +71,7 @@ class ServiceResponse(BaseModel):
     }
 
 class CreateProductMove(BaseModel):
-    id: UUID
+    id: Optional[UUID] = None
     product_id: UUID
     type: str  # 'incoming' atau 'outgoing'
     quantity: Decimal

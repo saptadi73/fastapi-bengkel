@@ -30,7 +30,7 @@ def to_dict(obj):
         result[c.name] = value
     return result
 
-def CreateProduct(db:Session, product_data: CreateProduct):
+def CreateProductNew(db:Session, product_data: CreateProduct):
     new_product = Product(
         id=str(uuid.uuid4()),
         name=product_data.name,
@@ -40,7 +40,7 @@ def CreateProduct(db:Session, product_data: CreateProduct):
         min_stock=product_data.min_stock,
         brand_id=product_data.brand_id,
         satuan_id=product_data.satuan_id,
-        categor_id=product_data.category_id
+        category_id=product_data.category_id
     )
     db.add(new_product)
     db.commit()
@@ -102,6 +102,7 @@ def getAllInventoryProducts(db: Session):
 
 def createProductMove(db: Session, move_data):
     # move_data: CreateProductMove
+    id = str(uuid.uuid4())
     product_id = str(move_data.product_id)
     type_move = move_data.type.lower()
     qty = float(move_data.quantity)

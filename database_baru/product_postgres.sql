@@ -7,5 +7,5 @@ CREATE TABLE IF NOT EXISTS product (
     min_stock NUMERIC(10,2) NOT NULL,
     brand_id UUID REFERENCES brand(id),
     satuan_id UUID REFERENCES satuan(id),
-    categor_id UUID REFERENCES category(id)
+    category_id UUID REFERENCES category(id)
 );

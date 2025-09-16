@@ -43,7 +43,7 @@ class Product(Base):
     satuan_id = Column(UUID(as_uuid=True),ForeignKey('satuan.id'))
     satuan = relationship('Satuan', back_populates='products')
 
-    categor_id = Column(UUID(as_uuid=True), ForeignKey('category.id'))
+    category_id = Column(UUID(as_uuid=True), ForeignKey('category.id'))
     category = relationship('Category', back_populates='products')
 
     product_ordereds = relationship('ProductOrdered', back_populates='product')

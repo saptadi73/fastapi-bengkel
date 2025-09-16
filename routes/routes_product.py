@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from models.database import SessionLocal
 from services.services_customer import create_customer_with_vehicles,getListCustomersWithvehicles, getListCustomersWithVehiclesCustomersID
-from services.services_product import CreateProduct, get_all_products, get_product_by_id, createServie,get_all_services, createBrand, createCategory, createSatuan, getAllBrands, getAllCategories, getAllSatuans
+from services.services_product import CreateProductNew, get_all_products, get_product_by_id, createServie,get_all_services, createBrand, createCategory, createSatuan, getAllBrands, getAllCategories, getAllSatuans
 from schemas.service_product import CreateProduct, ProductResponse, CreateService, ServiceResponse
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
@@ -17,13 +17,15 @@ def get_db():
     finally:
         db.close()
 
-@router.post("/create/new", response_model=ProductResponse, dependencies=[Depends(jwt_required)])
+@router.post("/create/new")
 def create_product_router(
     product_data: CreateProduct,
     db: Session = Depends(get_db)
 ):
+    print(product_data)  # Akan tampil di terminal/server
+    print(product_data.dict())  # Lihat dict hasil parsing Pydantic
     try:
-        result = CreateProduct(db, product_data)
+        result = CreateProductNew(db, product_data)
         if not result:
             return error_response(message="Failed to create product")
         return success_response(data=result)
