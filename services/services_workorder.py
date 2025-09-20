@@ -1,6 +1,5 @@
-
 from schemas.service_workorder_update import UpdateWorkorderOrders, UpdateProductOrder, UpdateServiceOrder
-from schemas.service_workorder import CreateWorkOrder,CreateServiceOrder,CreateProductOrder, CreateWorkorderOnly, CreateProductOrderedOnly, CreateServiceOrderedOnly, UpdateWorkorderComplaint
+from schemas.service_workorder import CreateWorkOrder,CreateServiceOrder,CreateProductOrder, CreateWorkorderOnly, CreateProductOrderedOnly, CreateServiceOrderedOnly, UpdateWorkorderComplaint, CreateWorkActivityLog
 from schemas.service_inventory import CreateProductMovedHistory
 from models.inventory import Inventory, ProductMovedHistory
 from sqlalchemy.exc import IntegrityError
@@ -407,4 +406,65 @@ def updateProductOrderedOnlynya(db: Session, product_ordered_data: CreateProduct
     wo_dict = to_dict(wo)
     wo_dict['customer_name'] = wo.customer.nama if wo.customer else None
     wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None
+    return wo_dict
+
+def createNewWorkorderActivityLog(db: Session, log_data: CreateWorkActivityLog):
+    wo = db.query(Workorder).filter(Workorder.id == log_data.workorder_id).first()
+    if not wo:
+        return None
+
+    new_log = WorkOrderActivityLog(
+        id=uuid.uuid4(),
+        workorder_id=log_data.workorder_id,
+        activity=log_data.activity,
+        performed_by=log_data.performed_by,
+        timestamp=datetime.datetime.now()
+    )
+    db.add(new_log)
+    db.commit()
+    db.refresh(new_log)
+
+    wo_dict = to_dict(wo)
+    wo_dict['customer_name'] = wo.customer.nama if wo.customer else None
+    wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None
+    return wo_dict
+
+def getWorkorderActivityLogs(db: Session, workorder_id: str):
+    logs = db.query(WorkOrderActivityLog).filter(WorkOrderActivityLog.workorder_id == workorder_id).order_by(WorkOrderActivityLog.timestamp.desc()).all()
+    result = []
+    for log in logs:
+        log_dict = to_dict(log)
+        result.append(log_dict)
+    return result
+
+def get_workorder_activitylog_by_customer(db: Session, customer_id: str):
+    # Ambil semua workorder milik customer
+    workorders = db.query(Workorder).filter(Workorder.customer_id == customer_id).all()
+    activity_logs = []
+    for wo in workorders:
+        logs = db.query(WorkOrderActivityLog).filter(WorkOrderActivityLog.workorder_id == wo.id).all()
+        for log in logs:
+            log_dict = to_dict(log)
+            log_dict['workorder_no_wo'] = wo.no_wo
+            activity_logs.append(log_dict)
+    return activity_logs
+
+def updateWorkorderActivityLognya(db: Session, log_id: str, data: CreateWorkActivityLog):
+    log = db.query(WorkOrderActivityLog).filter(WorkOrderActivityLog.id == log_id).first()
+    if not log:
+        return None
+
+    old_activity = log.activity
+    log.activity = data.activity
+    log.performed_by = data.performed_by
+    log.timestamp = data.timestamp
+    db.add(log)
+    db.commit()
+    db.refresh(log)
+
+    wo = db.query(Workorder).filter(Workorder.id == log.workorder_id).first()
+    if not wo:
+        return None
+
+    wo_dict = to_dict(wo)
     return wo_dict

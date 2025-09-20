@@ -3,10 +3,10 @@ from sqlalchemy.orm import Session
 from models.database import SessionLocal
 from services.services_customer import create_customer_with_vehicles,getListCustomersWithvehicles, getListCustomersWithVehiclesCustomersID
 from services.services_product import CreateProductNew, get_all_products, get_product_by_id, createServie,get_all_services, createBrand, createCategory, createSatuan, getAllBrands, getAllCategories, getAllSatuans, getAllInventoryProducts, getInventoryByProductID, createProductMoveHistoryNew
-from services.services_workorder import createNewWorkorder,getAllWorkorders, getWorkorderByID, updateServiceorderedOnlynya,updateStatusWorkorder,updateWorkOrdeKeluhannya,UpdateDateWorkordernya,UpdateWorkorderOrdersnya,updateProductOrderedOnlynya
+from services.services_workorder import createNewWorkorder,getAllWorkorders, getWorkorderByID, updateServiceorderedOnlynya,updateStatusWorkorder,updateWorkOrdeKeluhannya,UpdateDateWorkordernya,UpdateWorkorderOrdersnya,updateProductOrderedOnlynya,createNewWorkorderActivityLog, updateWorkorderActivityLognya,get_workorder_activitylog_by_customer
 from schemas.service_inventory import CreateProductMovedHistory
 from schemas.service_product import CreateProduct, ProductResponse, CreateService, ServiceResponse
-from schemas.service_workorder import CreateWorkOrder,UpdateProductOrderedOnly,UpdateServiceOrderedOnly,UpdateWorkoderOrders,UpdateWorkorderComplaint,UpdateWorkorderDates,UpdateWorkorderStatus,UpdateWorkorderTotalCost,DeleteProductOrderedOnly,DeleteServiceOrderedOnly
+from schemas.service_workorder import CreateWorkOrder,UpdateProductOrderedOnly,UpdateServiceOrderedOnly,UpdateWorkoderOrders,UpdateWorkorderComplaint,UpdateWorkorderDates,UpdateWorkorderStatus,UpdateWorkorderTotalCost,DeleteProductOrderedOnly,DeleteServiceOrderedOnly, CreateWorkActivityLog
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
 from schemas.service_customer import CreateCustomerWithVehicles, CustomerWithVehicleResponse
@@ -121,3 +121,48 @@ def updateWorkorderStatusRouter(
     finally:
         db.close()
 
+@router.post("/activity/create/new", dependencies=[Depends(jwt_required)])
+def createWorkorderActivityLogRouter(
+    activity_log_data: CreateWorkActivityLog,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = createNewWorkorderActivityLog(db, activity_log_data)
+        if not result:
+            return error_response(message="Failed to create workorder activity log")
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))   
+    finally:
+        db.close()
+
+@router.post("/update/activity/{workorder_id}", dependencies=[Depends(jwt_required)])
+def updateWorkorderActivityLogRouter(
+    workorder_id: str,
+    activity_log_data: CreateWorkActivityLog,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = updateWorkorderActivityLognya(db, workorder_id, activity_log_data)
+        if not result:
+            return error_response(message="Failed to update workorder activity log")
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()
+
+@router.get("/activitylogs/customer/{customer_id}", response_model=list[CreateWorkActivityLog])
+def getWorkorderActivityLogsByCustomerRouter(
+    customer_id: str,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = get_workorder_activitylog_by_customer(db, customer_id)
+        if result is None:
+            raise HTTPException(status_code=404, detail="Customer or Workorders not found")
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()
