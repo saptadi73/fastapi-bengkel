@@ -199,3 +199,11 @@ def createCustomerOnly(db: Session, customer_data: CreateCustomer):
     db.commit()
     db.refresh(new_customer)
     return to_dict(new_customer)
+
+def getAllCustomers(db: Session):
+    customers = db.query(Customer).all()
+    result = []
+    for customer in customers:
+        customer_dict = to_dict(customer)
+        result.append(customer_dict)
+    return result

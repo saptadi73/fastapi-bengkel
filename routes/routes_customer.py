@@ -72,3 +72,14 @@ def createCustomerOnlynya(
         return success_response(data=result)
     except Exception as e:
         return error_response(message=str(e))
+
+@router.get("/all")
+def getAllCustomersRouter(
+    db: Session = Depends(get_db)
+):
+    try:
+        from services.services_customer import getAllCustomers
+        result = getAllCustomers(db)
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
