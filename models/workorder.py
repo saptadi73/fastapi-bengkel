@@ -93,6 +93,7 @@ class Workorder(Base):
     tanggal_masuk = Column(DateTime, nullable=False)
     tanggal_keluar = Column(DateTime, nullable=True)
     keluhan = Column(String, nullable=False)
+    saran = Column(String, nullable=True)
     status = Column(String, nullable=False)
     total_discount = Column(Numeric(10,2), nullable=True, default=0)
     total_biaya = Column(Numeric(10,2), nullable=False)

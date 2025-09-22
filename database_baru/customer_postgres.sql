@@ -5,5 +5,8 @@ CREATE TABLE IF NOT EXISTS customer (
     hp VARCHAR NOT NULL,
     alamat VARCHAR NOT NULL,
     email VARCHAR NOT NULL UNIQUE
+    tanggal_lahir DATE,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 

@@ -30,7 +30,8 @@ class CreateServiceOrder(BaseModel):
 class CreateWorkOrder(BaseModel):
     tanggal_masuk: datetime
     tanggal_keluar: Optional[datetime] = None
-    keluhan: str
+    keluhan: Optional[str] = None
+    saran: Optional[str] = None
     status: str
     total_discount: Optional[float] = 0
     total_biaya: float
@@ -42,7 +43,8 @@ class CreateWorkOrder(BaseModel):
 class CreateWorkorderOnly(BaseModel):
     tanggal_masuk: datetime
     tanggal_keluar: Optional[datetime] = None
-    keluhan: str
+    keluhan: Optional[str] = None
+    saran: Optional[str] = None
     status: str
     total_discount: Optional[float] = 0
     total_biaya: float
@@ -69,7 +71,8 @@ class WorkOrderResponse(BaseModel):
     no_wo: str
     tanggal_masuk: datetime
     tanggal_keluar: Optional[datetime] = None
-    keluhan: str
+    keluhan: Optional[str] = None
+    saran: Optional[str] = None
     status: str
     total_discount: Optional[float] = 0
     total_biaya: float

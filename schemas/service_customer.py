@@ -19,6 +19,25 @@ class CreateCustomerWithVehicles(BaseModel):
     no_mesin: Optional[str] = None
     no_rangka: Optional[str] = None
 
+class CreateCustomer(BaseModel):
+    nama: str
+    hp: str
+    alamat: str
+    email: str
+    tanggal_lahir: Optional[date] = None
+
+class CreateVehicle(BaseModel):
+    model: Optional[str] = None
+    brand_id: UUID
+    type: Optional[str]
+    kapasitas: Optional[str]
+    no_pol: str
+    tahun: Optional[int] = None
+    warna: Optional[str]
+    no_mesin: Optional[str] = None
+    no_rangka: Optional[str] = None
+    customer_id: UUID
+
 class VehicleResponse(BaseModel):
     id: UUID
     model: str

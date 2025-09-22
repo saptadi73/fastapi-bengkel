@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from models.database import SessionLocal
-from services.services_customer import create_customer_with_vehicles,getListCustomersWithvehicles, getListCustomersWithVehiclesCustomersID
+from services.services_customer import create_customer_with_vehicles,getListCustomersWithvehicles, getListCustomersWithVehiclesCustomersID, getServiceOrderedAndProductOrderedByVehicleID, createCustomerOnly
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
-from schemas.service_customer import CreateCustomerWithVehicles, CustomerWithVehicleResponse
+from schemas.service_customer import CreateCustomerWithVehicles, CustomerWithVehicleResponse, CreateCustomer, CreateVehicle
 
 router = APIRouter(prefix="/customers")
 
@@ -35,7 +35,19 @@ def list_customers_with_vehicles(
         return success_response(data=result)
     except Exception as e:
         return error_response(message=str(e))
-    
+
+@router.get("/history/service/{vehicle_id}")
+def get_service_history_by_vehicle(
+    vehicle_id: str,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = getServiceOrderedAndProductOrderedByVehicleID(db, vehicle_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="Vehicle not found")
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
 
 @router.get("/{customer_id}/with-vehicles", response_model=CustomerWithVehicleResponse)
 def get_customer_with_vehicles(
@@ -50,3 +62,13 @@ def get_customer_with_vehicles(
     except Exception as e:
         return error_response(message=str(e))
 
+@router.post("/customer-only", dependencies=[Depends(jwt_required)])
+def createCustomerOnlynya(
+    customer_data: CreateCustomer,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = createCustomerOnly(db, customer_data)
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))

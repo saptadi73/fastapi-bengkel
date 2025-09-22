@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS workorder (
     tanggal_masuk TIMESTAMP NOT NULL,
     tanggal_keluar TIMESTAMP,
     keluhan VARCHAR,
+    saran VARCHAR,
     status VARCHAR NOT NULL,
     total_discount NUMERIC(10,2) DEFAULT 0,
     total_biaya NUMERIC(10,2),
