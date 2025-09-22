@@ -6,6 +6,7 @@ from models.database import get_db
 from schemas.service_customer import CustomerWithVehicleResponse
 import decimal
 import datetime
+from dateutil.relativedelta import relativedelta
 
 def to_dict(obj):
     result = {}
@@ -61,18 +62,64 @@ def create_customer_with_vehicles(db: Session, customer_data: CreateCustomerWith
     }
 
 def getListCustomersWithvehicles(db: Session):
-    customers = db.query(Customer).all()
+    # customers = db.query(Customer).all()
+    # result = []
+    # for customer in customers:
+    #     customer_dict = to_dict(customer)
+    #     vehicles = []
+    #     for vehicle in customer.vehicles:
+    #         v_dict = to_dict(vehicle)
+    #         # Tambahkan brand_name jika relasi brand ada
+    #         v_dict['brand_name'] = vehicle.brand.name if vehicle.brand else None
+    #         vehicles.append(v_dict)
+    #     customer_dict['vehicles'] = vehicles
+    #     result.append(customer_dict)
+    # return result
+    vehicles = db.query(Vehicle).all()
     result = []
-    for customer in customers:
-        customer_dict = to_dict(customer)
-        vehicles = []
-        for vehicle in customer.vehicles:
-            v_dict = to_dict(vehicle)
-            # Tambahkan brand_name jika relasi brand ada
-            v_dict['brand_name'] = vehicle.brand.name if vehicle.brand else None
-            vehicles.append(v_dict)
-        customer_dict['vehicles'] = vehicles
-        result.append(customer_dict)
+    for vehicle in vehicles:
+        v_dict = to_dict(vehicle)
+        v_dict['brand_name'] = vehicle.brand.name if vehicle.brand else None
+        customer = vehicle.customer
+        if customer:
+            v_dict['customer_nama'] = customer.nama
+            v_dict['customer_hp'] = customer.hp
+            v_dict['customer_alamat'] = customer.alamat
+        else:
+            v_dict['customer_nama'] = None
+            v_dict['customer_hp'] = None
+            v_dict['customer_alamat'] = None
+
+        # Cari tanggal_keluar terakhir dari workorder kendaraan ini
+        last_wo = None
+        if hasattr(vehicle, 'workorders'):
+            workorders = vehicle.workorders
+            if workorders:
+                # Ambil workorder dengan tanggal_keluar paling akhir (bisa None)
+                last_wo = max(
+                    (wo for wo in workorders if wo.tanggal_keluar is not None),
+                    key=lambda wo: wo.tanggal_keluar,
+                    default=None
+                )
+
+        # last_visit_date dan next_visit_date
+        if last_wo and last_wo.tanggal_keluar:
+            last_visit = last_wo.tanggal_keluar
+            v_dict['last_visit_date'] = last_visit.isoformat()
+            # Tambahkan 4 bulan ke last_visit
+            try:
+                next_visit = last_visit + relativedelta(months=4)
+            except ImportError:
+                # Fallback jika dateutil tidak ada, pakai timedelta 120 hari
+                from datetime import timedelta
+                next_visit = last_visit + timedelta(days=90)
+            v_dict['next_visit_date'] = next_visit.isoformat()
+        else:
+            v_dict['last_visit_date'] = None
+            v_dict['next_visit_date'] = None
+
+        v_dict['customer'] = to_dict(customer) if customer else None
+        result.append(v_dict)
     return result
 
 def getListCustomersWithVehiclesCustomersID(db: Session, customer_id: str):

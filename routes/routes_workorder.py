@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from models.database import SessionLocal
 from services.services_customer import create_customer_with_vehicles,getListCustomersWithvehicles, getListCustomersWithVehiclesCustomersID
 from services.services_product import CreateProductNew, get_all_products, get_product_by_id, createServie,get_all_services, createBrand, createCategory, createSatuan, getAllBrands, getAllCategories, getAllSatuans, getAllInventoryProducts, getInventoryByProductID, createProductMoveHistoryNew
-from services.services_workorder import createNewWorkorder,getAllWorkorders, getWorkorderByID, updateServiceorderedOnlynya,updateStatusWorkorder,updateWorkOrdeKeluhannya,UpdateDateWorkordernya,UpdateWorkorderOrdersnya,updateProductOrderedOnlynya,createNewWorkorderActivityLog, updateWorkorderActivityLognya,get_workorder_activitylog_by_customer
+from services.services_workorder import createNewWorkorder,getAllWorkorders, getWorkorderByID, updateServiceorderedOnlynya,updateStatusWorkorder,updateWorkOrdeKeluhannya,UpdateDateWorkordernya,UpdateWorkorderOrdersnya,updateProductOrderedOnlynya,createNewWorkorderActivityLog, updateWorkorderActivityLognya,get_workorder_activitylog_by_customer,UpdateWorkorderOrdersnya
 from schemas.service_inventory import CreateProductMovedHistory
 from schemas.service_product import CreateProduct, ProductResponse, CreateService, ServiceResponse
 from schemas.service_workorder import CreateWorkOrder,UpdateProductOrderedOnly,UpdateServiceOrderedOnly,UpdateWorkoderOrders,UpdateWorkorderComplaint,UpdateWorkorderDates,UpdateWorkorderStatus,UpdateWorkorderTotalCost,DeleteProductOrderedOnly,DeleteServiceOrderedOnly, CreateWorkActivityLog
@@ -90,18 +90,18 @@ def updateWorkorderKeluhanRouter(
             return error_response(message="Failed to update workorder keluhan")
         return success_response(data=result)
     except Exception as e:
-        return error_response(message=str(e))   
+        return error_response(message=str(e))
     finally:
         db.close()
 
 def updateDateWorkOrdernya(db: Session, workorder_id: str, tanggal_keluar: str):
     try:
-        result = UpdateDateWorkorder(db, workorder_id, tanggal_keluar)
+        result = UpdateDateWorkordernya(db, workorder_id, tanggal_keluar)
         if not result:
             return error_response(message="Failed to update workorder tanggal keluar")
         return success_response(data=result)
     except Exception as e:
-        return error_response(message=str(e))   
+        return error_response(message=str(e))
     finally:
         db.close()
 
@@ -117,7 +117,7 @@ def updateWorkorderStatusRouter(
             return error_response(message="Failed to update workorder status")
         return success_response(data=result)
     except Exception as e:
-        return error_response(message=str(e))   
+        return error_response(message=str(e))
     finally:
         db.close()
 
@@ -132,7 +132,7 @@ def createWorkorderActivityLogRouter(
             return error_response(message="Failed to create workorder activity log")
         return success_response(data=result)
     except Exception as e:
-        return error_response(message=str(e))   
+        return error_response(message=str(e))
     finally:
         db.close()
 

@@ -21,7 +21,11 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
     if not user:
         return error_response(message="Invalid username or password", status_code=401)
     token = create_auth_token(user)
-    return success_response(data={"access_token": token, "token_type": "bearer"}, message="Login successful")
+    return success_response(data={"access_token": token, "token_type": "bearer","user":UserResponse(
+            id=str(user.id),
+            username=user.username,
+            email=user.email
+        ).model_dump()}, message="Login successful")
 
 
 @router.post("/register", response_model=UserResponse)

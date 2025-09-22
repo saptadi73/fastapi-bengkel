@@ -245,8 +245,8 @@ def UpdateDateWorkordernya(db: Session, workorder_id: str, new_tanggal_keluar: d
         if so.service:
             so_dict['service_name'] = so.service.name
         service_ordered_list.append(so_dict)
-    wo_dict['service_ordered'] = service_ordered_list   
-    return wo_dict  
+    wo_dict['service_ordered'] = service_ordered_list
+    return wo_dict
 
 def updateWorkOrdeKeluhannya(db: Session, workorder_id: str, data: UpdateWorkorderComplaint):
     wo = db.query(Workorder).filter(Workorder.id == workorder_id).first()
@@ -292,7 +292,7 @@ def updateWorkOrdeKeluhannya(db: Session, workorder_id: str, data: UpdateWorkord
         if so.service:
             so_dict['service_name'] = so.service.name
         service_ordered_list.append(so_dict)
-    wo_dict['service_ordered'] = service_ordered_list   
+    wo_dict['service_ordered'] = service_ordered_list
     return wo_dict
 
 def UpdateWorkorderOrdersnya(db: Session, workorder_id: str, update_data: UpdateWorkorderOrders, performed_by: str = 'system'):
