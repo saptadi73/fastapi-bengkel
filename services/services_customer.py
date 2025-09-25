@@ -4,6 +4,7 @@ import uuid
 from schemas.service_customer import CreateCustomerWithVehicles
 from models.database import get_db
 from schemas.service_customer import CustomerWithVehicleResponse, CreateCustomer, CreateVehicle
+from schemas.service_vehicle import VehicleResponse, CreateVehicle
 import decimal
 import datetime
 from dateutil.relativedelta import relativedelta
@@ -207,3 +208,22 @@ def getAllCustomers(db: Session):
         customer_dict = to_dict(customer)
         result.append(customer_dict)
     return result
+
+def createVehicletoCustomer(db: Session, CreateVehicle):
+    new_vehicle = Vehicle(
+        id=str(uuid.uuid4()),
+        model=CreateVehicle.model,
+        brand_id=CreateVehicle.brand_id,
+        type=CreateVehicle.type,
+        kapasitas=CreateVehicle.kapasitas,
+        no_pol=CreateVehicle.no_pol,
+        tahun=CreateVehicle.tahun,
+        warna=CreateVehicle.warna,
+        no_mesin=CreateVehicle.no_mesin,
+        no_rangka=CreateVehicle.no_rangka,
+        customer_id=CreateVehicle.customer_id
+    )
+    db.add(new_vehicle)
+    db.commit()
+    db.refresh(new_vehicle)
+    return to_dict(new_vehicle)

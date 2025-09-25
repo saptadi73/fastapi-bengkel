@@ -83,3 +83,15 @@ def getAllCustomersRouter(
         return success_response(data=result)
     except Exception as e:
         return error_response(message=str(e))
+    
+@router.post("/add-vehicle", dependencies=[Depends(jwt_required)])
+def createVehicletoCustomerRouter(
+    vehicle_data: CreateVehicle,
+    db: Session = Depends(get_db)
+):
+    try:
+        from services.services_customer import createVehicletoCustomer
+        result = createVehicletoCustomer(db, vehicle_data)
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
