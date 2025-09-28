@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from models.workorder import Product, Brand, Satuan, Category, Service, Workorder, ProductOrdered, ServiceOrdered, WorkOrderActivityLog
 import uuid
 from models.database import get_db
-from schemas.service_product import CreateProduct, ProductResponse, BrandResponse, SatuanResponse, CategoryResponse, CreateService, ServiceResponse
+from schemas.service_product import CreateProduct, ProductResponse, BrandResponse, SatuanResponse, CategoryResponse, CreateService, ServiceResponse, CreateBrand, CreateCategory,CreateSatuan
 import decimal
 import datetime
 
@@ -69,7 +69,7 @@ def get_product_by_id(db: Session, product_id: str):
         return p_dict
     return None
 
-def createServie(db: Session, service_data: CreateService):
+def createServicenya(db: Session, service_data: CreateService):
     new_service = Service(
         id=str(uuid.uuid4()),
         name=service_data.name,
@@ -157,30 +157,30 @@ def createProductMoveHistoryNew(db: Session, move_data: CreateProductMovedHistor
 
 
 
-def createBrand(db: Session, brand_name: str):
+def createBrandnya(db: Session, dataBrand: CreateBrand):
     new_brand = Brand(
         id=str(uuid.uuid4()),
-        name=brand_name
+        name=dataBrand.name
     )
     db.add(new_brand)
     db.commit()
     db.refresh(new_brand)
     return to_dict(new_brand)
 
-def createCategory(db: Session, category_name: str):
+def createCategorynya(db: Session, dataCategory: CreateCategory):
     new_category = Category(
         id=str(uuid.uuid4()),
-        name=category_name
+        name=dataCategory.name
     )
     db.add(new_category)
     db.commit()
     db.refresh(new_category)
     return to_dict(new_category)
 
-def createSatuan(db: Session, satuan_name: str):
+def createSatuannya(db: Session, dataSatuan: CreateSatuan):
     new_satuan = Satuan(
         id=str(uuid.uuid4()),
-        name=satuan_name
+        name=dataSatuan.name
     )
     db.add(new_satuan)
     db.commit()

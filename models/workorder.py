@@ -56,8 +56,8 @@ class Service(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, index=True)
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
-    price = Column(String, nullable=False)
-    cost = Column(Numeric(10,2), nullable=False)
+    price = Column(String, nullable=True)
+    cost = Column(Numeric(10,2), nullable=True)
     service_ordereds = relationship('ServiceOrdered', back_populates='service')
 
 class ProductOrdered(Base):

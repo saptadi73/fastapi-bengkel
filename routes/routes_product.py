@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from models.database import SessionLocal
 from services.services_customer import create_customer_with_vehicles,getListCustomersWithvehicles, getListCustomersWithVehiclesCustomersID
-from services.services_product import CreateProductNew, get_all_products, get_product_by_id, createServie,get_all_services, createBrand, createCategory, createSatuan, getAllBrands, getAllCategories, getAllSatuans, getAllInventoryProducts, getInventoryByProductID, createProductMoveHistoryNew
+from services.services_product import CreateProductNew, get_all_products, get_product_by_id, createServicenya,get_all_services, createBrandnya, createCategorynya, createSatuannya, getAllBrands, getAllCategories, getAllSatuans, getAllInventoryProducts, getInventoryByProductID, createProductMoveHistoryNew
 from schemas.service_inventory import CreateProductMovedHistory
-from schemas.service_product import CreateProduct, ProductResponse, CreateService, ServiceResponse
+from schemas.service_product import CreateProduct, ProductResponse, CreateService, ServiceResponse, CreateBrand, CreateCategory, CreateSatuan
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
 from schemas.service_customer import CreateCustomerWithVehicles, CustomerWithVehicleResponse
@@ -68,7 +68,7 @@ def create_service_router(
     db: Session = Depends(get_db)
 ):
     try:
-        result = createServie(db, service_data)
+        result = createServicenya(db, service_data)
         if not result:
             return error_response(message="Failed to create service")
         return success_response(data=result)
@@ -106,11 +106,11 @@ def get_service(
 
 @router.post("/brand/create/new", dependencies=[Depends(jwt_required)])
 def create_brand_router(
-    brand_name: str,
+    dataBrand: CreateBrand,
     db: Session = Depends(get_db)
 ):
     try:
-        result = createBrand(db, brand_name)
+        result = createBrandnya(db, dataBrand)
         if not result:
             return error_response(message="Failed to create brand")
         return success_response(data=result)
@@ -121,11 +121,11 @@ def create_brand_router(
 
 @router.post("/category/create/new", dependencies=[Depends(jwt_required)])
 def create_category_router(
-    category_name: str,
+    dataCategory: CreateCategory,
     db: Session = Depends(get_db)
 ):
     try:
-        result = createCategory(db, category_name)
+        result = createCategorynya(db, dataCategory)
         if not result:
             return error_response(message="Failed to create category")
         return success_response(data=result)
@@ -136,11 +136,11 @@ def create_category_router(
 
 @router.post("/satuan/create/new", dependencies=[Depends(jwt_required)])
 def create_satuan_router(
-    satuan_name: str,
+    dataSatuan: CreateSatuan,
     db: Session = Depends(get_db)
 ):
     try:
-        result = createSatuan(db, satuan_name)
+        result = createSatuannya(db, dataSatuan)
         if not result:
             return error_response(message="Failed to create satuan")
         return success_response(data=result)
@@ -226,6 +226,8 @@ def createProductMoveHistoryRouter(
         return error_response(message=str(e))
     finally:
         db.close()
+
+
 
 
 

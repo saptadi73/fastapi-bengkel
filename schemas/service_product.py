@@ -56,8 +56,8 @@ class CategoryResponse(BaseModel):
 class CreateService(BaseModel):
     name: str
     description: Optional[str] = None
-    price: Decimal
-    cost: Decimal
+    price: Optional[Decimal]
+    cost: Optional[Decimal]
 
 class ServiceResponse(BaseModel):
     id: UUID
@@ -69,3 +69,12 @@ class ServiceResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
+
+class CreateCategory(BaseModel):
+    name: str
+
+class CreateSatuan(BaseModel):
+    name: str
+
+class CreateBrand(BaseModel):
+    name: str
