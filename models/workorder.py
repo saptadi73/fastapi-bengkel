@@ -3,7 +3,6 @@ from sqlalchemy.orm import relationship
 import uuid
 from sqlalchemy.dialects.postgresql import UUID
 from .database import Base
-from models.inventory import Inventory
 
 class Satuan(Base):
     __tablename__ = 'satuan'
@@ -50,6 +49,7 @@ class Product(Base):
     product_ordereds = relationship('ProductOrdered', back_populates='product')
     inventory = relationship('Inventory', back_populates='product')
     product_moved_history = relationship('ProductMovedHistory', back_populates='product')
+    product_line_packet_order = relationship('ProductLinePacketOrder', back_populates='product')
 
 class Service(Base):
     __tablename__ = 'service'
@@ -59,6 +59,7 @@ class Service(Base):
     price = Column(String, nullable=True)
     cost = Column(Numeric(10,2), nullable=True)
     service_ordereds = relationship('ServiceOrdered', back_populates='service')
+    service_line_packet_order = relationship('ServiceLinePacketOrder', back_populates='service')
 
 class ProductOrdered(Base):
     __tablename__ = 'product_ordered'
