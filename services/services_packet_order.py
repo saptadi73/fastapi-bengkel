@@ -100,7 +100,7 @@ def getAllPacketOrders(db: Session):
             po_dict['service_line'] = service_line_list
 
         result.append(po_dict)
-        return result
+    return result
     
 def getPacketOrderById(db: Session, packet_order_id: str):
     packetorders = db.query(PacketOrder).filter(PacketOrder.id==packet_order_id).first()
@@ -128,3 +128,92 @@ def getPacketOrderById(db: Session, packet_order_id: str):
 
         result.append(po_dict)
         return result
+    
+def deletePacketOrder(db: Session, packet_order_id: str):
+    try:
+        # Step 1: Find the PacketOrder by ID
+        packet_order = db.query(PacketOrder).filter(PacketOrder.id == packet_order_id).first()
+        
+        if not packet_order:
+            return {"message": "PacketOrder not found"}
+
+        # Step 2: Delete associated ProductLinePacketOrder records
+        for product_line in packet_order.product_line_packet_order:
+            db.delete(product_line)
+
+        # Step 3: Delete associated ServiceLinePacketOrder records
+        for service_line in packet_order.service_line_packet_order:
+            db.delete(service_line)
+
+        # Step 4: Delete the PacketOrder record
+        db.delete(packet_order)
+        
+        # Step 5: Commit the changes
+        db.commit()
+        
+        return {"message": "PacketOrder deleted successfully"}
+
+    except IntegrityError:
+        db.rollback()
+        return {"message": "Error deleting PacketOrder, possible foreign key constraint violation"}
+
+def updatePacketOrder(db: Session, packet_order_id: str, data: CreatePacketOrder):
+    try:
+        # Step 1: Find the existing PacketOrder by ID
+        packet_order = db.query(PacketOrder).filter(PacketOrder.id == packet_order_id).first()
+
+        if not packet_order:
+            return {"message": "PacketOrder not found"}
+
+        # Step 2: Update the PacketOrder fields
+        packet_order.name = data.name
+
+        # Step 3: Update ProductLinePacketOrder entries
+        # First, delete the old product lines
+        for product_line in packet_order.product_line_packet_order:
+            db.delete(product_line)
+
+        # Then, add the new product lines
+        if data.product_line_packet_order:
+            for productnya in data.product_line_packet_order:
+                product_line = ProductLinePacketOrder(
+                    id=uuid.uuid4(),
+                    product_id=productnya.product_id,
+                    price=productnya.price,
+                    quantity=productnya.quantity,
+                    discount=productnya.discount,
+                    subtotal=productnya.subtotal,
+                    packet_order_id=packet_order.id
+                )
+                db.add(product_line)
+
+        # Step 4: Update ServiceLinePacketOrder entries
+        # First, delete the old service lines
+        for service_line in packet_order.service_line_packet_order:
+            db.delete(service_line)
+
+        # Then, add the new service lines
+        if data.service_line_packet_order:
+            for servicenya in data.service_line_packet_order:
+                service_line = ServiceLinePacketOrder(
+                    id=uuid.uuid4(),
+                    service_id=servicenya.service_id,
+                    price=servicenya.price,
+                    quantity=servicenya.quantity,
+                    discount=servicenya.discount,
+                    subtotal=servicenya.subtotal,
+                    packet_order_id=packet_order.id
+                )
+                db.add(service_line)
+
+        # Step 5: Commit the changes
+        db.commit()
+
+        # Step 6: Refresh and return the updated packet order
+        db.refresh(packet_order)
+        return to_dict(packet_order)
+
+    except IntegrityError:
+        db.rollback()
+        return {"message": "Error updating PacketOrder, possible foreign key constraint violation"}
+

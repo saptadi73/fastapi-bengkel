@@ -123,6 +123,59 @@ def getListCustomersWithvehicles(db: Session):
         result.append(v_dict)
     return result
 
+def getListCustomersWithvehiclesId(db: Session, vehicle_id: str):
+    # Query a single vehicle by vehicle_id
+    vehicle = db.query(Vehicle).filter(Vehicle.id == vehicle_id).first()  # Get a single vehicle
+    
+    if not vehicle:
+        return []  # Return empty list if no vehicle is found
+
+    result = []
+    
+    v_dict = to_dict(vehicle)
+    v_dict['brand_name'] = vehicle.brand.name if vehicle.brand else None
+    
+    customer = vehicle.customer  # Directly access the related customer object
+    if customer:
+        v_dict['customer_nama'] = customer.nama
+        v_dict['customer_hp'] = customer.hp
+        v_dict['customer_alamat'] = customer.alamat
+    else:
+        v_dict['customer_nama'] = None
+        v_dict['customer_hp'] = None
+        v_dict['customer_alamat'] = None
+
+    # Find the last work order with a non-null `tanggal_keluar`
+    last_wo = None
+    if hasattr(vehicle, 'workorders'):
+        workorders = vehicle.workorders
+        if workorders:
+            last_wo = max(
+                (wo for wo in workorders if wo.tanggal_keluar is not None),
+                key=lambda wo: wo.tanggal_keluar,
+                default=None
+            )
+
+    # Set last visit date and next visit date based on the last work order
+    if last_wo and last_wo.tanggal_keluar:
+        last_visit = last_wo.tanggal_keluar
+        v_dict['last_visit_date'] = last_visit.isoformat()
+        try:
+            next_visit = last_visit + relativedelta(months=4)  # Adds 4 months to last visit date
+        except ImportError:
+            from datetime import timedelta
+            next_visit = last_visit + timedelta(days=120)  # Fallback if `dateutil` is not available
+        v_dict['next_visit_date'] = next_visit.isoformat()
+    else:
+        v_dict['last_visit_date'] = None
+        v_dict['next_visit_date'] = None
+
+    v_dict['customer'] = to_dict(customer) if customer else None
+    result.append(v_dict)
+    
+    return result
+
+
 def getServiceOrderedAndProductOrderedByVehicleID(db: Session, vehicle_id: str):
     vehicle = db.query(Vehicle).filter(Vehicle.id == vehicle_id).first()
     if not vehicle:

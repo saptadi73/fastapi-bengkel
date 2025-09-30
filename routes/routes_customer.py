@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from models.database import SessionLocal
-from services.services_customer import create_customer_with_vehicles,getListCustomersWithvehicles, getListCustomersWithVehiclesCustomersID, getServiceOrderedAndProductOrderedByVehicleID, createCustomerOnly
+from services.services_customer import create_customer_with_vehicles,getListCustomersWithvehicles, getListCustomersWithVehiclesCustomersID, getServiceOrderedAndProductOrderedByVehicleID, createCustomerOnly, getListCustomersWithvehiclesId
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
 from schemas.service_customer import CreateCustomerWithVehicles, CustomerWithVehicleResponse, CreateCustomer, CreateVehicle
@@ -36,6 +36,17 @@ def list_customers_with_vehicles(
     except Exception as e:
         return error_response(message=str(e))
 
+@router.get("/with-vehicles/{vehicle_id}")
+def list_customers_with_vehicles(
+    vehicle_id: str,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = getListCustomersWithvehiclesId(db, vehicle_id)
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+
 @router.get("/history/service/{vehicle_id}")
 def get_service_history_by_vehicle(
     vehicle_id: str,
@@ -48,6 +59,10 @@ def get_service_history_by_vehicle(
         return success_response(data=result)
     except Exception as e:
         return error_response(message=str(e))
+
+
+
+
 
 @router.get("/{customer_id}/with-vehicles", response_model=CustomerWithVehicleResponse)
 def get_customer_with_vehicles(
