@@ -66,6 +66,7 @@ class ProductOrdered(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, index=True)
     quantity = Column(Numeric(10,2), nullable=False)
     subtotal = Column(Numeric(10,2), nullable=False)
+    price = Column(Numeric(10,2), nullable=False)
     discount = Column(Numeric(10,2), nullable=True, default=0)
 
     product_id = Column(UUID(as_uuid=True), ForeignKey('product.id'))
@@ -79,6 +80,7 @@ class ServiceOrdered(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, index=True)
     quantity = Column(Numeric(10,2), nullable=False)
     subtotal = Column(Numeric(10,2), nullable=False)
+    price = Column(Numeric(10,2), nullable=False)
     discount = Column(Numeric(10,2), nullable=True, default=0)
 
     service_id = Column(UUID(as_uuid=True), ForeignKey('service.id'))

@@ -32,7 +32,7 @@ class ServiceLinePacketOrder(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, index=True)
 
     packet_order_id = Column(UUID(as_uuid=True), ForeignKey('packet_order.id'))
-    packet_order = relationship('PacketOrder', back_populates='product_line_packet_order')
+    packet_order = relationship('PacketOrder', back_populates='service_line_packet_order')
 
     quantity = Column(Numeric(10,2), nullable=True)
     price = Column(Numeric(10,2), nullable=True)

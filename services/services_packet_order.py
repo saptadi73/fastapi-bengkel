@@ -29,13 +29,16 @@ def to_dict(obj):
     return result
 
 def CreatePacketOrdernya(db: Session, data: CreatePacketOrder):
+    # Step 1: Create the PacketOrder and commit to get its id
     packetorder = PacketOrder(
         id=uuid.uuid4(),
-        name= data.name
+        name=data.name
     )
     db.add(packetorder)
-    db.flush()
+    db.commit()  # Commit to generate the packet_order.id
+    db.refresh(packetorder)  # Refresh the packetorder object to get the generated id
 
+    # Step 2: Add ProductLinePacketOrder, linking each product to the packet_order_id
     if data.product_line_packet_order:
         for productnya in data.product_line_packet_order:
             product_line = ProductLinePacketOrder(
@@ -44,24 +47,32 @@ def CreatePacketOrdernya(db: Session, data: CreatePacketOrder):
                 price=productnya.price,
                 quantity=productnya.quantity,
                 discount=productnya.discount,
-                subtotal = productnya.subtotal
+                subtotal=productnya.subtotal,
+                packet_order_id=packetorder.id  # Associate with the PacketOrder
             )
             db.add(product_line)
-
+    
+    # Step 3: Add ServiceLinePacketOrder, linking each service to the packet_order_id
     if data.service_line_packet_order:
         for servicenya in data.service_line_packet_order:
             service_line = ServiceLinePacketOrder(
                 id=uuid.uuid4(),
-                sevice_id = servicenya.service_id,
-                price = servicenya.price,
-                quantity = servicenya.quantity,
-                discount = servicenya.discount,
-                subtotal = servicenya.subtotal
+                service_id=servicenya.service_id,
+                price=servicenya.price,
+                quantity=servicenya.quantity,
+                discount=servicenya.discount,
+                subtotal=servicenya.subtotal,
+                packet_order_id=packetorder.id  # Associate with the PacketOrder
             )
             db.add(service_line)
 
-    db.commit
+    # Step 4: Commit the product and service line insertions
+    db.commit()  # Commit the product and service line changes
+
+    # Step 5: Refresh the packetorder again if needed, or just return it
     db.refresh(packetorder)
+
+    # Step 6: Return the PacketOrder as a dictionary (response to the client)
     return to_dict(packetorder)
 
 def getAllPacketOrders(db: Session):

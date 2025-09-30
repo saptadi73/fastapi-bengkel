@@ -7,7 +7,6 @@ class CreateServiceLinePacketOrder(BaseModel):
     quantity: float
     price: float
     discount: Optional[float] = None
-    packet_order_id: UUID
     subtotal: float
 
 class CreateProductLinePacketOrder(BaseModel):
@@ -15,7 +14,6 @@ class CreateProductLinePacketOrder(BaseModel):
     quantity: float
     price: float
     discount: Optional[float] = None
-    packet_order_id: UUID
     subtotal: float
 
 class CreatePacketOrder(BaseModel):
