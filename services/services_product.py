@@ -123,6 +123,7 @@ def getInventoryByProductID(db: Session, product_id: str):
 def createProductMoveHistoryNew(db: Session, move_data: CreateProductMovedHistory):
     inventory = db.query(Inventory).filter(Inventory.product_id == move_data.product_id).first()
     if move_data.type.lower() == 'income':
+        now_utc = move_data.timestamp or datetime.datetime.now(datetime.timezone.utc)
         if not inventory:
             # Buat inventory baru
             inventory = Inventory(
@@ -130,22 +131,24 @@ def createProductMoveHistoryNew(db: Session, move_data: CreateProductMovedHistor
                 product_id=move_data.product_id,
                 quantity=move_data.quantity,
                 cost=0,
-                created_at=move_data.timestamp or datetime.utcnow(),
-                updated_at=move_data.timestamp or datetime.utcnow()
+                created_at=now_utc,
+                updated_at=now_utc
             )
             db.add(inventory)
         else:
             # Update quantity lama + quantity baru
             inventory.quantity += move_data.quantity
-            inventory.updated_at = move_data.timestamp or datetime.utcnow()
+            inventory.updated_at = now_utc
     elif move_data.type.lower() == 'outcome':
+        now_utc = move_data.timestamp or datetime.datetime.now(datetime.timezone.utc)
         if not inventory:
             raise ValueError('Inventory untuk produk ini belum ada, tidak bisa outcome!')
         if inventory.quantity < move_data.quantity:
             raise ValueError('Stock tidak cukup untuk outcome!')
         inventory.quantity -= move_data.quantity
-        inventory.updated_at = move_data.timestamp or datetime.utcnow()
+        inventory.updated_at = now_utc
     # Catat ke ProductMovedHistory
+    now_utc = move_data.timestamp or datetime.datetime.now(datetime.timezone.utc)
     new_move = ProductMovedHistory(
         id=str(uuid.uuid4()),
         product_id=move_data.product_id,
@@ -153,7 +156,7 @@ def createProductMoveHistoryNew(db: Session, move_data: CreateProductMovedHistor
         quantity=move_data.quantity,
         performed_by=move_data.performed_by,
         notes=move_data.notes,
-        timestamp=move_data.timestamp or datetime.utcnow()
+        timestamp=now_utc
     )
     db.add(new_move)
     db.commit()
