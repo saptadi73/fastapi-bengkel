@@ -87,6 +87,12 @@ def get_all_services(db: Session):
     result = [to_dict(service) for service in services]
     return result
 
+def get_service_by_id(db: Session, service_id: str):
+    service = db.query(Service).filter(Service.id == service_id).first()
+    if service:
+        s_dict = to_dict(service)
+        return s_dict
+
 def getAllInventoryProducts(db: Session):
     products = db.query(Product).all()
     result = []

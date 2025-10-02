@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from models.database import SessionLocal
 from services.services_customer import create_customer_with_vehicles,getListCustomersWithvehicles, getListCustomersWithVehiclesCustomersID
-from services.services_product import CreateProductNew, get_all_products, get_product_by_id, createServicenya,get_all_services, createBrandnya, createCategorynya, createSatuannya, getAllBrands, getAllCategories, getAllSatuans, getAllInventoryProducts, getInventoryByProductID, createProductMoveHistoryNew
+from services.services_product import CreateProductNew, get_all_products, get_product_by_id, createServicenya,get_all_services, createBrandnya, createCategorynya, createSatuannya, getAllBrands, getAllCategories, getAllSatuans, getAllInventoryProducts, getInventoryByProductID, createProductMoveHistoryNew, get_service_by_id
 from schemas.service_inventory import CreateProductMovedHistory
 from schemas.service_product import CreateProduct, ProductResponse, CreateService, ServiceResponse, CreateBrand, CreateCategory, CreateSatuan
 from supports.utils_json_response import success_response, error_response
@@ -95,7 +95,7 @@ def get_service(
     db: Session = Depends(get_db)
 ):
     try:
-        result = get_product_by_id(db, service_id)
+        result = get_service_by_id(db, service_id)
         if not result:
             raise HTTPException(status_code=404, detail="Service not found")
         return success_response(data=result)

@@ -10,6 +10,7 @@ class Satuan(Base):
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
     products = relationship('Product', back_populates='satuan')
+    product_line_packet_order = relationship('ProductLinePacketOrder', back_populates='satuan')
 
 class Category(Base):
     __tablename__ = 'category'

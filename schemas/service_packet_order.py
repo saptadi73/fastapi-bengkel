@@ -13,6 +13,7 @@ class CreateProductLinePacketOrder(BaseModel):
     product_id: UUID
     quantity: float
     price: float
+    satuan_id: UUID
     discount: Optional[float] = None
     subtotal: float
 

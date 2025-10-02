@@ -48,6 +48,7 @@ def CreatePacketOrdernya(db: Session, data: CreatePacketOrder):
                 quantity=productnya.quantity,
                 discount=productnya.discount,
                 subtotal=productnya.subtotal,
+                satuan_id=productnya.satuan_id,
                 packet_order_id=packetorder.id  # Associate with the PacketOrder
             )
             db.add(product_line)

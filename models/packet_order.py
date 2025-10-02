@@ -24,6 +24,9 @@ class ProductLinePacketOrder(Base):
     discount = Column(Numeric(10,2), nullable=True)
     subtotal = Column(Numeric(10,2), nullable=True)
 
+    satuan_id = Column(UUID(as_uuid=True), ForeignKey('satuan.id'))
+    satuan = relationship('Satuan', back_populates='product_line_packet_order')
+
     product_id = Column(UUID(as_uuid=True), ForeignKey('product.id'))
     product = relationship('Product', back_populates='product_line_packet_order')
 
