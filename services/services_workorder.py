@@ -57,7 +57,8 @@ def createNewWorkorder(db: Session, workorder_data: CreateWorkOrder):
         total_discount=workorder_data.total_discount,
         total_biaya=workorder_data.total_biaya,
         customer_id=workorder_data.customer_id,
-        vehicle_id=workorder_data.vehicle_id
+        vehicle_id=workorder_data.vehicle_id,
+        pajak=workorder_data.pajak
     )
     db.add(workorder)
     db.flush()  # Agar workorder.id tersedia

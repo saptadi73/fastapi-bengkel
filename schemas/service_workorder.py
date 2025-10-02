@@ -34,7 +34,8 @@ class CreateWorkOrder(BaseModel):
     saran: Optional[str] = None
     status: str
     total_discount: Optional[float] = 0
-    total_biaya: float
+    total_biaya: float = 0
+    pajak: Optional[float] = 0
     customer_id: UUID
     vehicle_id: UUID
     product_ordered: Optional[list[CreateProductOrder]] = None
@@ -46,6 +47,7 @@ class CreateWorkorderOnly(BaseModel):
     keluhan: Optional[str] = None
     saran: Optional[str] = None
     status: str
+    pajak: Optional[float] = 0
     total_discount: Optional[float] = 0
     total_biaya: float
     customer_id: UUID

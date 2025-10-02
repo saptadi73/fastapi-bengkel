@@ -101,6 +101,7 @@ class Workorder(Base):
     status = Column(String, nullable=False)
     total_discount = Column(Numeric(10,2), nullable=True, default=0)
     total_biaya = Column(Numeric(10,2), nullable=False)
+    pajak = Column(Numeric(10,2), nullable=True, default=0)
 
     customer_id = Column(UUID(as_uuid=True), ForeignKey('customer.id'))
     customer = relationship('Customer', back_populates='workorders')

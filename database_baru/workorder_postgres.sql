@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS workorder (
     saran VARCHAR,
     status VARCHAR NOT NULL,
     total_discount NUMERIC(10,2) DEFAULT 0,
-    total_biaya NUMERIC(10,2),
+    total_biaya NUMERIC(10,2) DEFAULT 0,
+    pajak NUMERIC(10,2) DEFAULT 0,
     customer_id UUID REFERENCES customer(id),
     vehicle_id UUID REFERENCES vehicle(id)
 );
