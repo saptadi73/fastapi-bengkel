@@ -103,6 +103,9 @@ class Workorder(Base):
     total_biaya = Column(Numeric(10,2), nullable=False)
     pajak = Column(Numeric(10,2), nullable=True, default=0)
 
+    karyawan_id = Column(UUID(as_uuid=True), ForeignKey('karyawan.id'))
+    karyawan = relationship('Karyawan', back_populates='workorders')
+
     customer_id = Column(UUID(as_uuid=True), ForeignKey('customer.id'))
     customer = relationship('Customer', back_populates='workorders')
 

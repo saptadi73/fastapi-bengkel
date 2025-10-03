@@ -38,6 +38,7 @@ class CreateWorkOrder(BaseModel):
     pajak: Optional[float] = 0
     customer_id: UUID
     vehicle_id: UUID
+    karyawan_id: Optional[UUID] = None
     product_ordered: Optional[list[CreateProductOrder]] = None
     service_ordered: Optional[list[CreateServiceOrder]] = None
 

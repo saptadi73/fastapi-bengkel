@@ -166,9 +166,64 @@ def createProductMoveHistoryNew(db: Session, move_data: CreateProductMovedHistor
     db.add(new_move)
     db.commit()
     db.refresh(new_move)
+
+    # Setelah commit, update inventory.quantity = sum seluruh ProductMovedHistory.quantity untuk product_id terkait
+    inventory = db.query(Inventory).filter(Inventory.product_id == move_data.product_id).first()
+    if inventory:
+        total_quantity = db.query(db.func.sum(ProductMovedHistory.quantity)).filter(ProductMovedHistory.product_id == move_data.product_id).scalar() or 0
+        inventory.quantity = total_quantity
+        inventory.updated_at = datetime.datetime.now(datetime.timezone.utc)
+        db.commit()
+        db.refresh(inventory)
+
     return to_dict(new_move)
 
+def EditProductMovedHistory(db: Session, move_id: str, move_data: CreateProductMovedHistory):
+    move_record = db.query(ProductMovedHistory).filter(ProductMovedHistory.id == move_id).first()
+    if not move_record:
+        raise ValueError('ProductMovedHistory dengan ID tersebut tidak ditemukan!')
 
+    # Simpan nilai lama untuk penyesuaian inventory
+    old_type = move_record.type.lower()
+    old_quantity = move_record.quantity
+
+    # Update record dengan data baru
+    move_record.product_id = move_data.product_id
+    move_record.type = move_data.type
+    move_record.quantity = move_data.quantity if move_data.type.lower() == 'income' else -move_data.quantity
+    move_record.performed_by = move_data.performed_by
+    move_record.notes = move_data.notes
+    move_record.timestamp = move_data.timestamp or datetime.datetime.now(datetime.timezone.utc)
+
+    # Sesuaikan inventory berdasarkan perubahan
+    inventory = db.query(Inventory).filter(Inventory.product_id == move_data.product_id).first()
+    if not inventory:
+        raise ValueError('Inventory untuk produk ini belum ada, tidak bisa mengedit history!')
+
+    # Setelah update, set inventory.quantity = sum seluruh ProductMovedHistory.quantity untuk product_id terkait
+    total_quantity = db.query(db.func.sum(ProductMovedHistory.quantity)).filter(ProductMovedHistory.product_id == move_data.product_id).scalar() or 0
+    inventory.quantity = total_quantity
+    inventory.updated_at = datetime.datetime.now(datetime.timezone.utc)
+
+    db.commit()
+    db.refresh(move_record)
+    return to_dict(move_record)
+
+def deleteProductMovedHistory(db: Session, move_id: str):
+    move_record = db.query(ProductMovedHistory).filter(ProductMovedHistory.id == move_id).first()
+    if not move_record:
+        raise ValueError('ProductMovedHistory dengan ID tersebut tidak ditemukan!')
+    product_id = move_record.product_id
+    db.delete(move_record)
+    db.commit()
+    # Setelah delete, set inventory.quantity = sum seluruh ProductMovedHistory.quantity untuk product_id terkait
+    inventory = db.query(Inventory).filter(Inventory.product_id == product_id).first()  
+    if inventory:
+        total_quantity = db.query(db.func.sum(ProductMovedHistory.quantity)).filter(ProductMovedHistory.product_id == product_id).scalar() or 0
+        inventory.quantity = total_quantity
+        inventory.updated_at = datetime.datetime.now(datetime.timezone.utc)
+        db.commit()
+    return True
 
 
 def createBrandnya(db: Session, dataBrand: CreateBrand):

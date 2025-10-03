@@ -9,8 +9,10 @@ from models.workorder import Product, Brand, Satuan, Category, Service, Workorde
 import uuid
 from models.database import get_db
 from schemas.service_product import CreateProduct, ProductResponse, BrandResponse, SatuanResponse, CategoryResponse, CreateService, ServiceResponse
+from services.services_product import createProductMoveHistoryNew, EditProductMovedHistory, deleteProductMovedHistory
 import decimal
 import datetime
+from collections.abc import Iterable
 
 def to_dict(obj):
     result = {}
@@ -58,6 +60,7 @@ def createNewWorkorder(db: Session, workorder_data: CreateWorkOrder):
         total_discount=workorder_data.total_discount,
         total_biaya=workorder_data.total_biaya,
         customer_id=workorder_data.customer_id,
+        karyawan_id=workorder_data.karyawan_id,
         vehicle_id=workorder_data.vehicle_id,
         pajak=workorder_data.pajak
     )
@@ -94,6 +97,34 @@ def createNewWorkorder(db: Session, workorder_data: CreateWorkOrder):
     db.refresh(workorder)
     return to_dict(workorder)
 
+
+def ProductMovedCausedProductOrdered(db: Session, product_ordered, performed_by: str = 'system'):
+    # Cek apakah product_ordered iterable (list/tuple/set), tapi bukan string/bytes
+    
+    if isinstance(product_ordered, Iterable) and not isinstance(product_ordered, (str, bytes)):
+        for po in product_ordered:
+            move_data = CreateProductMovedHistory(
+                product_id=po.product_id,
+                type='outcome',
+                quantity=po.quantity,
+                performed_by=performed_by,
+                notes=f"Product ordered in Workorder {po.workorder_id}",
+                timestamp=datetime.datetime.now(datetime.timezone.utc)
+            )
+            createProductMoveHistoryNew(db, move_data)
+    else:
+        po = product_ordered
+        move_data = CreateProductMovedHistory(
+            product_id=po.product_id,
+            type='outcome',
+            quantity=po.quantity,
+            performed_by=performed_by,
+            notes=f"Product ordered in Workorder {po.workorder_id}",
+            timestamp=datetime.datetime.now(datetime.timezone.utc)
+        )
+        createProductMoveHistoryNew(db, move_data)
+
+
 def getAllWorkorders(db: Session):
     workorders = db.query(Workorder).all()
     result = []
@@ -101,6 +132,7 @@ def getAllWorkorders(db: Session):
         wo_dict = to_dict(wo)
         wo_dict['customer_name'] = wo.customer.nama if wo.customer else None
         wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None
+        wo_dict['karyawan_name'] = wo.karyawan.nama if wo.karyawan else None
 
         # Tambahkan detail product_ordered
         product_ordered_list = []
