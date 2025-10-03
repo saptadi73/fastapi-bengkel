@@ -53,6 +53,7 @@ def createNewWorkorder(db: Session, workorder_data: CreateWorkOrder):
         tanggal_masuk=workorder_data.tanggal_masuk,
         tanggal_keluar=workorder_data.tanggal_keluar,
         keluhan=workorder_data.keluhan,
+        saran=workorder_data.saran,
         status=workorder_data.status,
         total_discount=workorder_data.total_discount,
         total_biaya=workorder_data.total_biaya,
