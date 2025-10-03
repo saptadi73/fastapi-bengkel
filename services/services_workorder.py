@@ -199,7 +199,7 @@ def updateStatusWorkorder(db: Session, workorder_id: str, new_status: str, perfo
         if so.service:
             so_dict['service_name'] = so.service.name
         service_ordered_list.append(so_dict)
-    wo_dict['service_ordered'] = service_ordered_list   
+    wo_dict['service_ordered'] = service_ordered_list
     return wo_dict
 
 def UpdateDateWorkordernya(db: Session, workorder_id: str, new_tanggal_keluar: datetime.datetime, performed_by: str = 'system'):

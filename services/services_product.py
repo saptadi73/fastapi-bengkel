@@ -149,11 +149,16 @@ def createProductMoveHistoryNew(db: Session, move_data: CreateProductMovedHistor
         inventory.updated_at = now_utc
     # Catat ke ProductMovedHistory
     now_utc = move_data.timestamp or datetime.datetime.now(datetime.timezone.utc)
+    if move_data.type.lower() == 'income':
+        quantityku = move_data.quantity
+    else:
+        quantityku = -move_data.quantity
+
     new_move = ProductMovedHistory(
         id=str(uuid.uuid4()),
         product_id=move_data.product_id,
         type=move_data.type,
-        quantity=move_data.quantity,
+        quantity=quantityku,
         performed_by=move_data.performed_by,
         notes=move_data.notes,
         timestamp=now_utc
