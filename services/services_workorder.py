@@ -133,6 +133,10 @@ def getAllWorkorders(db: Session):
         wo_dict['customer_name'] = wo.customer.nama if wo.customer else None
         wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None
         wo_dict['karyawan_name'] = wo.karyawan.nama if wo.karyawan else None
+        wo_dict['vehicle_model'] = wo.vehicle.model if wo.vehicle else None
+        wo_dict['vehicle_brand'] = wo.vehicle.brand.name if wo.vehicle else None
+        wo_dict['vehicle_color'] = wo.vehicle.warna if wo.vehicle else None
+        wo_dict['customer_hp'] = wo.customer.hp if wo.customer else None
 
         # Tambahkan detail product_ordered
         product_ordered_list = []
