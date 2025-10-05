@@ -76,6 +76,7 @@ def createNewWorkorder(db: Session, workorder_data: CreateWorkOrder):
                 quantity=prod.quantity,
                 subtotal=prod.subtotal,
                 price=prod.price,
+                satuan_id=prod.satuan_id,
                 discount=prod.discount,
                 workorder_id=workorder.id
             )

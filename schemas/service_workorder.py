@@ -10,7 +10,7 @@ from datetime import datetime
 class CreateProductOrder(BaseModel):
     product_id: UUID
     quantity: float
-    satuan: Optional[str] = None
+    satuan_id: Optional[UUID] = None
     price: Optional[float] = None
     subtotal: float
     discount: Optional[float] = 0

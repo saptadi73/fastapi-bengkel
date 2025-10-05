@@ -12,7 +12,7 @@ class Customer(Base):
     nama = Column(String, nullable=False)
     hp = Column(String, nullable=False)
     alamat = Column(String, nullable=True)
-    email = Column(String, nullable=False, unique=True)
+    email = Column(String, nullable=True, unique=True)
     tanggal_lahir = Column(Date, nullable=True)
     from sqlalchemy import text
     created_at = Column(Date, nullable=False, server_default=text('now()'))

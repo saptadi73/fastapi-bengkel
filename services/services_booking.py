@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from models.customer import Customer, Vehicle
 import uuid
 from models.booking import Booking
-from schemas.service_booking import CreateBooking
+from schemas.service_booking import CreateBooking, BookingResponse, UpdateBookingFromNew
 from schemas.service_customer import CreateCustomerWithVehicles
 from models.database import get_db
 from schemas.service_customer import CustomerWithVehicleResponse, CreateCustomer, CreateVehicle
@@ -64,3 +64,22 @@ def get_booking_by_id(db: Session, booking_id: str):
     if booking:
         return to_dict(booking)
     return None
+
+def edit_booking(db: Session, booking_id: str, booking_data: UpdateBookingFromNew):
+    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+    if not booking:
+        return None
+    booking.customer_id = booking_data.customer_id
+    booking.vehicle_id = booking_data.vehicle_id
+
+    db.commit()
+    db.refresh(booking)
+    return to_dict(booking)
+
+def del_booking(db: Session, booking_id: str):
+    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+    if not booking:
+        return None
+    db.delete(booking)
+    db.commit()
+    return True

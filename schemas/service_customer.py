@@ -24,7 +24,7 @@ class CreateCustomer(BaseModel):
     nama: str
     hp: str
     alamat: str
-    email: str
+    email: Optional[str] = None
     tanggal_lahir: Optional[date] = None
 
 class CreateVehicle(BaseModel):

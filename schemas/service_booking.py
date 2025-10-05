@@ -36,3 +36,7 @@ class BookingResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
+
+class UpdateBookingFromNew(BaseModel):
+    vehicle_id: Optional[UUID] = None
+    customer_id: Optional[UUID] = None

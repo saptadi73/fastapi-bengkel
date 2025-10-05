@@ -35,6 +35,7 @@ def create_customer_with_vehicles(db: Session, customer_data: CreateCustomerWith
         nama=customer_data.nama,
         hp=customer_data.hp,
         alamat=customer_data.alamat,
+        tanggal_lahir=customer_data.tanggal_lahir,
         email=customer_data.email
     )
     db.add(new_customer)
