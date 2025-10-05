@@ -8,6 +8,7 @@ from schemas.service_vehicle import VehicleResponse, CreateVehicle
 import decimal
 import datetime
 from dateutil.relativedelta import relativedelta
+from contextlib import suppress
 
 def to_dict(obj):
     result = {}
@@ -29,39 +30,53 @@ def to_dict(obj):
     return result
 
 def create_customer_with_vehicles(db: Session, customer_data: CreateCustomerWithVehicles):
-    # Create a new customer
-    new_customer = Customer(
-        id=str(uuid.uuid4()),
-        nama=customer_data.nama,
-        hp=customer_data.hp,
-        alamat=customer_data.alamat,
-        tanggal_lahir=customer_data.tanggal_lahir,
-        email=customer_data.email
-    )
-    db.add(new_customer)
-    db.commit()
-    db.refresh(new_customer)
+    try:
+        # Satu transaksi saja
+        with db.begin():  # otomatis commit di akhir, rollback kalau exception
+            # 1) Insert Customer
+            new_customer = Customer(
+                id=str(uuid.uuid4()),                     # kalau server-side default, id bisa dibiarkan None
+                nama=customer_data.nama,
+                hp=customer_data.hp,
+                alamat=customer_data.alamat,
+                tanggal_lahir=customer_data.tanggal_lahir,
+                email=customer_data.email,
+            )
+            db.add(new_customer)
+            db.flush()  # pastikan new_customer.id sudah tersedia
 
-    # Create a new vehicle associated with the customer
-    new_vehicle = Vehicle(
-        id=str(uuid.uuid4()),
-        model=customer_data.model,
-        brand_id=customer_data.brand_id,
-        type=customer_data.type,
-        kapasitas=customer_data.kapasitas,
-        no_pol=customer_data.no_pol,
-        tahun=customer_data.tahun,
-        warna=customer_data.warna,
-        customer_id=new_customer.id
-    )
-    db.add(new_vehicle)
-    db.commit()
-    db.refresh(new_vehicle)
+            # 2) Insert Vehicle terkait customer barusan
+            new_vehicle = Vehicle(
+                id=str(uuid.uuid4()),
+                model=customer_data.model,
+                brand_id=customer_data.brand_id,
+                type=customer_data.type,
+                kapasitas=customer_data.kapasitas,
+                no_pol=customer_data.no_pol,
+                tahun=customer_data.tahun,
+                warna=customer_data.warna,
+                no_mesin=customer_data.no_mesin,
+                no_rangka=customer_data.no_rangka,
+                customer_id=new_customer.id,  # refer ke PK yang baru di-flush
+            )
+            db.add(new_vehicle)
+            db.flush()  # pastikan new_vehicle.id sudah tersedia
 
-    return {
-        "customer": to_dict(new_customer),
-        "vehicle": to_dict(new_vehicle)
-    }
+            # (opsional) tidak perlu refresh; flush sudah cukup untuk dapatkan PK
+
+        # Di titik ini transaksi sudah commit (karena with db.begin())
+        return {
+            # kalau mau tetap kirim objek:
+            "customer": to_dict(new_customer),
+            "vehicle": to_dict(new_vehicle),
+        }
+
+    except Exception as e:
+        # pastikan rollback kalau begin tidak menanganinya (cadangan)
+        with suppress(Exception):
+            db.rollback()
+        raise
+
 
 def getListCustomersWithvehicles(db: Session):
     # customers = db.query(Customer).all()
