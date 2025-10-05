@@ -11,6 +11,7 @@ class Satuan(Base):
     description = Column(String, nullable=True)
     products = relationship('Product', back_populates='satuan')
     product_line_packet_order = relationship('ProductLinePacketOrder', back_populates='satuan')
+    product_ordereds = relationship('ProductOrdered', back_populates='satuan')
 
 class Category(Base):
     __tablename__ = 'category'
@@ -69,6 +70,9 @@ class ProductOrdered(Base):
     subtotal = Column(Numeric(10,2), nullable=False)
     price = Column(Numeric(10,2), nullable=False)
     discount = Column(Numeric(10,2), nullable=True, default=0)
+
+    satuan_id = Column(UUID(as_uuid=True), ForeignKey('satuan.id'))
+    satuan = relationship('Satuan', back_populates='product_ordereds')
 
     product_id = Column(UUID(as_uuid=True), ForeignKey('product.id'))
     product = relationship('Product', back_populates='product_ordereds')

@@ -11,7 +11,7 @@ class CreateProductOrder(BaseModel):
     product_id: UUID
     quantity: float
     satuan: Optional[str] = None
-    harga: Optional[float] = None
+    price: Optional[float] = None
     subtotal: float
     discount: Optional[float] = 0
 
@@ -21,7 +21,7 @@ class CreateServiceOrder(BaseModel):
     service_id: UUID
     quantity: float
     satuan: Optional[str] = None
-    harga: Optional[float] = None
+    price: Optional[float] = None
     subtotal: float
     discount: Optional[float] = 0
 

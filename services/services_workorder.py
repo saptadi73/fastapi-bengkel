@@ -75,6 +75,7 @@ def createNewWorkorder(db: Session, workorder_data: CreateWorkOrder):
                 product_id=prod.product_id,
                 quantity=prod.quantity,
                 subtotal=prod.subtotal,
+                price=prod.price,
                 discount=prod.discount,
                 workorder_id=workorder.id
             )
@@ -87,6 +88,7 @@ def createNewWorkorder(db: Session, workorder_data: CreateWorkOrder):
                 id=uuid.uuid4(),
                 service_id=srv.service_id,
                 quantity=srv.quantity,
+                price=srv.price,
                 subtotal=srv.subtotal,
                 discount=srv.discount,
                 workorder_id=workorder.id
@@ -169,6 +171,15 @@ def getWorkorderByID(db: Session, workorder_id: str):
     wo_dict = to_dict(wo)
     wo_dict['customer_name'] = wo.customer.nama if wo.customer else None
     wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None
+    wo_dict['customer_alamat'] = wo.customer.alamat if wo.customer else None
+    wo_dict['customer_email'] = wo.customer.email if wo.customer else None
+    wo_dict['customer_hp'] = wo.customer.hp if wo.customer else None
+    wo_dict['karyawan_name'] = wo.karyawan.nama if wo.karyawan else None
+    wo_dict['vehicle_model'] = wo.vehicle.model if wo.vehicle else None
+    wo_dict['vehicle_brand'] = wo.vehicle.brand.name if wo.vehicle else None
+    wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None
+    wo_dict['vehicle_kapasitas'] = wo.vehicle.kapasitas if wo.vehicle else None
+    wo_dict['vehicle_type'] = wo.vehicle.type if wo.vehicle else None
 
     # Tambahkan detail product_ordered
     product_ordered_list = []
