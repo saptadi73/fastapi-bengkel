@@ -227,17 +227,17 @@ def updateStatusWorkorder(db: Session, workorder_id: str, new_status: str, perfo
     db.add(wo)
 
     # Log perubahan status (selalu dicatat)
-    log_entry = WorkOrderActivityLog(
-        id=uuid.uuid4(),
-        workorder_id=wo.id,
-        activity=f"Status changed from {old_status} to {new_status}",
-        performed_by=performed_by,
-        timestamp=datetime.datetime.now()
-    )
-    db.add(log_entry)
+    # log_entry = WorkOrderActivityLog(
+    #     id=uuid.uuid4(),
+    #     workorder_id=wo.id,
+    #     activity=f"Status changed from {old_status} to {new_status}",
+    #     performed_by=performed_by,
+    #     timestamp=datetime.datetime.now()
+    # )
+    # db.add(log_entry)
 
     # === Jika status menjadi COMPLETE, pindahkan stok sesuai ProductOrdered ===
-    if (old_status or "").lower() != "completed" and (new_status or "").lower() == "completed":
+    if (old_status or "").lower() != "selesai" and (new_status or "").lower() == "selesai":
         # Hindari dobel jika fungsi ini terpanggil dua kali (idempotent)
         if not _wo_stock_already_moved(db, str(wo.id)):
             for po in wo.product_ordered:

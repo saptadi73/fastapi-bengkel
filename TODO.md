@@ -1,7 +1,11 @@
-# TODO: Fix UUID Error in Karyawan Routes
+# TODO: Refactor services/services_accounting.py
 
-## Steps to Complete:
-- [x] Reorder routes in routes/routes_karyawan.py: Move the /all route before the /{karyawan_id} route to prevent path matching conflict.
-- [x] Add guard in get_karyawan_router: Check if karyawan_id == 'all' and return an error response indicating to use /all endpoint instead.
-- [x] Fix get_all_karyawans function: Correct the to_dict call to handle list of objects instead of single object.
-- [x] Test the changes: Verified fixes for both UUID error and list attribute error.
+## Tasks
+- [x] Refactor helper functions (_get_account_by_code, _sum, _validate_balance, _create_entry, _to_entry_out) for clarity and type consistency
+- [x] Ensure all functions use Pydantic schemas for input and output consistently
+- [x] Improve type hints for function parameters and return types
+- [x] Add or improve docstrings where needed
+- [x] Remove redundant code or improve error messages
+- [x] Format code for readability and PEP8 compliance
+- [x] Maintain existing business logic and functionality
+- [x] Test the refactored functions to ensure correctness

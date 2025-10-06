@@ -161,7 +161,7 @@ def getWorkorderActivityLogsByCustomerRouter(
         result = get_workorder_activitylog_by_customer(db, customer_id)
         if result is None:
             raise HTTPException(status_code=404, detail="Customer or Workorders not found")
-        return success_response(data=result)
+        return success_response(data=result, message="Activity logs retrieved successfully")
     except Exception as e:
         return error_response(message=str(e))
     finally:
@@ -193,7 +193,7 @@ def updateOnlyServiceOrderedRouter(
         result = update_only_serviceordered(db, workorder_id, service_ordered_data)
         if not result:
             return error_response(message="Failed to update only service ordered")
-        return success_response(data=result)
+        return success_response(data=result, message="Service ordered updated successfully")
     except Exception as e:
         return error_response(message=str(e))
     finally:
@@ -209,7 +209,7 @@ def updateWorkorderLengkapRouter(
         result = update_workorder_lengkap(db, workorder_id, workorder_data)
         if not result:
             return error_response(message="Failed to update workorder lengkap")
-        return success_response(data=result)
+        return success_response(data=result, message="Workorder updated successfully")
     except Exception as e:
         return error_response(message=str(e))   
     finally:
