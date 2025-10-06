@@ -113,6 +113,7 @@ class UpdateWorkorderTotalCost(BaseModel):
 class UpdateProductOrderedOnly(BaseModel):
     workorder_id: UUID
     product_id: UUID
+    price: Optional[float] = None
     quantity: float
     subtotal: float
     discount: Optional[float] = 0
@@ -122,6 +123,7 @@ class UpdateServiceOrderedOnly(BaseModel):
     workorder_id: UUID
     service_id: UUID
     quantity: float
+    price: Optional[float] = None
     subtotal: float
     discount: Optional[float] = 0
     performed_by: Optional[str] = 'system'

@@ -9,7 +9,7 @@ from models.workorder import Product, Brand, Satuan, Category, Service, Workorde
 import uuid
 from models.database import get_db
 from schemas.service_product import CreateProduct, ProductResponse, BrandResponse, SatuanResponse, CategoryResponse, CreateService, ServiceResponse
-from services.services_product import createProductMoveHistoryNew, EditProductMovedHistory, deleteProductMovedHistory
+from services.services_product import createProductMoveHistoryNew, EditProductMovedHistory, deleteProductMovedHistory, createProductMoveHistoryNew
 import decimal
 import datetime
 from collections.abc import Iterable
@@ -204,6 +204,19 @@ def getWorkorderByID(db: Session, workorder_id: str):
 
     return wo_dict
 
+# --- Tambahkan helper ini di services_workorder.py (mis. di atas updateStatusWorkorder) ---
+def _wo_stock_already_moved(db: Session, wo_id: str) -> bool:
+    """
+    Cek apakah riwayat pergerakan stok untuk WO ini sudah pernah dibuat
+    (berdasarkan pola 'WO:{wo_id}' di kolom notes ProductMovedHistory).
+    """
+    exists = db.query(ProductMovedHistory.id).filter(
+        ProductMovedHistory.notes.ilike(f"%WO:{wo_id}%")
+    ).first()
+    return exists is not None
+
+
+# --- Gantikan fungsi updateStatusWorkorder dengan versi yang memproses stok saat complete ---
 def updateStatusWorkorder(db: Session, workorder_id: str, new_status: str, performed_by: str = 'system'):
     wo = db.query(Workorder).filter(Workorder.id == workorder_id).first()
     if not wo:
@@ -213,7 +226,7 @@ def updateStatusWorkorder(db: Session, workorder_id: str, new_status: str, perfo
     wo.status = new_status
     db.add(wo)
 
-    # Log perubahan status
+    # Log perubahan status (selalu dicatat)
     log_entry = WorkOrderActivityLog(
         id=uuid.uuid4(),
         workorder_id=wo.id,
@@ -223,33 +236,61 @@ def updateStatusWorkorder(db: Session, workorder_id: str, new_status: str, perfo
     )
     db.add(log_entry)
 
+    # === Jika status menjadi COMPLETE, pindahkan stok sesuai ProductOrdered ===
+    if (old_status or "").lower() != "completed" and (new_status or "").lower() == "completed":
+        # Hindari dobel jika fungsi ini terpanggil dua kali (idempotent)
+        if not _wo_stock_already_moved(db, str(wo.id)):
+            for po in wo.product_ordered:
+                # Catatan memakai jejak 'WO:{wo.id}' agar _wo_stock_already_moved bisa mendeteksi
+                move_data = CreateProductMovedHistory(
+                    product_id=po.product_id,
+                    type='outcome',
+                    quantity=po.quantity,
+                    performed_by=performed_by,
+                    notes=f"WO:{wo.id} ({wo.no_wo}) complete → deduct for ProductOrdered:{po.id}",
+                    timestamp=datetime.datetime.now(datetime.timezone.utc)
+                )
+                # Utilitas ini akan:
+                # - membuat riwayat ProductMovedHistory
+                # - update Inventory.quantity sesuai akumulasi history
+                createProductMoveHistoryNew(db, move_data)
+
+            # Tambah log aktivitas khusus perpindahan stok
+            db.add(WorkOrderActivityLog(
+                id=uuid.uuid4(),
+                workorder_id=wo.id,
+                activity=f"Stock deducted for all ProductOrdered due to WO COMPLETE (WO:{wo.id})",
+                performed_by=performed_by,
+                timestamp=datetime.datetime.now()
+            ))
+        # else: sudah pernah dipindah—diamkan agar tidak minus dobel
+
     db.commit()
     db.refresh(wo)
 
+    # Susun response (konsisten dengan fungsi-fungsi lain)
     wo_dict = to_dict(wo)
-    wo_dict['customer_name'] = wo.customer.nama if wo.customer else None
-    wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None
+    wo_dict['customer_name']   = wo.customer.nama if wo.customer else None
+    wo_dict['vehicle_no_pol']  = wo.vehicle.no_pol if wo.vehicle else None
 
-    # Tambahkan detail product_ordered
     product_ordered_list = []
     for po in wo.product_ordered:
         po_dict = to_dict(po)
-        # Tambahkan info produk jika perlu
         if po.product:
             po_dict['product_name'] = po.product.name
         product_ordered_list.append(po_dict)
     wo_dict['product_ordered'] = product_ordered_list
 
-    # Tambahkan detail service_ordered
     service_ordered_list = []
     for so in wo.service_ordered:
         so_dict = to_dict(so)
-        # Tambahkan info service jika perlu
         if so.service:
             so_dict['service_name'] = so.service.name
         service_ordered_list.append(so_dict)
     wo_dict['service_ordered'] = service_ordered_list
+
     return wo_dict
+
 
 def UpdateDateWorkordernya(db: Session, workorder_id: str, new_tanggal_keluar: datetime.datetime, performed_by: str = 'system'):
     wo = db.query(Workorder).filter(Workorder.id == workorder_id).first()
@@ -345,20 +386,22 @@ def updateWorkOrdeKeluhannya(db: Session, workorder_id: str, data: UpdateWorkord
     wo_dict['service_ordered'] = service_ordered_list
     return wo_dict
 
-def UpdateWorkorderOrdersnya(db: Session, workorder_id: str, update_data: UpdateWorkorderOrders, performed_by: str = 'system'):
+def UpdateWorkorderOrdersnya(db: Session, workorder_id: str, update_data: CreateWorkOrder, performed_by: str = 'system'):
     wo = db.query(Workorder).filter(Workorder.id == workorder_id).first()
     if not wo:
         return None
 
-    # Update ProductOrdered
+    # Update or Add ProductOrdered
     if update_data.product_ordered:
         for prod in update_data.product_ordered:
             po = db.query(ProductOrdered).filter(ProductOrdered.id == prod.id, ProductOrdered.workorder_id == workorder_id).first()
             if po:
+                old_price = po.price
                 old_quantity = po.quantity
                 old_subtotal = po.subtotal
                 old_discount = po.discount
 
+                po.price = prod.price
                 po.quantity = prod.quantity
                 po.subtotal = prod.subtotal
                 po.discount = prod.discount
@@ -368,13 +411,35 @@ def UpdateWorkorderOrdersnya(db: Session, workorder_id: str, update_data: Update
                 log_entry = WorkOrderActivityLog(
                     id=uuid.uuid4(),
                     workorder_id=wo.id,
-                    activity=f"ProductOrdered {po.id} updated: quantity {old_quantity} -> {prod.quantity}, subtotal {old_subtotal} -> {prod.subtotal}, discount {old_discount} -> {prod.discount}",
+                    activity=f"ProductOrdered {po.id} updated: quantity {old_quantity} -> {prod.quantity}, subtotal {old_subtotal} -> {prod.subtotal}, discount {old_discount} -> {prod.discount}, price {old_price} -> {prod.price}",
+                    performed_by=performed_by,
+                    timestamp=datetime.datetime.now()
+                )
+                db.add(log_entry)
+            else:
+                # Tambah baru jika belum ada
+                new_po = ProductOrdered(
+                    id=uuid.uuid4(),
+                    workorder_id=workorder_id,
+                    product_id=prod.product_id,
+                    quantity=prod.quantity,
+                    subtotal=prod.subtotal,
+                    discount=prod.discount,
+                    price=prod.price,
+                    satuan_id=getattr(prod, 'satuan_id', None)
+                )
+                db.add(new_po)
+                # Log penambahan baru
+                log_entry = WorkOrderActivityLog(
+                    id=uuid.uuid4(),
+                    workorder_id=wo.id,
+                    activity=f"ProductOrdered {new_po.id} created: quantity {prod.quantity}, subtotal {prod.subtotal}, discount {prod.discount}, price {prod.price}",
                     performed_by=performed_by,
                     timestamp=datetime.datetime.now()
                 )
                 db.add(log_entry)
 
-    # Update ServiceOrdered
+    # Update or Add ServiceOrdered
     if update_data.service_ordered:
         for srv in update_data.service_ordered:
             so = db.query(ServiceOrdered).filter(ServiceOrdered.id == srv.id, ServiceOrdered.workorder_id == workorder_id).first()
@@ -386,13 +451,36 @@ def UpdateWorkorderOrdersnya(db: Session, workorder_id: str, update_data: Update
                 so.quantity = srv.quantity
                 so.subtotal = srv.subtotal
                 so.discount = srv.discount
+                if hasattr(so, 'price'):
+                    so.price = srv.price
                 db.add(so)
 
                 # Log perubahan pada ServiceOrdered
                 log_entry = WorkOrderActivityLog(
                     id=uuid.uuid4(),
                     workorder_id=wo.id,
-                    activity=f"ServiceOrdered {so.id} updated: quantity {old_quantity} -> {srv.quantity}, subtotal {old_subtotal} -> {srv.subtotal}, discount {old_discount} -> {srv.discount}",
+                    activity=f"ServiceOrdered {so.id} updated: quantity {old_quantity} -> {srv.quantity}, subtotal {old_subtotal} -> {srv.subtotal}, discount {old_discount} -> {srv.discount}, price {getattr(so, 'price', None)} -> {getattr(srv, 'price', None)}",
+                    performed_by=performed_by,
+                    timestamp=datetime.datetime.now()
+                )
+                db.add(log_entry)
+            else:
+                # Tambah baru jika belum ada
+                new_so = ServiceOrdered(
+                    id=uuid.uuid4(),
+                    workorder_id=workorder_id,
+                    service_id=srv.service_id,
+                    quantity=srv.quantity,
+                    subtotal=srv.subtotal,
+                    discount=srv.discount,
+                    price=getattr(srv, 'price', 0)
+                )
+                db.add(new_so)
+                # Log penambahan baru
+                log_entry = WorkOrderActivityLog(
+                    id=uuid.uuid4(),
+                    workorder_id=wo.id,
+                    activity=f"ServiceOrdered {new_so.id} created: quantity {srv.quantity}, subtotal {srv.subtotal}, discount {srv.discount}, price {getattr(srv, 'price', 0)}",
                     performed_by=performed_by,
                     timestamp=datetime.datetime.now()
                 )
@@ -452,7 +540,6 @@ def updateProductOrderedOnlynya(db: Session, product_ordered_data: CreateProduct
     wo = db.query(Workorder).filter(Workorder.id == product_ordered_data.workorder_id).first()
     if not wo:
         return None
-
     wo_dict = to_dict(wo)
     wo_dict['customer_name'] = wo.customer.nama if wo.customer else None
     wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None
@@ -478,7 +565,6 @@ def createNewWorkorderActivityLog(db: Session, log_data: CreateWorkActivityLog):
     wo_dict['customer_name'] = wo.customer.nama if wo.customer else None
     wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None
     return wo_dict
-
 def getWorkorderActivityLogs(db: Session, workorder_id: str):
     logs = db.query(WorkOrderActivityLog).filter(WorkOrderActivityLog.workorder_id == workorder_id).order_by(WorkOrderActivityLog.timestamp.desc()).all()
     result = []
@@ -518,3 +604,174 @@ def updateWorkorderActivityLognya(db: Session, log_id: str, data: CreateWorkActi
 
     wo_dict = to_dict(wo)
     return wo_dict
+
+def update_only_workorder(db: Session, workorder_id: str, data: CreateWorkorderOnly):
+    wo = db.query(Workorder).filter(Workorder.id == workorder_id).first()
+    if not wo:
+        return None
+
+    wo.tanggal_masuk = data.tanggal_masuk
+    wo.tanggal_keluar = data.tanggal_keluar
+    wo.keluhan = data.keluhan
+    wo.saran = data.saran
+    wo.status = data.status
+    wo.total_discount = data.total_discount
+    wo.total_biaya = data.total_biaya
+    wo.customer_id = data.customer_id
+    wo.karyawan_id = data.karyawan_id
+    wo.vehicle_id = data.vehicle_id
+    wo.pajak = data.pajak
+
+    db.add(wo)
+    db.commit()
+    db.refresh(wo)
+    wo_dict = to_dict(wo)
+    return wo_dict
+
+def update_only_productordered(db: Session, product_ordered_id: str, data: CreateProductOrderedOnly):
+    po = db.query(ProductOrdered).filter(ProductOrdered.id == product_ordered_id).first()
+    if not po:
+        return None
+
+    po.product_id = data.product_id
+    po.quantity = data.quantity
+    po.subtotal = data.subtotal
+    po.discount = data.discount
+
+    db.add(po)
+    db.commit()
+    db.refresh(po)
+
+    wo = db.query(Workorder).filter(Workorder.id == po.workorder_id).first()
+    if not wo:
+        return None
+
+    wo_dict = to_dict(wo)
+    return wo_dict
+
+def update_only_serviceordered(db: Session, service_ordered_id: str, data: CreateServiceOrderedOnly):
+    so = db.query(ServiceOrdered).filter(ServiceOrdered.id == service_ordered_id).first()
+    if not so:
+        return None
+
+    so.service_id = data.service_id
+    so.quantity = data.quantity
+    so.subtotal = data.subtotal
+    so.discount = data.discount
+
+    db.add(so)
+    db.commit()
+    db.refresh(so)
+
+    wo = db.query(Workorder).filter(Workorder.id == so.workorder_id).first()
+    if not wo:
+        return None
+
+    wo_dict = to_dict(wo)
+    return wo_dict
+
+def deleteWorkorder(db: Session, workorder_id: str):
+    wo = db.query(Workorder).filter(Workorder.id == workorder_id).first()
+    if not wo:
+        return None
+
+    # Hapus semua ProductOrdered terkait
+    for po in wo.product_ordered:
+        db.delete(po)
+
+    # Hapus semua ServiceOrdered terkait
+    for so in wo.service_ordered:
+        db.delete(so)
+
+    # Hapus semua WorkOrderActivityLog terkait
+    for log in wo.activity_logs:
+        db.delete(log)
+
+    db.delete(wo)
+    db.commit()
+    return True
+
+def update_workorder_lengkap(db: Session, workorder_id: str, data: CreateWorkOrder):
+    wo = db.query(Workorder).filter(Workorder.id == workorder_id).first()
+    if not wo:
+        return None
+
+    # Update field utama
+    wo.tanggal_masuk = data.tanggal_masuk
+    wo.tanggal_keluar = data.tanggal_keluar
+    wo.keluhan = data.keluhan
+    wo.saran = data.saran
+    wo.status = data.status
+    wo.total_discount = data.total_discount
+    wo.total_biaya = data.total_biaya
+    wo.customer_id = data.customer_id
+    wo.karyawan_id = data.karyawan_id
+    wo.vehicle_id = data.vehicle_id
+    wo.pajak = data.pajak
+    db.add(wo)
+
+    # --- Sinkronisasi ProductOrdered ---
+    # Hapus yang tidak ada di data baru
+    new_po_ids = set([str(po.product_id) for po in (data.product_ordered or [])])
+    for po in list(wo.product_ordered):
+        if str(po.product_id) not in new_po_ids:
+            db.delete(po)
+
+    # Tambah/update yang ada di data baru
+    for prod in (data.product_ordered or []):
+        po = db.query(ProductOrdered).filter(ProductOrdered.workorder_id == workorder_id, ProductOrdered.product_id == prod.product_id).first()
+        if po:
+            po.quantity = prod.quantity
+            po.satuan_id = getattr(prod, 'satuan_id', None)
+            po.price = prod.price
+            po.subtotal = prod.subtotal
+            po.discount = prod.discount
+            db.add(po)
+        else:
+            new_po = ProductOrdered(
+                id=uuid.uuid4(),
+                workorder_id=workorder_id,
+                product_id=prod.product_id,
+                quantity=prod.quantity,
+                satuan_id=getattr(prod, 'satuan_id', None),
+                price=prod.price,
+                subtotal=prod.subtotal,
+                discount=prod.discount
+            )
+            db.add(new_po)
+
+    # --- Sinkronisasi ServiceOrdered ---
+    new_so_ids = set([str(so.service_id) for so in (data.service_ordered or [])])
+    for so in list(wo.service_ordered):
+        if str(so.service_id) not in new_so_ids:
+            db.delete(so)
+
+    for srv in (data.service_ordered or []):
+        so = db.query(ServiceOrdered).filter(ServiceOrdered.workorder_id == workorder_id, ServiceOrdered.service_id == srv.service_id).first()
+        if so:
+            so.quantity = srv.quantity
+            so.satuan = getattr(srv, 'satuan', None)
+            so.price = srv.price
+            so.subtotal = srv.subtotal
+            so.discount = srv.discount
+            db.add(so)
+        else:
+            new_so = ServiceOrdered(
+                id=uuid.uuid4(),
+                workorder_id=workorder_id,
+                service_id=srv.service_id,
+                quantity=srv.quantity,
+                satuan=getattr(srv, 'satuan', None),
+                price=srv.price,
+                subtotal=srv.subtotal,
+                discount=srv.discount
+            )
+            db.add(new_so)
+
+    db.commit()
+    db.refresh(wo)
+    wo_dict = to_dict(wo)
+    wo_dict['customer_name'] = wo.customer.nama if wo.customer else None
+    wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None
+    return wo_dict
+

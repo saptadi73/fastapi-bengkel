@@ -3,10 +3,10 @@ from sqlalchemy.orm import Session
 from models.database import SessionLocal
 from services.services_customer import create_customer_with_vehicles,getListCustomersWithvehicles, getListCustomersWithVehiclesCustomersID
 from services.services_product import CreateProductNew, get_all_products, get_product_by_id, createServicenya,get_all_services, createBrandnya, createCategorynya, createSatuannya, getAllBrands, getAllCategories, getAllSatuans, getAllInventoryProducts, getInventoryByProductID, createProductMoveHistoryNew
-from services.services_workorder import createNewWorkorder,getAllWorkorders, getWorkorderByID, updateServiceorderedOnlynya,updateStatusWorkorder,updateWorkOrdeKeluhannya,UpdateDateWorkordernya,UpdateWorkorderOrdersnya,updateProductOrderedOnlynya,createNewWorkorderActivityLog, updateWorkorderActivityLognya,get_workorder_activitylog_by_customer,UpdateWorkorderOrdersnya
+from services.services_workorder import createNewWorkorder,getAllWorkorders, getWorkorderByID, updateServiceorderedOnlynya,updateWorkOrdeKeluhannya,UpdateDateWorkordernya,UpdateWorkorderOrdersnya,updateProductOrderedOnlynya,createNewWorkorderActivityLog, updateWorkorderActivityLognya,get_workorder_activitylog_by_customer,UpdateWorkorderOrdersnya,updateStatusWorkorder,update_only_productordered, update_only_serviceordered,update_only_workorder,update_workorder_lengkap
 from schemas.service_inventory import CreateProductMovedHistory
 from schemas.service_product import CreateProduct, ProductResponse, CreateService, ServiceResponse
-from schemas.service_workorder import CreateWorkOrder,UpdateProductOrderedOnly,UpdateServiceOrderedOnly,UpdateWorkoderOrders,UpdateWorkorderComplaint,UpdateWorkorderDates,UpdateWorkorderStatus,UpdateWorkorderTotalCost,DeleteProductOrderedOnly,DeleteServiceOrderedOnly, CreateWorkActivityLog
+from schemas.service_workorder import CreateWorkOrder,UpdateProductOrderedOnly,UpdateServiceOrderedOnly,UpdateWorkoderOrders,UpdateWorkorderComplaint,UpdateWorkorderDates,UpdateWorkorderStatus,UpdateWorkorderTotalCost,DeleteProductOrderedOnly,DeleteServiceOrderedOnly, CreateWorkActivityLog,UpdateProductOrderedOnly, UpdateServiceOrderedOnly
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
 from schemas.service_customer import CreateCustomerWithVehicles, CustomerWithVehicleResponse
@@ -164,5 +164,53 @@ def getWorkorderActivityLogsByCustomerRouter(
         return success_response(data=result)
     except Exception as e:
         return error_response(message=str(e))
+    finally:
+        db.close()
+
+@router.post("/update/onlyproductordered/{workorder_id}", dependencies=[Depends(jwt_required)])
+def updateOnlyProductOrderedRouter(
+    workorder_id: str,
+    product_ordered_data: UpdateProductOrderedOnly,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = update_only_productordered(db, workorder_id, product_ordered_data)
+        if not result:
+            return error_response(message="Failed to update only product ordered")
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()
+
+@router.post("/update/onlyserviceordered/{workorder_id}", dependencies=[Depends(jwt_required)])
+def updateOnlyServiceOrderedRouter(
+    workorder_id: str,
+    service_ordered_data: UpdateServiceOrderedOnly,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = update_only_serviceordered(db, workorder_id, service_ordered_data)
+        if not result:
+            return error_response(message="Failed to update only service ordered")
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()  
+
+@router.post("/update/workorderlengkap/{workorder_id}", dependencies=[Depends(jwt_required)])
+def updateWorkorderLengkapRouter(
+    workorder_id: str,
+    workorder_data: CreateWorkOrder,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = update_workorder_lengkap(db, workorder_id, workorder_data)
+        if not result:
+            return error_response(message="Failed to update workorder lengkap")
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))   
     finally:
         db.close()
