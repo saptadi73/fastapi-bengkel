@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS purchase_order (
     supplier_id UUID NOT NULL,
     date DATE NOT NULL,
     total NUMERIC(10,2) NOT NULL,
+    pajak NUMERIC(10,2),
+    pembayaran NUMERIC(10,2),
     status purchase_order_status NOT NULL DEFAULT 'draft',
     bukti_transfer VARCHAR,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),

@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 import shutil
 import os
+import json
+from typing import Optional
 from models.database import SessionLocal
 from schemas.service_purchase_order import CreatePurchaseOrder, UpdatePurchaseOrder
 from services.services_purchase_order import create_purchase_order, get_all_purchase_orders, get_purchase_order_by_id, update_purchase_order, delete_purchase_order
@@ -19,11 +21,40 @@ def get_db():
 
 @router.post("/", dependencies=[Depends(jwt_required)])
 def create_purchase_order_router(
-    data: CreatePurchaseOrder,
+    data: str = Form(...),
+    bukti_transfer: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db)
 ):
     try:
-        result = create_purchase_order(db, data)
+        data_dict = json.loads(data)
+        create_data = CreatePurchaseOrder(**data_dict)
+
+        if bukti_transfer:
+            # Validate file type
+            allowed_types = ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp", "application/pdf"]
+            if bukti_transfer.content_type not in allowed_types:
+                raise HTTPException(status_code=400, detail="File type not allowed. Only PNG, JPG, JPEG, GIF, WEBP, and PDF are allowed.")
+
+            # Validate file size (1 MB max)
+            max_size = 1024 * 1024  # 1 MB
+            bukti_transfer.file.seek(0, 2)  # Seek to end
+            file_size = bukti_transfer.file.tell()
+            bukti_transfer.file.seek(0)  # Seek back to start
+            if file_size > max_size:
+                raise HTTPException(status_code=400, detail="File size too large. Maximum size is 1 MB.")
+
+            # Create uploads directory if not exists
+            upload_dir = "uploads/bukti_transfer"
+            os.makedirs(upload_dir, exist_ok=True)
+
+            # Save file
+            file_path = f"{upload_dir}/po_{create_data.supplier_id}_{bukti_transfer.filename}"
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(bukti_transfer.file, buffer)
+
+            create_data.bukti_transfer = file_path
+
+        result = create_purchase_order(db, create_data)
         return success_response(data=result)
     except Exception as e:
         return error_response(message=str(e))
@@ -85,6 +116,19 @@ def upload_bukti_transfer(
         po = get_purchase_order_by_id(db, purchase_order_id)
         if not po:
             raise HTTPException(status_code=404, detail="Purchase Order not found")
+
+        # Validate file type
+        allowed_types = ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp", "application/pdf"]
+        if file.content_type not in allowed_types:
+            raise HTTPException(status_code=400, detail="File type not allowed. Only PNG, JPG, JPEG, GIF, WEBP, and PDF are allowed.")
+
+        # Validate file size (1 MB max)
+        max_size = 1024 * 1024  # 1 MB
+        file.file.seek(0, 2)  # Seek to end
+        file_size = file.file.tell()
+        file.file.seek(0)  # Seek back to start
+        if file_size > max_size:
+            raise HTTPException(status_code=400, detail="File size too large. Maximum size is 1 MB.")
 
         # Create uploads directory if not exists
         upload_dir = "uploads/bukti_transfer"

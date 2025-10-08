@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from routes import routes_customer, routes_auth, routes_product, routes_workorder,routes_booking, routes_packet_order, routes_karyawan, routes_accounting, routes_supplier, routes_purchase_order, routes_expenses
 
@@ -14,6 +15,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount static files
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # Include all routers
 app.include_router(routes_booking.router)

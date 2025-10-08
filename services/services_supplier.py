@@ -69,4 +69,4 @@ def get_supplier(db: Session, supplier_id: str):
 
 def get_all_suppliers(db: Session):
     suppliers = db.query(Supplier).all()
-    return [to_dict(supplier) for supplier in suppliers]
+    return [to_dict(s) for s in suppliers]

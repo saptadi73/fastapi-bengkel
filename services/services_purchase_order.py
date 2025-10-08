@@ -41,6 +41,8 @@ def create_purchase_order(db: Session, data: CreatePurchaseOrder):
         supplier_id=data.supplier_id,
         date=data.date,
         total=total,
+        pajak=data.pajak,
+        pembayaran=data.pembayaran,
         status=data.status,
         bukti_transfer=data.bukti_transfer
     )
@@ -120,6 +122,10 @@ def update_purchase_order(db: Session, purchase_order_id: str, data: UpdatePurch
             po.supplier_id = data.supplier_id
         if data.date:
             po.date = data.date
+        if data.pajak is not None:
+            po.pajak = data.pajak
+        if data.pembayaran is not None:
+            po.pembayaran = data.pembayaran
         if data.status:
             po.status = data.status
         if data.bukti_transfer:

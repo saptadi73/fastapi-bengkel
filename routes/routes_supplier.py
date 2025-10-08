@@ -15,7 +15,7 @@ def get_db():
     finally:
         db.close()
 
-@router.post("/", dependencies=[Depends(jwt_required)])
+@router.post("/create", dependencies=[Depends(jwt_required)])
 def create_supplier_router(
     supplier_data: CreateSupplier,
     db: Session = Depends(get_db)
@@ -26,7 +26,7 @@ def create_supplier_router(
     except Exception as e:
         return error_response(message=str(e))
 
-@router.put("/{supplier_id}", dependencies=[Depends(jwt_required)])
+@router.post("/{supplier_id}", dependencies=[Depends(jwt_required)])
 def update_supplier_router(
     supplier_id: str,
     supplier_data: UpdateSupplier,
@@ -49,6 +49,16 @@ def delete_supplier_router(
     except Exception as e:
         return error_response(message=str(e))
 
+@router.get("/all")
+def get_all_suppliers_router(
+    db: Session = Depends(get_db)
+):
+    try:
+        result = get_all_suppliers(db)
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+
 @router.get("/{supplier_id}")
 def get_supplier_router(
     supplier_id: str,
@@ -56,16 +66,6 @@ def get_supplier_router(
 ):
     try:
         result = get_supplier(db, supplier_id)
-        return success_response(data=result)
-    except Exception as e:
-        return error_response(message=str(e))
-
-@router.get("/")
-def get_all_suppliers_router(
-    db: Session = Depends(get_db)
-):
-    try:
-        result = get_all_suppliers(db)
         return success_response(data=result)
     except Exception as e:
         return error_response(message=str(e))

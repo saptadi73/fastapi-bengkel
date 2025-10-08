@@ -20,6 +20,8 @@ class PurchaseOrder(Base):
     supplier = relationship('Supplier', back_populates='purchase_orders')
     date = Column(Date, nullable=False)
     total = Column(Numeric(10,2), nullable=False)
+    pajak=Column(Numeric(10,2), nullable=True)
+    pembayaran=Column(Numeric(10,2), nullable=True)
     status = Column(Enum(PurchaseOrderStatus), nullable=False, default=PurchaseOrderStatus.draft)
     bukti_transfer = Column(String, nullable=True)
     created_at = Column(DateTime, nullable=False, server_default=text('now()'))
