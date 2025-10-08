@@ -96,7 +96,6 @@ def upload_bukti_transfer(
             shutil.copyfileobj(file.file, buffer)
 
         # Update bukti_transfer in db
-        from schemas.service_purchase_order import UpdatePurchaseOrder
         update_data = UpdatePurchaseOrder(bukti_transfer=file_path)
         update_purchase_order(db, purchase_order_id, update_data)
 

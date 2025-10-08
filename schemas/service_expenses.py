@@ -3,17 +3,33 @@ from uuid import UUID
 from typing import Optional
 from datetime import date, datetime
 from decimal import Decimal
+from enum import Enum
 
+class ExpenseType(str, Enum):
+    listrik = "listrik"
+    gaji = "gaji"
+    air = "air"
+    internet = "internet"
+    transportasi = "transportasi"
+    komunikasi = "komunikasi"
+    konsumsi = "konsumsi"
+    entertaint = "entertaint"
+    umum = "umum"
+    lain_lain = "lain-lain"
 
 class CreateExpenses(BaseModel):
+    name: str
     description: str
+    expense_type: ExpenseType
     amount: Decimal
     date: date
     bukti_transfer: Optional[str] = None
 
 
 class UpdateExpenses(BaseModel):
+    name: Optional[str] = None
     description: Optional[str] = None
+    expense_type: Optional[ExpenseType] = None
     amount: Optional[Decimal] = None
     date: Optional[date] = None
     bukti_transfer: Optional[str] = None
@@ -21,7 +37,9 @@ class UpdateExpenses(BaseModel):
 
 class ExpensesResponse(BaseModel):
     id: UUID
+    name: str
     description: str
+    expense_type: ExpenseType
     amount: Decimal
     date: date
     bukti_transfer: Optional[str]

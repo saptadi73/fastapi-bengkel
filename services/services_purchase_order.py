@@ -1,6 +1,7 @@
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from models.purchase_order import PurchaseOrder, PurchaseOrderLine
 import uuid
 from schemas.service_purchase_order import CreatePurchaseOrder, UpdatePurchaseOrder, CreatePurchaseOrderLine
@@ -30,8 +31,13 @@ def create_purchase_order(db: Session, data: CreatePurchaseOrder):
     # Calculate total
     total = sum(line.subtotal for line in data.lines)
 
+    # Generate PO number
+    result = db.execute(text("SELECT nextval('purchase_order_seq')")).scalar()
+    po_no = f"PO{result:03d}"
+
     # Create PurchaseOrder
     purchase_order = PurchaseOrder(
+        po_no=po_no,
         supplier_id=data.supplier_id,
         date=data.date,
         total=total,

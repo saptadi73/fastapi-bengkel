@@ -42,6 +42,7 @@ class PurchaseOrderLineResponse(BaseModel):
 
 class PurchaseOrderResponse(BaseModel):
     id: UUID
+    po_no: str
     supplier_id: UUID
     date: date
     total: Decimal

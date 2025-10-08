@@ -30,7 +30,9 @@ def to_dict(obj):
 
 def create_expenses(db: Session, data: CreateExpenses):
     expenses = Expenses(
+        name=data.name,
         description=data.description,
+        expense_type=data.expense_type,
         amount=data.amount,
         date=data.date,
         bukti_transfer=data.bukti_transfer
@@ -77,8 +79,12 @@ def update_expenses(db: Session, expenses_id: str, data: UpdateExpenses):
             return {"message": "Expenses not found"}
 
         # Update fields
+        if data.name:
+            exp.name = data.name
         if data.description:
             exp.description = data.description
+        if data.expense_type:
+            exp.expense_type = data.expense_type
         if data.amount:
             exp.amount = data.amount
         if data.date:

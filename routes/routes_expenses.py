@@ -96,7 +96,6 @@ def upload_bukti_transfer(
             shutil.copyfileobj(file.file, buffer)
 
         # Update bukti_transfer in db
-        from schemas.service_expenses import UpdateExpenses
         update_data = UpdateExpenses(bukti_transfer=file_path)
         update_expenses(db, expenses_id, update_data)
 

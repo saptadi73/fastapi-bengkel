@@ -1,9 +1,13 @@
 -- Create enum type for purchase order status
 CREATE TYPE purchase_order_status AS ENUM ('draft', 'dijalankan', 'diterima', 'dibayarkan');
 
+-- Create sequence for PO number
+CREATE SEQUENCE IF NOT EXISTS purchase_order_seq START 1;
+
 -- Migration for table purchase_order
 CREATE TABLE IF NOT EXISTS purchase_order (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    po_no VARCHAR NOT NULL UNIQUE,
     supplier_id UUID NOT NULL,
     date DATE NOT NULL,
     total NUMERIC(10,2) NOT NULL,
