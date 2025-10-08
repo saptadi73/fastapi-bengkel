@@ -6,7 +6,7 @@ from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
 from schemas.service_customer import CreateCustomerWithVehicles, CustomerWithVehicleResponse, CreateCustomer, CreateVehicle
 
-router = APIRouter(prefix="/customers")
+router = APIRouter(prefix="/customers", tags=["Customer"])
 
 def get_db():
     db = SessionLocal()

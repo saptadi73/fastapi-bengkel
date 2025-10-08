@@ -4,6 +4,7 @@
 -- Create enums
 CREATE TYPE normal_balance AS ENUM ('debit', 'credit');
 CREATE TYPE journal_type AS ENUM ('purchase', 'sale', 'ar_receipt', 'ap_payment', 'expense', 'general');
+CREATE TYPE account_type AS ENUM ('asset', 'liability', 'equity', 'revenue', 'expense', 'other');
 
 -- Create accounts table
 CREATE TABLE accounts (
@@ -11,7 +12,8 @@ CREATE TABLE accounts (
     code VARCHAR(32) NOT NULL UNIQUE,
     name VARCHAR(128) NOT NULL,
     normal_balance normal_balance NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE
+    is_active BOOLEAN DEFAULT TRUE,
+    account_type account_type NOT NULL DEFAULT 'other'
 );
 
 -- Create index on accounts.code

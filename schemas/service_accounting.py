@@ -20,8 +20,8 @@ class JournalType(str, Enum):
 class JournalLineCreate(BaseModel):
     account_code: str = Field(..., description="Kode COA, contoh: 1100")
     description: Optional[str] = None
-    debit: condecimal(max_digits=18, decimal_places=2) = Decimal("0.00")
-    credit: condecimal(max_digits=18, decimal_places=2) = Decimal("0.00")
+    debit: Decimal = Decimal("0.00")
+    credit: Decimal = Decimal("0.00")
 
 
 class JournalEntryBase(BaseModel):
@@ -45,6 +45,12 @@ class JournalLineOut(BaseModel):
     debit: Decimal
     credit: Decimal
 
+class CreateAccount(BaseModel):
+    code: str
+    name: str
+    normal_balance: str  # 'debit' or 'credit'
+    account_type: str  # e.g., 'asset', 'liability', 'equity', 'revenue', 'expense'
+    is_active: Optional[bool] = True
 
 class JournalEntryOut(BaseModel):
     id: str
@@ -62,9 +68,9 @@ class PurchaseRecordCreate(BaseModel):
     entry_no: str
     tanggal: date
     supplier_id: Optional[str] = None
-    total_bruto: condecimal(max_digits=18, decimal_places=2)
-    ppn: condecimal(max_digits=18, decimal_places=2) = Decimal("0.00")
-    potongan: condecimal(max_digits=18, decimal_places=2) = Decimal("0.00")
+    total_bruto: Decimal
+    ppn: Decimal = Decimal("0.00")
+    potongan: Decimal = Decimal("0.00")
     kas_bank_code: Optional[str] = None
     hutang_code: str = "2100"
     persediaan_code: str = "1300"
@@ -77,16 +83,16 @@ class SaleRecordCreate(BaseModel):
     entry_no: str
     tanggal: date
     customer_id: Optional[str] = None
-    total_penjualan: condecimal(max_digits=18, decimal_places=2)
-    ppn: condecimal(max_digits=18, decimal_places=2) = Decimal("0.00")
-    potongan: condecimal(max_digits=18, decimal_places=2) = Decimal("0.00")
+    total_penjualan: Decimal
+    ppn: Decimal = Decimal("0.00")
+    potongan: Decimal = Decimal("0.00")
     kas_bank_code: Optional[str] = None
     piutang_code: str = "1200"
     penjualan_code: str = "4000"
     ppn_keluaran_code: str = "2410"
     hpp_code: Optional[str] = "5100"
     persediaan_code: Optional[str] = "1300"
-    hpp: Optional[condecimal(max_digits=18, decimal_places=2)] = None
+    hpp: Optional[Decimal] = None
     memo: Optional[str] = None
     created_by: Optional[str] = "system"
 
@@ -95,11 +101,11 @@ class PaymentARCreate(BaseModel):
     entry_no: str
     tanggal: date
     customer_id: Optional[str] = None
-    amount: condecimal(max_digits=18, decimal_places=2)
+    amount: Decimal
     kas_bank_code: str
     piutang_code: str = "1200"
     potongan_penjualan_code: Optional[str] = None
-    discount: condecimal(max_digits=18, decimal_places=2) = Decimal("0.00")
+    discount: Decimal = Decimal("0.00")
     memo: Optional[str] = None
     created_by: Optional[str] = "system"
 
@@ -108,11 +114,11 @@ class PaymentAPCreate(BaseModel):
     entry_no: str
     tanggal: date
     supplier_id: Optional[str] = None
-    amount: condecimal(max_digits=18, decimal_places=2)
+    amount: Decimal
     kas_bank_code: str
     hutang_code: str = "2100"
     potongan_pembelian_code: Optional[str] = None
-    discount: condecimal(max_digits=18, decimal_places=2) = Decimal("0.00")
+    discount: Decimal = Decimal("0.00")
     memo: Optional[str] = None
     created_by: Optional[str] = "system"
 
@@ -122,8 +128,8 @@ class ExpenseRecordCreate(BaseModel):
     tanggal: date
     kas_bank_code: str
     expense_code: str
-    amount: condecimal(max_digits=18, decimal_places=2)
-    ppn: condecimal(max_digits=18, decimal_places=2) = Decimal("0.00")
+    amount: Decimal
+    ppn: Decimal = Decimal("0.00")
     ppn_masukan_code: Optional[str] = None
     memo: Optional[str] = None
     created_by: Optional[str] = "system"

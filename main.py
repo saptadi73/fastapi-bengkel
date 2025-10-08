@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routes import routes_customer, routes_auth, routes_product, routes_workorder,routes_booking, routes_packet_order, routes_karyawan
+from routes import routes_customer, routes_auth, routes_product, routes_workorder,routes_booking, routes_packet_order, routes_karyawan, routes_accounting, routes_supplier, routes_purchase_order, routes_expenses
 
 app = FastAPI()
 
@@ -23,6 +23,10 @@ app.include_router(routes_customer.router)
 app.include_router(routes_auth.router)
 app.include_router(routes_packet_order.router)
 app.include_router(routes_karyawan.router)
+app.include_router(routes_accounting.router)
+app.include_router(routes_supplier.router)
+app.include_router(routes_purchase_order.router)
+app.include_router(routes_expenses.router)
 
 @app.get("/")
 def root():

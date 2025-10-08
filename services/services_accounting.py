@@ -5,6 +5,8 @@ from typing import Iterable, List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from datetime import date
+import decimal
+import datetime
 
 from models.accounting import Account, JournalEntry, JournalLine, JournalType
 from schemas.service_accounting import (
@@ -16,9 +18,43 @@ from schemas.service_accounting import (
     SaleRecordCreate,
     PaymentARCreate,
     PaymentAPCreate,
-    ExpenseRecordCreate
+    ExpenseRecordCreate,
+    CreateAccount
 )
 
+def to_dict(obj):
+    result = {}
+    for c in obj.__table__.columns:
+        value = getattr(obj, c.name)
+        # Konversi UUID ke string
+        if isinstance(value, uuid.UUID):
+            value = str(value)
+        # Konversi Decimal ke float
+        elif isinstance(value, decimal.Decimal):
+            value = float(value)
+        # Konversi datetime/date/time ke isoformat string
+        elif isinstance(value, (datetime.datetime, datetime.date, datetime.time)):
+            value = value.isoformat()
+        # Konversi bytes ke string (opsional, jika ada kolom bytes)
+        elif isinstance(value, bytes):
+            value = value.decode('utf-8')
+        result[c.name] = value
+    return result
+
+def create_account(db: Session, account_data: CreateAccount):
+    # Create a new account
+    new_account = Account(
+        id=uuid.uuid4(),
+        code=account_data.code,
+        name=account_data.name,
+        normal_balance=account_data.normal_balance,
+        is_active=account_data.is_active
+    )
+    db.add(new_account)
+    db.commit()
+    db.refresh(new_account)
+
+    return to_dict(new_account)
 
 # ---------- Helpers ----------
 def _get_account_by_code(db: Session, code: str) -> Account:
@@ -38,7 +74,7 @@ def _get_account_by_code(db: Session, code: str) -> Account:
     acc = db.execute(select(Account).where(Account.code == code, Account.is_active == True)).scalar_one_or_none()
     if not acc:
         raise ValueError(f"Account code '{code}' not found or inactive")
-    return acc
+    return to_dict(acc)
 
 
 def _sum(lines: Iterable[JournalLineCreate], key: str) -> Decimal:
@@ -444,3 +480,46 @@ def record_expense(
     with db.begin():
         entry = _create_entry(db, payload, created_by=expense_data.created_by)
     return _to_entry_out(db, entry)
+
+def create_account(db: Session, account_data: CreateAccount):
+    # Create a new account
+    new_account = Account(
+        id=uuid.uuid4(),
+        code=account_data.code,
+        name=account_data.name,
+        normal_balance=account_data.normal_balance,
+        account_type=account_data.account_type,
+        is_active=account_data.is_active
+    )
+    db.add(new_account)
+    db.commit()
+    db.refresh(new_account)
+
+    return to_dict(new_account)
+
+def edit_account(db: Session, account_id: str, account_data: CreateAccount):
+    # Edit an existing account
+    account = db.query(Account).filter(Account.id == account_id).first()
+    if not account:
+        raise ValueError(f"Account with id '{account_id}' not found")
+
+    account.code = account_data.code
+    account.name = account_data.name
+    account.normal_balance = account_data.normal_balance
+    account.account_type = account_data.account_type
+    account.is_active = account_data.is_active
+
+    db.commit()
+    db.refresh(account)
+
+    return to_dict(account)
+
+def get_account(db: Session, account_id: str):
+    account = db.query(Account).filter(Account.id == account_id).first()
+    if not account:
+        raise ValueError(f"Account with id '{account_id}' not found")
+    return to_dict(account)
+
+def get_all_accounts(db: Session):
+    results = db.query(Account).all()
+    return [to_dict(result) for result in results] if isinstance(results, Iterable) else []

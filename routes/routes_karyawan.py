@@ -6,7 +6,7 @@ from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
 from schemas.service_karyawan import CreateKaryawan
 
-router = APIRouter(prefix="/karyawans")
+router = APIRouter(prefix="/karyawans", tags=["Karyawan"])
 
 def get_db():
     db = SessionLocal()

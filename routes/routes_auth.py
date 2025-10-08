@@ -5,7 +5,7 @@ from schemas.service_user import UserRegister, UserLogin, UserResponse, TokenRes
 from models.database import SessionLocal
 from supports.utils_json_response import success_response, error_response
 
-router = APIRouter(prefix="/auth")
+router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 def get_db():
     db = SessionLocal()

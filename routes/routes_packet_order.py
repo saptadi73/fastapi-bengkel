@@ -7,7 +7,7 @@ from services.services_packet_order import CreatePacketOrdernya,getAllPacketOrde
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
 
-router = APIRouter(prefix="/packetorders")
+router = APIRouter(prefix="/packetorders", tags=["Packet Order"])
 
 def get_db():
     db = SessionLocal()

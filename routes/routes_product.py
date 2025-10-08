@@ -9,7 +9,7 @@ from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
 from schemas.service_customer import CreateCustomerWithVehicles, CustomerWithVehicleResponse
 
-router = APIRouter(prefix="/products")
+router = APIRouter(prefix="/products", tags=["Product"])
 
 def get_db():
     db = SessionLocal()

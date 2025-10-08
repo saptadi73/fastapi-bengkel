@@ -16,17 +16,26 @@ from .database import Base  # sesuaikan path Base kamu
 
 
 class NormalBalance(str, enum.Enum):
-    DEBIT = "debit"
-    CREDIT = "credit"
+    debit = "debit"
+    credit = "credit"
 
 
 class JournalType(str, enum.Enum):
-    PURCHASE = "purchase"                # jurnal pembelian
-    SALE = "sale"                        # jurnal penjualan
-    AR_RECEIPT = "ar_receipt"            # pembayaran piutang
-    AP_PAYMENT = "ap_payment"            # pembayaran hutang
-    EXPENSE = "expense"                  # pengeluaran biaya-biaya
-    GENERAL = "general"                  # umum (fallback)
+    purchase = "purchase"                # jurnal pembelian
+    sale = "sale"                        # jurnal penjualan
+    ar_receipt = "ar_receipt"            # pembayaran piutang
+    ap_payment = "ap_payment"            # pembayaran hutang
+    expense = "expense"                  # pengeluaran biaya-biaya
+    general = "general"                  # umum (fallback)
+
+
+class AccountType(str, enum.Enum):
+    asset = "asset"
+    liability = "liability"
+    equity = "equity"
+    revenue = "revenue"
+    expense = "expense"
+    other = "other"
 
 
 class Account(Base):
@@ -37,6 +46,7 @@ class Account(Base):
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     normal_balance: Mapped[NormalBalance] = mapped_column(Enum(NormalBalance), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    account_type: Mapped[AccountType] = mapped_column(Enum(AccountType), nullable=False)
 
     # contoh: 1100 Kas, 1130 Bank, 1200 Piutang Usaha, 2100 Hutang Usaha, 5000 Beban, 4000 Penjualan, 5100 HPP, 1300 Persediaan
 
@@ -51,7 +61,7 @@ class JournalEntry(Base):
     entry_no: Mapped[str] = mapped_column(String(40), index=True, nullable=False)  # nomor bukti/entry
     date: Mapped[datetime.date] = mapped_column(Date, nullable=False)
     memo: Mapped[str] = mapped_column(String(255), nullable=True)
-    journal_type: Mapped[JournalType] = mapped_column(Enum(JournalType), nullable=False, default=JournalType.GENERAL)
+    journal_type: Mapped[JournalType] = mapped_column(Enum(JournalType), nullable=False, default=JournalType.general)
 
     customer_id: Mapped[str | None] = mapped_column(String, nullable=True)  # opsional: relasikan ke Customer kalau ada
     supplier_id: Mapped[str | None] = mapped_column(String, nullable=True)  # opsional: relasikan ke Supplier kalau ada
