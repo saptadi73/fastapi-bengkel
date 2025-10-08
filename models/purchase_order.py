@@ -7,10 +7,10 @@ from sqlalchemy import text
 from enum import Enum as PyEnum
 
 class PurchaseOrderStatus(PyEnum):
-    DRAFT = "draft"
-    DIJALANKAN = "dijalankan"
-    DITERIMA = "diterima"
-    DIBAYARKAN = "dibayarkan"
+    draft = "draft"
+    dijalankan = "dijalankan"
+    diterima = "diterima"
+    dibayarkan = "dibayarkan"
 
 class PurchaseOrder(Base):
     __tablename__ = 'purchase_order'
@@ -19,7 +19,7 @@ class PurchaseOrder(Base):
     supplier = relationship('Supplier', back_populates='purchase_orders')
     date = Column(Date, nullable=False)
     total = Column(Numeric(10,2), nullable=False)
-    status = Column(Enum(PurchaseOrderStatus), nullable=False, default=PurchaseOrderStatus.DRAFT)
+    status = Column(Enum(PurchaseOrderStatus), nullable=False, default=PurchaseOrderStatus.draft)
     bukti_transfer = Column(String, nullable=True)
     created_at = Column(DateTime, nullable=False, server_default=text('now()'))
     updated_at = Column(DateTime, nullable=False, server_default=text('now()'))
