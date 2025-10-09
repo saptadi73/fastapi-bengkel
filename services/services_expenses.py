@@ -2,30 +2,9 @@ from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from sqlalchemy.orm import Session
 from models.expenses import Expenses
-import uuid
 from schemas.service_expenses import CreateExpenses, UpdateExpenses
-import decimal
-from decimal import Decimal
-
-
-def to_dict(obj):
-    result = {}
-    for c in obj.__table__.columns:
-        value = getattr(obj, c.name)
-        # Konversi UUID ke string
-        if isinstance(value, uuid.UUID):
-            value = str(value)
-        # Konversi Decimal ke float
-        elif isinstance(value, decimal.Decimal):
-            value = float(value)
-        # Konversi datetime/date/time ke isoformat string
-        elif isinstance(value, (datetime.datetime, datetime.date, datetime.time)):
-            value = value.isoformat()
-        # Konversi bytes ke string (opsional, jika ada kolom bytes)
-        elif isinstance(value, bytes):
-            value = value.decode('utf-8')
-        result[c.name] = value
-    return result
+from models.expenses import ExpenseStatus
+from supports.utils_json_response import to_dict
 
 
 def create_expenses(db: Session, data: CreateExpenses):
@@ -33,6 +12,7 @@ def create_expenses(db: Session, data: CreateExpenses):
         name=data.name,
         description=data.description,
         expense_type=data.expense_type,
+        status=data.status,
         amount=data.amount,
         date=data.date,
         bukti_transfer=data.bukti_transfer
@@ -85,6 +65,8 @@ def update_expenses(db: Session, expenses_id: str, data: UpdateExpenses):
             exp.description = data.description
         if data.expense_type:
             exp.expense_type = data.expense_type
+        if data.status:
+            exp.status = data.status
         if data.amount:
             exp.amount = data.amount
         if data.date:

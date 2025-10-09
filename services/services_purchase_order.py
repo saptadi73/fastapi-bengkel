@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from models.purchase_order import PurchaseOrder, PurchaseOrderLine
 import uuid
-from schemas.service_purchase_order import CreatePurchaseOrder, UpdatePurchaseOrder, CreatePurchaseOrderLine
+from schemas.service_purchase_order import CreatePurchaseOrder, UpdatePurchaseOrder, CreatePurchaseOrderLine, UpdatePurchaseOrderLine
 from schemas.service_inventory import CreateProductMovedHistory
 from services.services_inventory import createProductMoveHistoryNew
 import decimal
@@ -34,9 +34,6 @@ def to_dict(obj):
     return result
 
 def create_purchase_order(db: Session, data: CreatePurchaseOrder):
-    # Calculate total
-    total = sum(line.subtotal for line in data.lines)
-
     # Generate PO number
     result = db.execute(text("SELECT nextval('purchase_order_seq')")).scalar()
     po_no = f"PO{result:03d}"
@@ -47,7 +44,7 @@ def create_purchase_order(db: Session, data: CreatePurchaseOrder):
         po_no=po_no,
         supplier_id=data.supplier_id,
         date=data.date,
-        total=total,
+        total=Decimal("0.00"),  # Will be calculated after lines
         pajak=data.pajak,
         pembayaran=data.pembayaran,
         status=data.status,
@@ -57,7 +54,9 @@ def create_purchase_order(db: Session, data: CreatePurchaseOrder):
     db.flush()  # Get id
 
     # Create lines
+    total = Decimal("0.00")
     for line_data in data.lines:
+        subtotal = (line_data.quantity * line_data.price) - line_data.discount
         line = PurchaseOrderLine(
             id=str(uuid.uuid4()),
             purchase_order_id=purchase_order.id,
@@ -65,12 +64,29 @@ def create_purchase_order(db: Session, data: CreatePurchaseOrder):
             quantity=line_data.quantity,
             price=line_data.price,
             discount=line_data.discount,
-            subtotal=line_data.subtotal
+            subtotal=subtotal
         )
         db.add(line)
+        total += subtotal
+
+    purchase_order.total = total
 
     db.commit()
     db.refresh(purchase_order)
+
+    # If status is 'diterima', call productMovedHistoryNew with type 'income'
+    if purchase_order.status == 'diterima':
+        for line in purchase_order.lines:
+            move_data = CreateProductMovedHistory(
+                product_id=line.product_id,
+                type='income',
+                quantity=line.quantity,
+                performed_by='system',
+                notes=f'Purchase order {purchase_order.po_no} received',
+                timestamp=datetime.datetime.now()
+            )
+            createProductMoveHistoryNew(db, move_data)
+
     return to_dict(purchase_order)
 
 def get_all_purchase_orders(db: Session):
@@ -134,11 +150,14 @@ def update_purchase_order(db: Session, purchase_order_id: str, data: UpdatePurch
         if not po:
             return {"message": "PurchaseOrder not found"}
 
+        # Store old status for comparison
+        old_status = po.status
+
         # Update fields
         if data.supplier_id:
             po.supplier_id = data.supplier_id
         if data.date:
-            po.date = data.date
+            po.date = datetime.date.fromisoformat(data.date)
         if data.pajak is not None:
             po.pajak = data.pajak
         if data.pembayaran is not None:
@@ -172,7 +191,7 @@ def update_purchase_order(db: Session, purchase_order_id: str, data: UpdatePurch
         db.refresh(po)
 
         # If status changed to 'diterima', call productMovedHistoryNew with type 'income'
-        if data.status and data.status.lower() == 'diterima':
+        if old_status != 'diterima' and po.status == 'diterima':
             for line in po.lines:
                 move_data = CreateProductMovedHistory(
                     product_id=line.product_id,
@@ -195,14 +214,16 @@ def update_purchase_order_status(db: Session, purchase_order_id: str, status: st
         if not po:
             return {"message": "PurchaseOrder not found"}
 
-        po.status = status
+        # Store old status for comparison
+        old_status = po.status
+
         po.updated_at = datetime.datetime.now()
 
         db.commit()
         db.refresh(po)
 
         # If status changed to 'diterima', call productMovedHistoryNew with type 'income'
-        if status.lower() == 'diterima':
+        if old_status != 'diterima' and po.status == 'diterima':
             for line in po.lines:
                 move_data = CreateProductMovedHistory(
                     product_id=line.product_id,
@@ -218,6 +239,91 @@ def update_purchase_order_status(db: Session, purchase_order_id: str, status: st
     except IntegrityError:
         db.rollback()
         return {"message": "Error updating PurchaseOrder status"}
+
+def edit_purchase_order(db: Session, purchase_order_id: str, data: UpdatePurchaseOrder):
+    try:
+        po = db.query(PurchaseOrder).filter(PurchaseOrder.id == purchase_order_id).first()
+        if not po:
+            return {"message": "PurchaseOrder not found"}
+
+        # Store old status for comparison
+        old_status = po.status
+
+        # Update fields
+        if data.supplier_id:
+            po.supplier_id = data.supplier_id
+        if data.date:
+            po.date = data.date
+        if data.pajak is not None:
+            po.pajak = data.pajak
+        if data.pembayaran is not None:
+            po.pembayaran = data.pembayaran
+        if data.status:
+            po.status = data.status
+        if data.bukti_transfer:
+            po.bukti_transfer = data.bukti_transfer
+        po.updated_at = datetime.datetime.now()
+
+        # Update lines if provided
+        if data.lines is not None:
+            # Collect provided line ids
+            provided_ids = {str(line_data.id) for line_data in data.lines if line_data.id is not None}
+
+            # Update or add lines
+            for line_data in data.lines:
+                if line_data.id is not None:
+                    # Update existing line
+                    existing_line = db.query(PurchaseOrderLine).filter(PurchaseOrderLine.id == str(line_data.id)).first()
+                    if existing_line:
+                        existing_line.product_id = line_data.product_id
+                        existing_line.quantity = line_data.quantity
+                        existing_line.price = line_data.price
+                        existing_line.discount = line_data.discount
+                        existing_line.subtotal = (line_data.quantity * line_data.price) - line_data.discount
+                else:
+                    # Add new line
+                    subtotal = (line_data.quantity * line_data.price) - line_data.discount
+                    new_line = PurchaseOrderLine(
+                        id=str(uuid.uuid4()),
+                        purchase_order_id=po.id,
+                        product_id=line_data.product_id,
+                        quantity=line_data.quantity,
+                        price=line_data.price,
+                        discount=line_data.discount,
+                        subtotal=subtotal
+                    )
+                    db.add(new_line)
+
+            # Delete lines not in provided_ids
+            existing_lines = db.query(PurchaseOrderLine).filter(PurchaseOrderLine.purchase_order_id == po.id).all()
+            for line in existing_lines:
+                if str(line.id) not in provided_ids:
+                    db.delete(line)
+
+            # Recalculate total
+            current_lines = db.query(PurchaseOrderLine).filter(PurchaseOrderLine.purchase_order_id == po.id).all()
+            po.total = sum(line.subtotal for line in current_lines)
+
+        db.commit()
+        db.refresh(po)
+
+        # If status changed to 'diterima', call productMovedHistoryNew with type 'income'
+        if old_status != 'diterima' and po.status == 'diterima':
+            for line in po.lines:
+                move_data = CreateProductMovedHistory(
+                    product_id=line.product_id,
+                    type='income',
+                    quantity=line.quantity,
+                    performed_by='system',
+                    notes=f'Purchase order {po.po_no} received',
+                    timestamp=datetime.datetime.now()
+                )
+                createProductMoveHistoryNew(db, move_data)
+
+        return to_dict(po)
+    except IntegrityError:
+        db.rollback()
+        return {"message": "Error editing PurchaseOrder"}
     
     
 

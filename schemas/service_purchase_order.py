@@ -20,6 +20,14 @@ class CreatePurchaseOrderLine(BaseModel):
     discount: Optional[Decimal] = Decimal("0.00")
     subtotal: Decimal
 
+class UpdatePurchaseOrderLine(BaseModel):
+    id: Optional[UUID] = None
+    product_id: UUID
+    quantity: Decimal
+    price: Decimal
+    discount: Optional[Decimal] = Decimal("0.00")
+    subtotal: Decimal
+
 class CreatePurchaseOrder(BaseModel):
     supplier_id: UUID
     date: date
@@ -32,12 +40,12 @@ class CreatePurchaseOrder(BaseModel):
 
 class UpdatePurchaseOrder(BaseModel):
     supplier_id: Optional[UUID] = None
-    date: Optional[date] = None
+    date: Optional[str] = None
     pajak: Optional[Decimal] = None
     pembayaran: Optional[Decimal] = None
     status: Optional[PurchaseOrderStatus] = None
     bukti_transfer: Optional[str] = None
-    lines: Optional[List[CreatePurchaseOrderLine]] = None
+    lines: Optional[List[UpdatePurchaseOrderLine]] = None
 
 class PurchaseOrderLineResponse(BaseModel):
     id: UUID

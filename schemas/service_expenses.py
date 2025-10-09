@@ -17,10 +17,15 @@ class ExpenseType(str, Enum):
     umum = "umum"
     lain_lain = "lain-lain"
 
+class ExpenseStatus(str, Enum):
+    open = "open"
+    dibayarkan = "dibayarkan"
+
 class CreateExpenses(BaseModel):
     name: str
     description: str
     expense_type: ExpenseType
+    status: ExpenseStatus
     amount: Decimal
     date: date
     bukti_transfer: Optional[str] = None
@@ -30,6 +35,7 @@ class UpdateExpenses(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     expense_type: Optional[ExpenseType] = None
+    status: Optional[ExpenseStatus] = None
     amount: Optional[Decimal] = None
     date: Optional[date] = None
     bukti_transfer: Optional[str] = None
@@ -40,6 +46,7 @@ class ExpensesResponse(BaseModel):
     name: str
     description: str
     expense_type: ExpenseType
+    status: ExpenseStatus
     amount: Decimal
     date: date
     bukti_transfer: Optional[str]
