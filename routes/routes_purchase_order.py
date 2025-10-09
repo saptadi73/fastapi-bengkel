@@ -69,19 +69,13 @@ def get_all_purchase_orders_router(
     except Exception as e:
         return error_response(message=str(e))
 
-@router.get("/{purchase_order_id}")
+@router.get("/{purchase_order_identifier}")
 def get_purchase_order_by_id_router(
-    purchase_order_id: str,
+    purchase_order_identifier: str,
     db: Session = Depends(get_db)
 ):
     try:
-        # Validate UUID
-        import uuid
-        try:
-            uuid.UUID(purchase_order_id)
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid purchase order ID format")
-        result = get_purchase_order_by_id(db, purchase_order_id)
+        result = get_purchase_order_by_id(db, purchase_order_identifier)
         if not result:
             raise HTTPException(status_code=404, detail="Purchase Order not found")
         return success_response(data=result)

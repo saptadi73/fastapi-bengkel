@@ -88,8 +88,17 @@ def get_all_purchase_orders(db: Session):
         result.append(po_dict)
     return result
 
-def get_purchase_order_by_id(db: Session, purchase_order_id: str):
-    po = db.query(PurchaseOrder).filter(PurchaseOrder.id == purchase_order_id).first()
+def get_purchase_order_by_id(db: Session, purchase_order_identifier: str):
+    # Try to parse as UUID
+    try:
+        import uuid
+        uuid.UUID(purchase_order_identifier)
+        # If valid UUID, query by id
+        po = db.query(PurchaseOrder).filter(PurchaseOrder.id == purchase_order_identifier).first()
+    except ValueError:
+        # If not UUID, query by po_no
+        po = db.query(PurchaseOrder).filter(PurchaseOrder.po_no == purchase_order_identifier).first()
+    
     if not po:
         return None
     po_dict = to_dict(po)
