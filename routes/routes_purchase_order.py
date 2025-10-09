@@ -6,7 +6,7 @@ import json
 from typing import Optional
 from models.database import SessionLocal
 from schemas.service_purchase_order import CreatePurchaseOrder, UpdatePurchaseOrder
-from services.services_purchase_order import create_purchase_order, get_all_purchase_orders, get_purchase_order_by_id, update_purchase_order, delete_purchase_order
+from services.services_purchase_order import create_purchase_order, get_all_purchase_orders, get_purchase_order_by_id, update_purchase_order, delete_purchase_order, update_purchase_order_status
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
 
@@ -19,7 +19,7 @@ def get_db():
     finally:
         db.close()
 
-@router.post("/", dependencies=[Depends(jwt_required)])
+@router.post("/create", dependencies=[Depends(jwt_required)])
 def create_purchase_order_router(
     data: str = Form(...),
     bukti_transfer: Optional[UploadFile] = File(None),
@@ -75,6 +75,12 @@ def get_purchase_order_by_id_router(
     db: Session = Depends(get_db)
 ):
     try:
+        # Validate UUID
+        import uuid
+        try:
+            uuid.UUID(purchase_order_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid purchase order ID format")
         result = get_purchase_order_by_id(db, purchase_order_id)
         if not result:
             raise HTTPException(status_code=404, detail="Purchase Order not found")
@@ -90,6 +96,18 @@ def update_purchase_order_router(
 ):
     try:
         result = update_purchase_order(db, purchase_order_id, data)
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+
+@router.put("/{purchase_order_id}/status", dependencies=[Depends(jwt_required)])
+def update_purchase_order_status_router(
+    purchase_order_id: str,
+    status: str,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = update_purchase_order_status(db, purchase_order_id, status)
         return success_response(data=result)
     except Exception as e:
         return error_response(message=str(e))

@@ -1,12 +1,15 @@
 from sqlalchemy.exc import IntegrityError
-from datetime import datetime
+import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from models.purchase_order import PurchaseOrder, PurchaseOrderLine
 import uuid
 from schemas.service_purchase_order import CreatePurchaseOrder, UpdatePurchaseOrder, CreatePurchaseOrderLine
+from schemas.service_inventory import CreateProductMovedHistory
+from services.services_inventory import createProductMoveHistoryNew
 import decimal
 from decimal import Decimal
+import enum
 
 def to_dict(obj):
     result = {}
@@ -21,6 +24,9 @@ def to_dict(obj):
         # Konversi datetime/date/time ke isoformat string
         elif isinstance(value, (datetime.datetime, datetime.date, datetime.time)):
             value = value.isoformat()
+        # Konversi Enum ke value
+        elif isinstance(value, enum.Enum):
+            value = value.value
         # Konversi bytes ke string (opsional, jika ada kolom bytes)
         elif isinstance(value, bytes):
             value = value.decode('utf-8')
@@ -37,6 +43,7 @@ def create_purchase_order(db: Session, data: CreatePurchaseOrder):
 
     # Create PurchaseOrder
     purchase_order = PurchaseOrder(
+        id=str(uuid.uuid4()),
         po_no=po_no,
         supplier_id=data.supplier_id,
         date=data.date,
@@ -52,6 +59,7 @@ def create_purchase_order(db: Session, data: CreatePurchaseOrder):
     # Create lines
     for line_data in data.lines:
         line = PurchaseOrderLine(
+            id=str(uuid.uuid4()),
             purchase_order_id=purchase_order.id,
             product_id=line_data.product_id,
             quantity=line_data.quantity,
@@ -153,7 +161,54 @@ def update_purchase_order(db: Session, purchase_order_id: str, data: UpdatePurch
 
         db.commit()
         db.refresh(po)
+
+        # If status changed to 'diterima', call productMovedHistoryNew with type 'income'
+        if data.status and data.status.lower() == 'diterima':
+            for line in po.lines:
+                move_data = CreateProductMovedHistory(
+                    product_id=line.product_id,
+                    type='income',
+                    quantity=line.quantity,
+                    performed_by='system',
+                    notes=f'Purchase order {po.po_no} received',
+                    timestamp=datetime.datetime.now()
+                )
+                createProductMoveHistoryNew(db, move_data)
+
         return to_dict(po)
     except IntegrityError:
         db.rollback()
         return {"message": "Error updating PurchaseOrder"}
+
+def update_purchase_order_status(db: Session, purchase_order_id: str, status: str, created_by: str = None):
+    try:
+        po = db.query(PurchaseOrder).filter(PurchaseOrder.id == purchase_order_id).first()
+        if not po:
+            return {"message": "PurchaseOrder not found"}
+
+        po.status = status
+        po.updated_at = datetime.datetime.now()
+
+        db.commit()
+        db.refresh(po)
+
+        # If status changed to 'diterima', call productMovedHistoryNew with type 'income'
+        if status.lower() == 'diterima':
+            for line in po.lines:
+                move_data = CreateProductMovedHistory(
+                    product_id=line.product_id,
+                    type='income',
+                    quantity=line.quantity,
+                    performed_by=created_by or 'system',
+                    notes=f'Purchase order {po.po_no} received',
+                    timestamp=datetime.datetime.now()
+                )
+                createProductMoveHistoryNew(db, move_data)
+
+        return to_dict(po)
+    except IntegrityError:
+        db.rollback()
+        return {"message": "Error updating PurchaseOrder status"}
+    
+    
+
