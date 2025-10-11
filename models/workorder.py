@@ -35,7 +35,9 @@ class Product(Base):
     name = Column(String, nullable=False)
     type = Column(String, nullable=False)
     description = Column(String, nullable=True)
-    price = Column(Numeric(10,2), nullable=False)
+    price = Column(Numeric(10,2), nullable=True)
+    cost = Column(Numeric(10,2), nullable=True)
+
     min_stock = Column(Numeric(10,2), nullable=False)
     
 

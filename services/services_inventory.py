@@ -26,6 +26,22 @@ def to_dict(obj):
         result[c.name] = value
     return result
 
+def get_or_create_inventory(db: Session, product_id: str):
+    inventory = db.query(Inventory).filter(Inventory.product_id == product_id).first()
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    if not inventory:
+        inventory = Inventory(
+            id=str(uuid.uuid4()),
+            product_id=product_id,
+            quantity=0,
+            created_at=now_utc,
+            updated_at=now_utc
+        )
+        db.add(inventory)
+        db.commit()
+        db.refresh(inventory)
+    return to_dict(inventory)
+
 def createProductMoveHistoryNew(db: Session, move_data: CreateProductMovedHistory):
     inventory = db.query(Inventory).filter(Inventory.product_id == move_data.product_id).first()
     if move_data.type.lower() == 'income':
@@ -36,7 +52,6 @@ def createProductMoveHistoryNew(db: Session, move_data: CreateProductMovedHistor
                 id=str(uuid.uuid4()),
                 product_id=move_data.product_id,
                 quantity=move_data.quantity,
-                cost=0,
                 created_at=now_utc,
                 updated_at=now_utc
             )
@@ -83,3 +98,5 @@ def createProductMoveHistoryNew(db: Session, move_data: CreateProductMovedHistor
         db.refresh(inventory)
 
     return to_dict(new_move)
+
+

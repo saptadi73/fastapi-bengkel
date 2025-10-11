@@ -12,7 +12,6 @@ CREATE TABLE IF NOT EXISTS inventory (
     id UUID PRIMARY KEY,
     product_id UUID REFERENCES product(id),
     quantity NUMERIC(10,2) NOT NULL,
-    cost NUMERIC(10,2) NOT NULL,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP
 );

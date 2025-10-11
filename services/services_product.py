@@ -11,6 +11,7 @@ from models.database import get_db
 from schemas.service_product import CreateProduct, ProductResponse, BrandResponse, SatuanResponse, CategoryResponse, CreateService, ServiceResponse, CreateBrand, CreateCategory,CreateSatuan
 import decimal
 import datetime
+from decimal import Decimal
 
 def to_dict(obj):
     result = {}
@@ -38,6 +39,7 @@ def CreateProductNew(db:Session, product_data: CreateProduct):
         type=product_data.type,
         description=product_data.description,
         price=product_data.price,
+        cost=product_data.cost,
         min_stock=product_data.min_stock,
         brand_id=product_data.brand_id,
         satuan_id=product_data.satuan_id,
@@ -93,6 +95,15 @@ def get_service_by_id(db: Session, service_id: str):
         s_dict = to_dict(service)
         return s_dict
 
+def update_product_cost(db: Session, product_id: str, cost: Decimal):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise ValueError('Product tidak ditemukan!')
+    product.cost = cost
+    db.commit()
+    db.refresh(product)
+    return to_dict(product)
+
 def getAllInventoryProducts(db: Session):
     products = db.query(Product).all()
     result = []
@@ -104,6 +115,7 @@ def getAllInventoryProducts(db: Session):
         # Hitung total stock dari inventory
         total_stock = sum(inv.quantity for inv in product.inventory) if product.inventory else 0
         p_dict['total_stock'] = float(total_stock)  # Konversi Decimal ke float
+        p_dict['cost'] = float(product.cost) if product.cost is not None else None
         result.append(p_dict)
     return result
 
@@ -130,7 +142,6 @@ def createProductMoveHistoryNew(db: Session, move_data: CreateProductMovedHistor
                 id=str(uuid.uuid4()),
                 product_id=move_data.product_id,
                 quantity=move_data.quantity,
-                cost=0,
                 created_at=now_utc,
                 updated_at=now_utc
             )

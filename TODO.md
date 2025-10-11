@@ -1,16 +1,17 @@
-# TODO for PurchaseOrder Edit Function Enhancement
+# TODO: Remove 'cost' field from Inventory components
 
-- [x] Add UpdatePurchaseOrderLine schema with optional id field in schemas/service_purchase_order.py
-- [x] Modify UpdatePurchaseOrder schema to use UpdatePurchaseOrderLine for lines
-- [x] Implement edit_purchase_order function in services/services_purchase_order.py
-  - Update existing lines if id provided
-  - Add new lines if no id
-  - Delete lines not present in update
-  - Update purchase order fields and recalculate total
-  - Handle status change to 'diterima' with product move history
-- [x] Integrate edit_purchase_order in routes/routes_purchase_order.py
-  - Modified PUT /{purchase_order_id} to use edit_purchase_order
-  - Added file upload handling with old file deletion
-  - Updated upload-bukti route to delete old file before saving new
-- [ ] Write unit tests for edit_purchase_order function
-- [ ] Test the full update flow including line additions, updates, and deletions
+## Tasks
+- [x] Update schemas/service_inventory.py: Remove UpdateInventoryCost class
+- [x] Update services/services_inventory.py: Remove update_inventory_cost function and cost references
+- [x] Update routes/routes_inventory.py: Remove /cost endpoint
+- [x] Update database_baru/inventory_postgres.sql: Remove cost column from CREATE TABLE
+- [x] Create database_baru/inventory_cost_drop.sql: ALTER TABLE DROP COLUMN cost
+- [x] Update services/services_product.py: Remove cost=0 from createProductMoveHistoryNew
+- [x] Ensure cost remains in Product table
+- [x] Create database_baru/product_cost_add.sql: ALTER TABLE ADD COLUMN cost
+- [x] Create function update_product_cost in services/services_product.py
+- [x] Create schema UpdateProductCost in schemas/service_product.py
+- [x] Create route PUT /products/cost in routes/routes_product.py
+
+## Followup Steps
+- [ ] Test inventory API to ensure no cost-related errors

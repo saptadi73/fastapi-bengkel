@@ -11,3 +11,5 @@ class CreateProductMovedHistory(BaseModel):
     timestamp: Optional[datetime] = None
     performed_by: str
     notes: Optional[str] = None
+
+

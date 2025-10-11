@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from models.database import SessionLocal
 from services.services_customer import create_customer_with_vehicles,getListCustomersWithvehicles, getListCustomersWithVehiclesCustomersID
-from services.services_product import CreateProductNew, get_all_products, get_product_by_id, createServicenya,get_all_services, createBrandnya, createCategorynya, createSatuannya, getAllBrands, getAllCategories, getAllSatuans, getAllInventoryProducts, getInventoryByProductID, createProductMoveHistoryNew, get_service_by_id
+from services.services_product import CreateProductNew, get_all_products, get_product_by_id, createServicenya,get_all_services, createBrandnya, createCategorynya, createSatuannya, getAllBrands, getAllCategories, getAllSatuans, getAllInventoryProducts, getInventoryByProductID, createProductMoveHistoryNew, get_service_by_id, update_product_cost
 from schemas.service_inventory import CreateProductMovedHistory
-from schemas.service_product import CreateProduct, ProductResponse, CreateService, ServiceResponse, CreateBrand, CreateCategory, CreateSatuan
+from schemas.service_product import CreateProduct, ProductResponse, CreateService, ServiceResponse, CreateBrand, CreateCategory, CreateSatuan, UpdateProductCost
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
 from schemas.service_customer import CreateCustomerWithVehicles, CustomerWithVehicleResponse
@@ -221,6 +221,21 @@ def createProductMoveHistoryRouter(
         result = createProductMoveHistoryNew(db, move_data)
         if not result:
             return error_response(message="Failed to create product move history")
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()
+
+@router.put("/cost", dependencies=[Depends(jwt_required)])
+def update_product_cost_router(
+    cost_data: UpdateProductCost,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = update_product_cost(db, str(cost_data.product_id), cost_data.cost)
+        if not result:
+            return error_response(message="Failed to update product cost")
         return success_response(data=result)
     except Exception as e:
         return error_response(message=str(e))

@@ -129,7 +129,7 @@ class ExpenseRecordCreate(BaseModel):
     kas_bank_code: str
     expense_code: str
     amount: Decimal
-    ppn: Decimal = Decimal("0.00")
+    ppn: Optional[Decimal] = Decimal("0.00")
     ppn_masukan_code: Optional[str] = None
     memo: Optional[str] = None
     created_by: Optional[str] = "system"

@@ -9,10 +9,15 @@ class CreateProduct(BaseModel):
     type: str
     description: Optional[str] = None
     price: Decimal
+    cost: Optional[Decimal] = None
     min_stock: Decimal
     brand_id: UUID
     satuan_id: UUID
     category_id: UUID
+
+class UpdateProductCost(BaseModel):
+    product_id: UUID
+    cost: Decimal
 
 class ProductResponse(BaseModel):
     id: UUID
@@ -20,6 +25,7 @@ class ProductResponse(BaseModel):
     type: str
     description: Optional[str] = None
     price: Decimal
+    cost: Optional[Decimal]
     min_stock: Decimal
     brand_id: UUID
     satuan_id: UUID
