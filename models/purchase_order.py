@@ -28,6 +28,7 @@ class PurchaseOrder(Base):
     updated_at = Column(DateTime, nullable=False, server_default=text('now()'))
 
     lines = relationship('PurchaseOrderLine', back_populates='purchase_order')
+    journal_entries = relationship('JournalEntry', back_populates='purchase_order')
 
 class PurchaseOrderLine(Base):
     __tablename__ = 'purchase_order_line'

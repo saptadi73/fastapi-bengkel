@@ -26,9 +26,10 @@ CREATE TABLE journal_entries (
     date DATE NOT NULL,
     memo VARCHAR(255),
     journal_type journal_type NOT NULL DEFAULT 'general',
-    customer_id VARCHAR(255),
-    supplier_id VARCHAR(255),
-    workorder_id VARCHAR(255),
+    customer_id UUID REFERENCES customer(id),
+    supplier_id UUID REFERENCES supplier(id),
+    workorder_id UUID REFERENCES workorder(id),
+    purchase_id UUID REFERENCES purchase_order(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     created_by VARCHAR(64)
 );

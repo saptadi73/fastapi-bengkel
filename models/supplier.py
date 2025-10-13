@@ -19,3 +19,4 @@ class Supplier(Base):
     created_at = Column(Date, nullable=False, server_default=text('now()'))
     updated_at = Column(Date, nullable=False, server_default=text('now()'))
     purchase_orders = relationship('PurchaseOrder', back_populates='supplier')
+    journal_entries = relationship('JournalEntry', back_populates='supplier')

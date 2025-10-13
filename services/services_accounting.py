@@ -19,7 +19,11 @@ from schemas.service_accounting import (
     PaymentARCreate,
     PaymentAPCreate,
     ExpenseRecordCreate,
-    CreateAccount
+    CreateAccount,
+    SalesJournalEntry,
+    SalesPaymentJournalEntry,
+    PurchaseJournalEntry,
+    ExpenseJournalEntry
 )
 
 def to_dict(obj):
@@ -74,7 +78,7 @@ def _get_account_by_code(db: Session, code: str) -> Account:
     acc = db.execute(select(Account).where(Account.code == code, Account.is_active == True)).scalar_one_or_none()
     if not acc:
         raise ValueError(f"Account code '{code}' not found or inactive")
-    return to_dict(acc)
+    return acc
 
 
 def _sum(lines: Iterable[JournalLineCreate], key: str) -> Decimal:
@@ -122,9 +126,12 @@ def _create_entry(db: Session, payload: JournalEntryCreate, created_by: Optional
     # Validate balance
     _validate_balance(payload.lines)
 
+    # Generate entry_no if not provided
+    entry_no = payload.entry_no if payload.entry_no else generate_entry_no(db, payload.journal_type.value, payload.date)
+
     entry = JournalEntry(
         id=uuid.uuid4(),
-        entry_no=payload.entry_no,
+        entry_no=entry_no,
         date=payload.date,
         memo=payload.memo,
         journal_type=JournalType(payload.journal_type.value),
@@ -523,3 +530,303 @@ def get_account(db: Session, account_id: str):
 def get_all_accounts(db: Session):
     results = db.query(Account).all()
     return [to_dict(result) for result in results] if isinstance(results, Iterable) else []
+
+def generate_entry_no(db: Session, journal_type: str, date: date) -> str:
+    """
+    Generate a unique entry_no that is not affected by deletions.
+    Format: {journal_type_prefix}-{YYYYMMDD}-{sequential_number}
+
+    Args:
+        db: Database session.
+        journal_type: Type of journal (e.g., 'purchase', 'sale').
+        date: Date of the entry.
+
+    Returns:
+        str: Generated entry_no.
+    """
+    # Define prefixes for journal types
+    prefixes = {
+        'purchase': 'PUR',
+        'sale': 'SAL',
+        'ar_receipt': 'ARR',
+        'ap_payment': 'APP',
+        'expense': 'EXP',
+        'general': 'GEN'
+    }
+    prefix = prefixes.get(journal_type, 'GEN')
+
+    # Format date as YYYYMMDD
+    date_str = date.strftime('%Y%m%d')
+
+    # Find the next sequential number for this prefix and date
+    from sqlalchemy import func
+    max_entry_no = db.query(func.max(JournalEntry.entry_no)).filter(
+        JournalEntry.entry_no.like(f'{prefix}-{date_str}-%')
+    ).scalar()
+
+    if max_entry_no:
+        # Extract the sequential number and increment
+        parts = max_entry_no.split('-')
+        if len(parts) == 3:
+            seq_num = int(parts[2]) + 1
+        else:
+            seq_num = 1
+    else:
+        seq_num = 1
+
+    # Generate the new entry_no
+    entry_no = f'{prefix}-{date_str}-{seq_num:03d}'  # Pad with zeros to 3 digits
+    return entry_no
+
+
+def create_sales_journal_entry(db: Session, data_entry: SalesJournalEntry) -> JournalEntryOut:
+    """
+    Create a sales journal entry for product and service sales (perpetual inventory).
+    Assumes piutang (receivable) for sales, with HPP for costs.
+    """
+    lines: List[JournalLineCreate] = []
+
+    # Calculate totals
+    total_product = data_entry.harga_product
+    total_service = data_entry.harga_service
+    total_sales = total_product + total_service
+    total_tax = data_entry.pajak or Decimal("0.00")
+    total_debit = total_sales + total_tax
+
+    # Debit Piutang (receivable) for total sales + tax
+    lines.append(JournalLineCreate(
+        account_code="1200",  # Piutang Usaha
+        description="Piutang Penjualan",
+        debit=total_debit,
+        credit=Decimal("0.00")
+    ))
+
+    # Credit Penjualan Product (if any)
+    if total_product > 0:
+        lines.append(JournalLineCreate(
+            account_code="4000",  # Penjualan
+            description="Penjualan Produk",
+            debit=Decimal("0.00"),
+            credit=total_product
+        ))
+
+    # Credit Penjualan Service (if any)
+    if total_service > 0:
+        lines.append(JournalLineCreate(
+            account_code="4001",  # Assume separate for service, or adjust
+            description="Penjualan Jasa",
+            debit=Decimal("0.00"),
+            credit=total_service
+        ))
+
+    # Credit PPN Keluaran (tax)
+    if total_tax > 0:
+        lines.append(JournalLineCreate(
+            account_code="2410",  # PPN Keluaran
+            description="PPN Keluaran",
+            debit=Decimal("0.00"),
+            credit=total_tax
+        ))
+
+    # HPP for Product (if provided)
+    if data_entry.hpp_product and data_entry.hpp_product > 0:
+        lines.append(JournalLineCreate(
+            account_code="5100",  # HPP
+            description="HPP Produk",
+            debit=data_entry.hpp_product,
+            credit=Decimal("0.00")
+        ))
+        lines.append(JournalLineCreate(
+            account_code="1300",  # Persediaan
+            description="Pengurangan Persediaan Produk",
+            debit=Decimal("0.00"),
+            credit=data_entry.hpp_product
+        ))
+
+    # HPP for Service (if provided, assuming service cost)
+    if data_entry.hpp_service and data_entry.hpp_service > 0:
+        lines.append(JournalLineCreate(
+            account_code="5101",  # Assume separate HPP for service
+            description="HPP Jasa",
+            debit=data_entry.hpp_service,
+            credit=Decimal("0.00")
+        ))
+        lines.append(JournalLineCreate(
+            account_code="6000",  # Assume expense for service cost
+            description="Biaya Jasa",
+            debit=Decimal("0.00"),
+            credit=data_entry.hpp_service
+        ))
+
+    payload = JournalEntryCreate(
+        entry_no=None,  # Auto-generate
+        date=data_entry.date,
+        memo=data_entry.memo,
+        journal_type=JT.SALE,
+        supplier_id=None,
+        customer_id=data_entry.customer_id,
+        workorder_id=data_entry.workorder_id,
+        lines=lines
+    )
+    with db.begin():
+        entry = _create_entry(db, payload, created_by="system")
+    return _to_entry_out(db, entry)
+
+
+def create_sales_payment_journal_entry(db: Session, data_entry: SalesPaymentJournalEntry) -> JournalEntryOut:
+    """
+    Create a sales payment journal entry (AR receipt).
+    Dr Kas/Bank                        amount - discount
+    Dr Potongan Penjualan (optional)   discount
+       Cr Piutang Usaha                amount
+    """
+    cash_in = data_entry.amount - (data_entry.discount or Decimal("0.00"))
+    lines: List[JournalLineCreate] = [
+        JournalLineCreate(
+            account_code=data_entry.kas_bank_code,
+            description="Terima Pelunasan Piutang Penjualan",
+            debit=cash_in,
+            credit=Decimal("0.00")
+        ),
+        JournalLineCreate(
+            account_code=data_entry.piutang_code,
+            description="Pelunasan Piutang Penjualan",
+            debit=Decimal("0.00"),
+            credit=data_entry.amount
+        ),
+    ]
+    if data_entry.discount and data_entry.discount > 0:
+        if not data_entry.potongan_penjualan_code:
+            raise ValueError("potongan_penjualan_code wajib diisi bila discount > 0")
+        lines.append(JournalLineCreate(
+            account_code=data_entry.potongan_penjualan_code,
+            description="Diskon Pelunasan Piutang Penjualan",
+            debit=data_entry.discount,
+            credit=Decimal("0.00")
+        ))
+
+    payload = JournalEntryCreate(
+        entry_no=None,  # Auto-generate
+        date=data_entry.date,
+        memo=data_entry.memo,
+        journal_type=JT.AR_RECEIPT,
+        supplier_id=None,
+        customer_id=data_entry.customer_id,
+        workorder_id=data_entry.workorder_id,
+        lines=lines
+    )
+    with db.begin():
+        entry = _create_entry(db, payload, created_by="system")
+    return _to_entry_out(db, entry)
+
+def create_purchase_journal_entry(db: Session, data_entry: PurchaseJournalEntry) -> JournalEntryOut:
+    """
+    Create a purchase journal entry for product and service purchases (perpetual inventory).
+    Assumes hutang (payable) for purchases, with HPP for costs.
+    """
+    lines: List[JournalLineCreate] = []
+
+    # Calculate totals
+    total_product = data_entry.harga_product
+    total_service = data_entry.harga_service
+    total_purchases = total_product + total_service
+    total_tax = data_entry.pajak or Decimal("0.00")
+    total_credit = total_purchases + total_tax
+
+    # Debit Persediaan (inventory) for total purchases + tax
+    lines.append(JournalLineCreate(
+        account_code="1300",  # Persediaan
+        description="Pembelian Persediaan",
+        debit=total_credit,
+        credit=Decimal("0.00")
+    ))
+
+    # Credit Hutang Usaha (payable) for total purchases + tax
+    lines.append(JournalLineCreate(
+        account_code="2100",  # Hutang Usaha
+        description="Hutang Pembelian",
+        debit=Decimal("0.00"),
+        credit=total_credit
+    ))
+
+    # HPP for Product (if provided, but for purchase, it's the cost)
+    # For purchase, HPP is not debited here; it's when sold.
+    # But if we want to record cost, perhaps debit expense or something, but typically for perpetual, inventory is debited.
+
+    # For service purchases, if it's a cost, debit expense
+    if data_entry.hpp_service and data_entry.hpp_service > 0:
+        lines.append(JournalLineCreate(
+            account_code="6000",  # Assume expense for service cost
+            description="Biaya Jasa Pembelian",
+            debit=data_entry.hpp_service,
+            credit=Decimal("0.00")
+        ))
+        lines.append(JournalLineCreate(
+            account_code="2100",  # Hutang Usaha
+            description="Hutang Biaya Jasa",
+            debit=Decimal("0.00"),
+            credit=data_entry.hpp_service
+        ))
+
+    payload = JournalEntryCreate(
+        entry_no=None,  # Auto-generate
+        date=data_entry.date,
+        memo=data_entry.memo,
+        journal_type=JT.PURCHASE,
+        supplier_id=data_entry.supplier_id,
+        customer_id=None,
+        workorder_id=data_entry.workorder_id,
+        lines=lines
+    )
+    with db.begin():
+        entry = _create_entry(db, payload, created_by="system")
+    return _to_entry_out(db, entry)
+
+
+def create_expense_journal_entry(db: Session, data_entry: ExpenseJournalEntry) -> JournalEntryOut:
+    """
+    Create an expense journal entry when an expense is paid.
+    Dr Expense Account             amount (excl PPN)
+    Dr PPN Masukan (optional)      pajak
+       Cr Kas/Bank                 amount + pajak
+    """
+    lines: List[JournalLineCreate] = [
+        JournalLineCreate(
+            account_code=data_entry.expense_code,
+            description="Pengeluaran Biaya",
+            debit=data_entry.amount,
+            credit=Decimal("0.00")
+        ),
+    ]
+    total_credit = data_entry.amount
+    if data_entry.pajak and data_entry.pajak > 0:
+        if not data_entry.ppn_masukan_code:
+            raise ValueError("ppn_masukan_code wajib jika pajak > 0")
+        lines.append(JournalLineCreate(
+            account_code=data_entry.ppn_masukan_code,
+            description="PPN Masukan",
+            debit=data_entry.pajak,
+            credit=Decimal("0.00")
+        ))
+        total_credit += data_entry.pajak
+
+    lines.append(JournalLineCreate(
+        account_code=data_entry.kas_bank_code,
+        description="Pembayaran Biaya",
+        debit=Decimal("0.00"),
+        credit=total_credit
+    ))
+
+    payload = JournalEntryCreate(
+        entry_no=None,  # Auto-generate
+        date=data_entry.date,
+        memo=data_entry.memo,
+        journal_type=JT.EXPENSE,
+        supplier_id=None,
+        customer_id=None,
+        workorder_id=None,
+        lines=lines
+    )
+    with db.begin():
+        entry = _create_entry(db, payload, created_by="system")
+    return _to_entry_out(db, entry)

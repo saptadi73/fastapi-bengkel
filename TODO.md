@@ -1,17 +1,29 @@
-# TODO: Remove 'cost' field from Inventory components
+# TODO List for Accounting UUID Changes
 
-## Tasks
-- [x] Update schemas/service_inventory.py: Remove UpdateInventoryCost class
-- [x] Update services/services_inventory.py: Remove update_inventory_cost function and cost references
-- [x] Update routes/routes_inventory.py: Remove /cost endpoint
-- [x] Update database_baru/inventory_postgres.sql: Remove cost column from CREATE TABLE
-- [x] Create database_baru/inventory_cost_drop.sql: ALTER TABLE DROP COLUMN cost
-- [x] Update services/services_product.py: Remove cost=0 from createProductMoveHistoryNew
-- [x] Ensure cost remains in Product table
-- [x] Create database_baru/product_cost_add.sql: ALTER TABLE ADD COLUMN cost
-- [x] Create function update_product_cost in services/services_product.py
-- [x] Create schema UpdateProductCost in schemas/service_product.py
-- [x] Create route PUT /products/cost in routes/routes_product.py
+## Models
+- [x] Update models/accounting.py: Change customer_id, supplier_id, workorder_id, purchase_id to UUID with ForeignKey
+- [x] Update related models: customer.py, supplier.py, workorder.py, purchase_order.py for back_populates
 
-## Followup Steps
-- [ ] Test inventory API to ensure no cost-related errors
+## Schemas
+- [x] Update schemas/service_accounting.py: Change customer_id, supplier_id, workorder_id, purchase_id to Optional[UUID]
+
+## Services
+- [x] Check services/services_accounting.py: No changes needed, handles UUID conversion
+
+## Routes
+- [x] Check routes/routes_accounting.py: No changes needed
+
+## Database Migration
+- [x] Update database_baru/accounting_postgres.sql to reflect UUID types and foreign keys
+- [x] Create database_baru/accounting_uuid_migration.sql for altering existing tables
+
+## Expenses Module
+- [x] Create expense journal entry function
+- [x] Add ExpenseJournalEntry schema
+- [x] Integrate with expense status update to 'dibayarkan'
+- [x] Create test for expense journal
+
+## Testing
+- [ ] Test API endpoints after changes
+- [ ] Verify database integrity
+- [ ] Run migration script if needed

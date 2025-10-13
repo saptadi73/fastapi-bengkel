@@ -5,6 +5,9 @@ from models.expenses import Expenses
 from schemas.service_expenses import CreateExpenses, UpdateExpenses
 from models.expenses import ExpenseStatus
 from supports.utils_json_response import to_dict
+from services.services_accounting import create_expense_journal_entry
+from schemas.service_accounting import ExpenseJournalEntry
+from decimal import Decimal
 
 
 def create_expenses(db: Session, data: CreateExpenses):
@@ -58,6 +61,9 @@ def update_expenses(db: Session, expenses_id: str, data: UpdateExpenses):
         if not exp:
             return {"message": "Expenses not found"}
 
+        # Check if status is being changed to 'dibayarkan'
+        status_changed_to_paid = data.status and data.status == ExpenseStatus.dibayarkan and exp.status != ExpenseStatus.dibayarkan
+
         # Update fields
         if data.name:
             exp.name = data.name
@@ -77,6 +83,35 @@ def update_expenses(db: Session, expenses_id: str, data: UpdateExpenses):
 
         db.commit()
         db.refresh(exp)
+
+        # If status changed to 'dibayarkan', create journal entry
+        if status_changed_to_paid:
+            # Map expense_type to account code (assuming some mapping, e.g., listrik -> 6001, etc.)
+            expense_account_map = {
+                "listrik": "6001",
+                "gaji": "6002",
+                "air": "6003",
+                "internet": "6004",
+                "transportasi": "6005",
+                "komunikasi": "6006",
+                "konsumsi": "6007",
+                "entertaint": "6008",
+                "umum": "6009",
+                "lain_lain": "6010"
+            }
+            expense_code = expense_account_map.get(exp.expense_type.value, "6009")  # Default to umum
+
+            journal_data = ExpenseJournalEntry(
+                date=exp.date,
+                memo=f"Pembayaran biaya {exp.name}",
+                expense_id=exp.id,
+                amount=exp.amount,
+                kas_bank_code="1100",  # Assume kas
+                expense_code=expense_code,
+                pajak=Decimal("0.00")  # No tax for now
+            )
+            create_expense_journal_entry(db, journal_data)
+
         return to_dict(exp)
     except IntegrityError:
         db.rollback()

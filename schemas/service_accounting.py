@@ -6,6 +6,9 @@ from decimal import Decimal
 from pydantic import BaseModel, Field, condecimal
 from datetime import date
 from enum import Enum
+from uuid import UUID
+
+
 
 
 class JournalType(str, Enum):
@@ -25,12 +28,12 @@ class JournalLineCreate(BaseModel):
 
 
 class JournalEntryBase(BaseModel):
-    entry_no: str
+    entry_no: Optional[str] = None
     date: date
     memo: Optional[str] = None
-    customer_id: Optional[str] = None
-    supplier_id: Optional[str] = None
-    workorder_id: Optional[str] = None
+    customer_id: Optional[UUID] = None
+    supplier_id: Optional[UUID] = None
+    workorder_id: Optional[UUID] = None
 
 
 class JournalEntryCreate(JournalEntryBase):
@@ -65,9 +68,9 @@ class JournalEntryOut(BaseModel):
 
 
 class PurchaseRecordCreate(BaseModel):
-    entry_no: str
+    entry_no: Optional[str] = None
     tanggal: date
-    supplier_id: Optional[str] = None
+    supplier_id: Optional[UUID] = None
     total_bruto: Decimal
     ppn: Decimal = Decimal("0.00")
     potongan: Decimal = Decimal("0.00")
@@ -80,9 +83,9 @@ class PurchaseRecordCreate(BaseModel):
 
 
 class SaleRecordCreate(BaseModel):
-    entry_no: str
+    entry_no: Optional[str] = None
     tanggal: date
-    customer_id: Optional[str] = None
+    customer_id: Optional[UUID] = None
     total_penjualan: Decimal
     ppn: Decimal = Decimal("0.00")
     potongan: Decimal = Decimal("0.00")
@@ -98,9 +101,9 @@ class SaleRecordCreate(BaseModel):
 
 
 class PaymentARCreate(BaseModel):
-    entry_no: str
+    entry_no: Optional[str] = None
     tanggal: date
-    customer_id: Optional[str] = None
+    customer_id: Optional[UUID] = None
     amount: Decimal
     kas_bank_code: str
     piutang_code: str = "1200"
@@ -111,9 +114,9 @@ class PaymentARCreate(BaseModel):
 
 
 class PaymentAPCreate(BaseModel):
-    entry_no: str
+    entry_no: Optional[str] = None
     tanggal: date
-    supplier_id: Optional[str] = None
+    supplier_id: Optional[UUID] = None
     amount: Decimal
     kas_bank_code: str
     hutang_code: str = "2100"
@@ -124,7 +127,7 @@ class PaymentAPCreate(BaseModel):
 
 
 class ExpenseRecordCreate(BaseModel):
-    entry_no: str
+    entry_no: Optional[str] = None
     tanggal: date
     kas_bank_code: str
     expense_code: str
@@ -133,3 +136,58 @@ class ExpenseRecordCreate(BaseModel):
     ppn_masukan_code: Optional[str] = None
     memo: Optional[str] = None
     created_by: Optional[str] = "system"
+
+
+class SalesJournalEntry(BaseModel):
+    date: date
+    memo: Optional[str]
+    customer_id: Optional[UUID] = None
+    workorder_id: Optional[UUID] = None
+    harga_product: Decimal = Decimal("0.00")
+    harga_service: Decimal = Decimal("0.00")
+    hpp_product: Optional[Decimal] = None
+    hpp_service: Optional[Decimal] = None
+    pajak: Optional[Decimal] = Decimal("0.00")
+
+
+class SalesPaymentJournalEntry(BaseModel):
+    date: date
+    memo: Optional[str]
+    customer_id: Optional[UUID] = None
+    workorder_id: Optional[UUID] = None
+    amount: Decimal
+    kas_bank_code: str
+    piutang_code: str = "1200"
+    discount: Decimal = Decimal("0.00")
+    potongan_penjualan_code: Optional[str] = None
+
+
+class PurchaseJournalEntry(BaseModel):
+    date: date
+    memo: Optional[str]
+    supplier_id: Optional[UUID] = None
+    workorder_id: Optional[UUID] = None
+    harga_product: Decimal = Decimal("0.00")
+    harga_service: Decimal = Decimal("0.00")
+    hpp_product: Optional[Decimal] = None
+    hpp_service: Optional[Decimal] = None
+    pajak: Optional[Decimal] = Decimal("0.00")
+
+
+class ExpenseJournalEntry(BaseModel):
+    date: date
+    memo: Optional[str]
+    expense_id: UUID
+    amount: Decimal
+    kas_bank_code: str
+    expense_code: str
+    pajak: Optional[Decimal] = Decimal("0.00")
+    ppn_masukan_code: Optional[str] = None
+
+
+
+
+
+
+
+

@@ -63,9 +63,15 @@ class JournalEntry(Base):
     memo: Mapped[str] = mapped_column(String(255), nullable=True)
     journal_type: Mapped[JournalType] = mapped_column(Enum(JournalType), nullable=False, default=JournalType.general)
 
-    customer_id: Mapped[str | None] = mapped_column(String, nullable=True)  # opsional: relasikan ke Customer kalau ada
-    supplier_id: Mapped[str | None] = mapped_column(String, nullable=True)  # opsional: relasikan ke Supplier kalau ada
-    workorder_id: Mapped[str | None] = mapped_column(String, nullable=True) # opsional: kaitkan ke WO/Invoice
+    customer_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("customer.id"), nullable=True)
+    supplier_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("supplier.id"), nullable=True)
+    workorder_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("workorder.id"), nullable=True)
+    purchase_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("purchase_order.id"), nullable=True)
+
+    customer = relationship("Customer", back_populates="journal_entries")
+    supplier = relationship("Supplier", back_populates="journal_entries")
+    workorder = relationship("Workorder", back_populates="journal_entries")
+    purchase_order = relationship("PurchaseOrder", back_populates="journal_entries")
 
     created_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=datetime.datetime.utcnow)
     created_by: Mapped[str | None] = mapped_column(String(64), nullable=True)

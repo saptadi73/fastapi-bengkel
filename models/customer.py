@@ -19,6 +19,7 @@ class Customer(Base):
     updated_at = Column(Date, nullable=False, server_default=text('now()'))
     vehicles = relationship('Vehicle', back_populates='customer')
     workorders = relationship('Workorder', back_populates='customer')
+    journal_entries = relationship('JournalEntry', back_populates='customer')
     
 
 class Vehicle(Base):

@@ -123,6 +123,7 @@ class Workorder(Base):
     service_ordered = relationship('ServiceOrdered', back_populates='workorder')
 
     WorkOrderActivityLog = relationship('WorkOrderActivityLog', back_populates='Workorder')
+    journal_entries = relationship('JournalEntry', back_populates='workorder')
 
 class WorkOrderActivityLog(Base):
     __tablename__ = 'workorder_activity_log'
