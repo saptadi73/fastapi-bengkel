@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel
 from uuid import UUID
 from typing import Optional
@@ -8,22 +7,33 @@ from datetime import datetime
 
 # ProductOrder schema
 class CreateProductOrder(BaseModel):
+    id: Optional[UUID] = None
     product_id: UUID
     quantity: float
     satuan_id: Optional[UUID] = None
     price: Optional[float] = None
     subtotal: float
     discount: Optional[float] = 0
+    cost: Optional[float] = None
+    productSubtotalHPP: Optional[float] = None
+    stockku: Optional[float] = None
+    product_name: Optional[str] = None
 
 
 # ServiceOrder schema
 class CreateServiceOrder(BaseModel):
+    id: Optional[UUID] = None
     service_id: UUID
     quantity: float
     satuan: Optional[str] = None
     price: Optional[float] = None
     subtotal: float
     discount: Optional[float] = 0
+    cost: Optional[float] = None
+    serviceSubtotal: Optional[float] = None
+    serviceSubtotalHPP: Optional[float] = None
+    service_name: Optional[str] = None
+    workorder_id: Optional[UUID] = None
 
 
 # WorkOrder schema
@@ -42,6 +52,8 @@ class CreateWorkOrder(BaseModel):
     product_ordered: Optional[list[CreateProductOrder]] = None
     service_ordered: Optional[list[CreateServiceOrder]] = None
 
+    model_config = {"extra": "ignore"}
+
 class CreateWorkorderOnly(BaseModel):
     tanggal_masuk: datetime
     tanggal_keluar: Optional[datetime] = None
@@ -55,13 +67,16 @@ class CreateWorkorderOnly(BaseModel):
     vehicle_id: UUID
 
 class CreateServiceOrderedOnly(BaseModel):
+    id: Optional[UUID] = None
     workorder_id: UUID
     service_id: UUID
     quantity: float
     subtotal: float
     discount: Optional[float] = 0
     performed_by: Optional[str] = 'system'
+
 class CreateProductOrderedOnly(BaseModel):
+    id: Optional[UUID] = None
     workorder_id: UUID
     product_id: UUID
     quantity: float
@@ -155,14 +170,52 @@ class addProductOrderedOnly(BaseModel):
     performed_by: Optional[str] = 'system'
 
 
-class CreateWorkActivityLog(BaseModel):
-    workorder_id: UUID
-    action: str
-    timestamp: Optional[datetime] = None
-    performed_by: str
+
 
 class UpdateWorkoderOrders(BaseModel):
     workorder_id: UUID
     products: Optional[list[UpdateProductOrderedOnly]] = None
     services: Optional[list[UpdateServiceOrderedOnly]] = None
+    performed_by: Optional[str] = 'system'
+
+class AddProductOrderById(BaseModel):
+    workorder_id: UUID
+    product_id: UUID
+    quantity: float
+    subtotal: float
+    discount: Optional[float] = 0
+    satuan_id: Optional[UUID] = None
+    price: Optional[float] = None
+    performed_by: Optional[str] = 'system'
+
+class UpdateProductOrderById(BaseModel):
+    product_id: Optional[UUID] = None
+    quantity: Optional[float] = None
+    subtotal: Optional[float] = None
+    discount: Optional[float] = None
+    satuan_id: Optional[UUID] = None
+    price: Optional[float] = None
+    performed_by: Optional[str] = 'system'
+
+class DeleteProductOrderById(BaseModel):
+    performed_by: Optional[str] = 'system'
+
+class AddServiceOrderById(BaseModel):
+    workorder_id: UUID
+    service_id: UUID
+    quantity: float
+    subtotal: float
+    discount: Optional[float] = 0
+    price: Optional[float] = None
+    performed_by: Optional[str] = 'system'
+
+class UpdateServiceOrderById(BaseModel):
+    service_id: Optional[UUID] = None
+    quantity: Optional[float] = None
+    subtotal: Optional[float] = None
+    discount: Optional[float] = None
+    price: Optional[float] = None
+    performed_by: Optional[str] = 'system'
+
+class DeleteServiceOrderById(BaseModel):
     performed_by: Optional[str] = 'system'

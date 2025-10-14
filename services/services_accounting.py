@@ -23,7 +23,9 @@ from schemas.service_accounting import (
     SalesJournalEntry,
     SalesPaymentJournalEntry,
     PurchaseJournalEntry,
-    ExpenseJournalEntry
+    PurchasePaymentJournalEntry,
+    ExpenseJournalEntry,
+    ExpensePaymentJournalEntry
 )
 
 def to_dict(obj):
@@ -783,6 +785,53 @@ def create_purchase_journal_entry(db: Session, data_entry: PurchaseJournalEntry)
     return _to_entry_out(db, entry)
 
 
+def create_purchase_payment_journal_entry(db: Session, data_entry: PurchasePaymentJournalEntry) -> JournalEntryOut:
+    """
+    Create a purchase payment journal entry (AP payment).
+    Dr Hutang Usaha                    amount
+       Cr Kas/Bank                     amount - discount
+       Cr Potongan Pembelian           discount (optional)
+    """
+    cash_out = data_entry.amount - (data_entry.discount or Decimal("0.00"))
+    lines: List[JournalLineCreate] = [
+        JournalLineCreate(
+            account_code=data_entry.hutang_code,
+            description="Pelunasan Hutang Pembelian",
+            debit=data_entry.amount,
+            credit=Decimal("0.00")
+        ),
+        JournalLineCreate(
+            account_code=data_entry.kas_bank_code,
+            description="Pembayaran Hutang Pembelian",
+            debit=Decimal("0.00"),
+            credit=cash_out
+        ),
+    ]
+    if data_entry.discount and data_entry.discount > 0:
+        if not data_entry.potongan_pembelian_code:
+            raise ValueError("potongan_pembelian_code wajib diisi bila discount > 0")
+        lines.append(JournalLineCreate(
+            account_code=data_entry.potongan_pembelian_code,
+            description="Diskon Pembayaran Hutang Pembelian",
+            debit=Decimal("0.00"),
+            credit=data_entry.discount
+        ))
+
+    payload = JournalEntryCreate(
+        entry_no=None,  # Auto-generate
+        date=data_entry.date,
+        memo=data_entry.memo,
+        journal_type=JT.AP_PAYMENT,
+        supplier_id=data_entry.supplier_id,
+        customer_id=None,
+        workorder_id=data_entry.workorder_id,
+        lines=lines
+    )
+    with db.begin():
+        entry = _create_entry(db, payload, created_by="system")
+    return _to_entry_out(db, entry)
+
+
 def create_expense_journal_entry(db: Session, data_entry: ExpenseJournalEntry) -> JournalEntryOut:
     """
     Create an expense journal entry when an expense is paid.
@@ -816,6 +865,53 @@ def create_expense_journal_entry(db: Session, data_entry: ExpenseJournalEntry) -
         debit=Decimal("0.00"),
         credit=total_credit
     ))
+
+    payload = JournalEntryCreate(
+        entry_no=None,  # Auto-generate
+        date=data_entry.date,
+        memo=data_entry.memo,
+        journal_type=JT.EXPENSE,
+        supplier_id=None,
+        customer_id=None,
+        workorder_id=None,
+        lines=lines
+    )
+    with db.begin():
+        entry = _create_entry(db, payload, created_by="system")
+    return _to_entry_out(db, entry)
+
+
+def create_expense_payment_journal_entry(db: Session, data_entry: ExpensePaymentJournalEntry) -> JournalEntryOut:
+    """
+    Create an expense payment journal entry (similar to AP payment but for expenses).
+    Dr Expense Account             amount - discount
+    Dr Potongan Biaya (optional)   discount
+       Cr Kas/Bank                 amount
+    """
+    cash_out = data_entry.amount - (data_entry.discount or Decimal("0.00"))
+    lines: List[JournalLineCreate] = [
+        JournalLineCreate(
+            account_code=data_entry.expense_code,
+            description="Pelunasan Biaya",
+            debit=cash_out,
+            credit=Decimal("0.00")
+        ),
+        JournalLineCreate(
+            account_code=data_entry.kas_bank_code,
+            description="Pembayaran Biaya",
+            debit=Decimal("0.00"),
+            credit=data_entry.amount
+        ),
+    ]
+    if data_entry.discount and data_entry.discount > 0:
+        if not data_entry.potongan_biaya_code:
+            raise ValueError("potongan_biaya_code wajib diisi bila discount > 0")
+        lines.append(JournalLineCreate(
+            account_code=data_entry.potongan_biaya_code,
+            description="Diskon Pembayaran Biaya",
+            debit=data_entry.discount,
+            credit=Decimal("0.00")
+        ))
 
     payload = JournalEntryCreate(
         entry_no=None,  # Auto-generate

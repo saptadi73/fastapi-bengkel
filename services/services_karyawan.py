@@ -3,7 +3,7 @@ from models.karyawan import Karyawan
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from sqlalchemy.orm import Session
-from models.workorder import Product, Brand, Satuan, Category, Service, Workorder, ProductOrdered, ServiceOrdered, WorkOrderActivityLog
+from models.workorder import Product, Brand, Satuan, Category, Service, Workorder, ProductOrdered, ServiceOrdered
 import uuid
 from models.database import get_db
 import decimal

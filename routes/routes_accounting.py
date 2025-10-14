@@ -4,11 +4,13 @@ from models.database import get_db
 from schemas.service_accounting import (
     JournalEntryCreate, JournalEntryOut,
     PurchaseRecordCreate, SaleRecordCreate,
-    PaymentARCreate, PaymentAPCreate, ExpenseRecordCreate
+    PaymentARCreate, PaymentAPCreate, ExpenseRecordCreate, SalesJournalEntry, SalesPaymentJournalEntry,PurchaseJournalEntry,PurchasePaymentJournalEntry,ExpenseJournalEntry, ExpensePaymentJournalEntry
 )
 from services.services_accounting import (
     record_purchase, record_sale, receive_payment_ar,
-    pay_ap, record_expense, create_account, edit_account, get_account, get_all_accounts
+    pay_ap, record_expense, create_account, edit_account, get_account, get_all_accounts,
+    create_sales_journal_entry, create_sales_payment_journal_entry, create_purchase_journal_entry,
+    create_purchase_payment_journal_entry, create_expense_journal_entry, create_expense_payment_journal_entry
 )
 
 from models.accounting import JournalEntry
@@ -58,6 +60,54 @@ def create_expense(data: ExpenseRecordCreate, db: Session = Depends(get_db)):
         return success_response(data=result, message="Jurnal pengeluaran biaya berhasil dibuat")
     except Exception as e:
         return error_response(message=f"Gagal membuat jurnal pengeluaran biaya: {str(e)}")
+
+@router.post("/sales-journal", response_model=JournalEntryOut, dependencies=[Depends(jwt_required)])
+def create_sales_journal(data: SalesJournalEntry, db: Session = Depends(get_db)):
+    try:
+        result = create_sales_journal_entry(db, data_entry=data)
+        return success_response(data=result, message="Jurnal penjualan berhasil dibuat")
+    except Exception as e:
+        return error_response(message=f"Gagal membuat jurnal penjualan: {str(e)}")
+
+@router.post("/sales-payment-journal", response_model=JournalEntryOut, dependencies=[Depends(jwt_required)])
+def create_sales_payment_journal(data: SalesPaymentJournalEntry, db: Session = Depends(get_db)):
+    try:
+        result = create_sales_payment_journal_entry(db, data_entry=data)
+        return success_response(data=result, message="Jurnal pembayaran penjualan berhasil dibuat")
+    except Exception as e:
+        return error_response(message=f"Gagal membuat jurnal pembayaran penjualan: {str(e)}")
+
+@router.post("/purchase-journal", response_model=JournalEntryOut, dependencies=[Depends(jwt_required)])
+def create_purchase_journal(data: PurchaseJournalEntry, db: Session = Depends(get_db)):
+    try:
+        result = create_purchase_journal_entry(db, data_entry=data)
+        return success_response(data=result, message="Jurnal pembelian berhasil dibuat")
+    except Exception as e:
+        return error_response(message=f"Gagal membuat jurnal pembelian: {str(e)}")
+
+@router.post("/purchase-payment-journal", response_model=JournalEntryOut, dependencies=[Depends(jwt_required)])
+def create_purchase_payment_journal(data: PurchasePaymentJournalEntry, db: Session = Depends(get_db)):
+    try:
+        result = create_purchase_payment_journal_entry(db, data_entry=data)
+        return success_response(data=result, message="Jurnal pembayaran pembelian berhasil dibuat")
+    except Exception as e:
+        return error_response(message=f"Gagal membuat jurnal pembayaran pembelian: {str(e)}")
+
+@router.post("/expense-journal", response_model=JournalEntryOut, dependencies=[Depends(jwt_required)])
+def create_expense_journal(data: ExpenseJournalEntry, db: Session = Depends(get_db)):
+    try:
+        result = create_expense_journal_entry(db, data_entry=data)
+        return success_response(data=result, message="Jurnal pengeluaran biaya berhasil dibuat")
+    except Exception as e:
+        return error_response(message=f"Gagal membuat jurnal pengeluaran biaya: {str(e)}")
+
+@router.post("/expense-payment-journal", response_model=JournalEntryOut, dependencies=[Depends(jwt_required)])
+def create_expense_payment_journal(data: ExpensePaymentJournalEntry, db: Session = Depends(get_db)):
+    try:
+        result = create_expense_payment_journal_entry(db, data_entry=data)
+        return success_response(data=result, message="Jurnal pembayaran biaya berhasil dibuat")
+    except Exception as e:
+        return error_response(message=f"Gagal membuat jurnal pembayaran biaya: {str(e)}")
 
 
 # GET list journal entries

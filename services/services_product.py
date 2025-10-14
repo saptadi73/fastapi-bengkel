@@ -5,7 +5,8 @@ from models.inventory import Inventory, ProductMovedHistory
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from sqlalchemy.orm import Session
-from models.workorder import Product, Brand, Satuan, Category, Service, Workorder, ProductOrdered, ServiceOrdered, WorkOrderActivityLog
+from sqlalchemy import func, select
+from models.workorder import Product, Brand, Satuan, Category, Service, Workorder, ProductOrdered, ServiceOrdered
 import uuid
 from models.database import get_db
 from schemas.service_product import CreateProduct, ProductResponse, BrandResponse, SatuanResponse, CategoryResponse, CreateService, ServiceResponse, CreateBrand, CreateCategory,CreateSatuan
@@ -181,7 +182,7 @@ def createProductMoveHistoryNew(db: Session, move_data: CreateProductMovedHistor
     # Setelah commit, update inventory.quantity = sum seluruh ProductMovedHistory.quantity untuk product_id terkait
     inventory = db.query(Inventory).filter(Inventory.product_id == move_data.product_id).first()
     if inventory:
-        total_quantity = db.query(db.func.sum(ProductMovedHistory.quantity)).filter(ProductMovedHistory.product_id == move_data.product_id).scalar() or 0
+        total_quantity = db.scalar(select(func.sum(ProductMovedHistory.quantity)).where(ProductMovedHistory.product_id == move_data.product_id)) or 0
         inventory.quantity = total_quantity
         inventory.updated_at = datetime.datetime.now(datetime.timezone.utc)
         db.commit()
@@ -212,7 +213,7 @@ def EditProductMovedHistory(db: Session, move_id: str, move_data: CreateProductM
         raise ValueError('Inventory untuk produk ini belum ada, tidak bisa mengedit history!')
 
     # Setelah update, set inventory.quantity = sum seluruh ProductMovedHistory.quantity untuk product_id terkait
-    total_quantity = db.query(db.func.sum(ProductMovedHistory.quantity)).filter(ProductMovedHistory.product_id == move_data.product_id).scalar() or 0
+    total_quantity = db.scalar(select(func.sum(ProductMovedHistory.quantity)).where(ProductMovedHistory.product_id == move_data.product_id)) or 0
     inventory.quantity = total_quantity
     inventory.updated_at = datetime.datetime.now(datetime.timezone.utc)
 
@@ -228,9 +229,9 @@ def deleteProductMovedHistory(db: Session, move_id: str):
     db.delete(move_record)
     db.commit()
     # Setelah delete, set inventory.quantity = sum seluruh ProductMovedHistory.quantity untuk product_id terkait
-    inventory = db.query(Inventory).filter(Inventory.product_id == product_id).first()  
+    inventory = db.query(Inventory).filter(Inventory.product_id == product_id).first()
     if inventory:
-        total_quantity = db.query(db.func.sum(ProductMovedHistory.quantity)).filter(ProductMovedHistory.product_id == product_id).scalar() or 0
+        total_quantity = db.scalar(select(func.sum(ProductMovedHistory.quantity)).where(ProductMovedHistory.product_id == product_id)) or 0
         inventory.quantity = total_quantity
         inventory.updated_at = datetime.datetime.now(datetime.timezone.utc)
         db.commit()

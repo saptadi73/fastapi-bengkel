@@ -1,11 +1,11 @@
 from schemas.service_workorder_update import UpdateWorkorderOrders, UpdateProductOrder, UpdateServiceOrder
-from schemas.service_workorder import CreateWorkOrder,CreateServiceOrder,CreateProductOrder, CreateWorkorderOnly, CreateProductOrderedOnly, CreateServiceOrderedOnly, UpdateWorkorderComplaint, CreateWorkActivityLog
+from schemas.service_workorder import CreateWorkOrder,CreateServiceOrder,CreateProductOrder, CreateWorkorderOnly, CreateProductOrderedOnly, CreateServiceOrderedOnly, UpdateWorkorderComplaint, AddProductOrderById, UpdateProductOrderById, DeleteProductOrderById, AddServiceOrderById, UpdateServiceOrderById, DeleteServiceOrderById
 from schemas.service_inventory import CreateProductMovedHistory
 from models.inventory import Inventory, ProductMovedHistory
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from sqlalchemy.orm import Session
-from models.workorder import Product, Brand, Satuan, Category, Service, Workorder, ProductOrdered, ServiceOrdered, WorkOrderActivityLog
+from models.workorder import Product, Brand, Satuan, Category, Service, Workorder, ProductOrdered, ServiceOrdered
 import uuid
 from models.database import get_db
 from schemas.service_product import CreateProduct, ProductResponse, BrandResponse, SatuanResponse, CategoryResponse, CreateService, ServiceResponse
@@ -226,15 +226,7 @@ def updateStatusWorkorder(db: Session, workorder_id: str, new_status: str, perfo
     wo.status = new_status
     db.add(wo)
 
-    # Log perubahan status (selalu dicatat)
-    # log_entry = WorkOrderActivityLog(
-    #     id=uuid.uuid4(),
-    #     workorder_id=wo.id,
-    #     activity=f"Status changed from {old_status} to {new_status}",
-    #     performed_by=performed_by,
-    #     timestamp=datetime.datetime.now()
-    # )
-    # db.add(log_entry)
+    
 
     # === Jika status menjadi COMPLETE, pindahkan stok sesuai ProductOrdered ===
     if (old_status or "").lower() != "selesai" and (new_status or "").lower() == "selesai":
@@ -255,14 +247,7 @@ def updateStatusWorkorder(db: Session, workorder_id: str, new_status: str, perfo
                 # - update Inventory.quantity sesuai akumulasi history
                 createProductMoveHistoryNew(db, move_data)
 
-            # Tambah log aktivitas khusus perpindahan stok
-            db.add(WorkOrderActivityLog(
-                id=uuid.uuid4(),
-                workorder_id=wo.id,
-                activity=f"Stock deducted for all ProductOrdered due to WO COMPLETE (WO:{wo.id})",
-                performed_by=performed_by,
-                timestamp=datetime.datetime.now()
-            ))
+           
         # else: sudah pernah dipindah—diamkan agar tidak minus dobel
 
     db.commit()
@@ -301,15 +286,7 @@ def UpdateDateWorkordernya(db: Session, workorder_id: str, new_tanggal_keluar: d
     wo.tanggal_keluar = new_tanggal_keluar
     db.add(wo)
 
-    # Log perubahan tanggal_keluar
-    log_entry = WorkOrderActivityLog(
-        id=uuid.uuid4(),
-        workorder_id=wo.id,
-        activity=f"Tanggal keluar changed from {old_tanggal_keluar} to {new_tanggal_keluar}",
-        performed_by=performed_by,
-        timestamp=datetime.datetime.now()
-    )
-    db.add(log_entry)
+    
 
     db.commit()
     db.refresh(wo)
@@ -349,14 +326,7 @@ def updateWorkOrdeKeluhannya(db: Session, workorder_id: str, data: UpdateWorkord
     db.add(wo)
 
     # Log perubahan keluhan
-    log_entry = WorkOrderActivityLog(
-        id=uuid.uuid4(),
-        workorder_id=wo.id,
-        activity=f"Keluhan changed from {old_keluhan} to {wo.keluhan}",
-        performed_by=data['performed_by'],
-        timestamp=datetime.datetime.now()
-    )
-    db.add(log_entry)
+    
 
     db.commit()
     db.refresh(wo)
@@ -391,100 +361,102 @@ def UpdateWorkorderOrdersnya(db: Session, workorder_id: str, update_data: Create
     if not wo:
         return None
 
-    # Update or Add ProductOrdered
-    if update_data.product_ordered:
+    # Sinkronisasi ProductOrdered
+    if update_data.product_ordered is not None:
+        # Collect set of ids dari list baru yang memiliki id
+        new_po_ids = set()
         for prod in update_data.product_ordered:
-            po = db.query(ProductOrdered).filter(ProductOrdered.id == prod.id, ProductOrdered.workorder_id == workorder_id).first()
-            if po:
-                old_price = po.price
-                old_quantity = po.quantity
-                old_subtotal = po.subtotal
-                old_discount = po.discount
+            if prod.id:
+                new_po_ids.add(prod.id)
 
-                po.price = prod.price
-                po.quantity = prod.quantity
-                po.subtotal = prod.subtotal
-                po.discount = prod.discount
-                db.add(po)
-
-                # Log perubahan pada ProductOrdered
-                log_entry = WorkOrderActivityLog(
-                    id=uuid.uuid4(),
-                    workorder_id=wo.id,
-                    activity=f"ProductOrdered {po.id} updated: quantity {old_quantity} -> {prod.quantity}, subtotal {old_subtotal} -> {prod.subtotal}, discount {old_discount} -> {prod.discount}, price {old_price} -> {prod.price}",
-                    performed_by=performed_by,
-                    timestamp=datetime.datetime.now()
-                )
-                db.add(log_entry)
+        # Update atau Add berdasarkan id jika ada, atau product_id
+        for prod in update_data.product_ordered:
+            if prod.id:
+                # Update berdasarkan id
+                po = db.query(ProductOrdered).filter(ProductOrdered.id == prod.id, ProductOrdered.workorder_id == workorder_id).first()
+                if po:
+                    po.product_id = prod.product_id
+                    po.quantity = prod.quantity
+                    po.price = prod.price
+                    po.subtotal = prod.subtotal
+                    po.discount = prod.discount
+                    po.satuan_id = getattr(prod, 'satuan_id', None)
+                    db.add(po)
             else:
-                # Tambah baru jika belum ada
-                new_po = ProductOrdered(
-                    id=uuid.uuid4(),
-                    workorder_id=workorder_id,
-                    product_id=prod.product_id,
-                    quantity=prod.quantity,
-                    subtotal=prod.subtotal,
-                    discount=prod.discount,
-                    price=prod.price,
-                    satuan_id=getattr(prod, 'satuan_id', None)
-                )
-                db.add(new_po)
-                # Log penambahan baru
-                log_entry = WorkOrderActivityLog(
-                    id=uuid.uuid4(),
-                    workorder_id=wo.id,
-                    activity=f"ProductOrdered {new_po.id} created: quantity {prod.quantity}, subtotal {prod.subtotal}, discount {prod.discount}, price {prod.price}",
-                    performed_by=performed_by,
-                    timestamp=datetime.datetime.now()
-                )
-                db.add(log_entry)
+                # Cari berdasarkan product_id, jika ada update, jika tidak add
+                po = db.query(ProductOrdered).filter(ProductOrdered.workorder_id == workorder_id, ProductOrdered.product_id == prod.product_id).first()
+                if po:
+                    po.quantity = prod.quantity
+                    po.price = prod.price
+                    po.subtotal = prod.subtotal
+                    po.discount = prod.discount
+                    po.satuan_id = getattr(prod, 'satuan_id', None)
+                    db.add(po)
+                else:
+                    new_po = ProductOrdered(
+                        id=uuid.uuid4(),
+                        workorder_id=workorder_id,
+                        product_id=prod.product_id,
+                        quantity=prod.quantity,
+                        price=prod.price,
+                        subtotal=prod.subtotal,
+                        discount=prod.discount,
+                        satuan_id=getattr(prod, 'satuan_id', None)
+                    )
+                    db.add(new_po)
 
-    # Update or Add ServiceOrdered
-    if update_data.service_ordered:
+        # Delete ProductOrdered yang id-nya tidak ada di new_po_ids
+        for po in list(wo.product_ordered):
+            if po.id not in new_po_ids:
+                db.delete(po)
+
+    # Sinkronisasi ServiceOrdered
+    if update_data.service_ordered is not None:
+        # Collect set of ids dari list baru yang memiliki id
+        new_so_ids = set()
         for srv in update_data.service_ordered:
-            so = db.query(ServiceOrdered).filter(ServiceOrdered.id == srv.id, ServiceOrdered.workorder_id == workorder_id).first()
-            if so:
-                old_quantity = so.quantity
-                old_subtotal = so.subtotal
-                old_discount = so.discount
+            if srv.id:
+                new_so_ids.add(srv.id)
 
-                so.quantity = srv.quantity
-                so.subtotal = srv.subtotal
-                so.discount = srv.discount
-                if hasattr(so, 'price'):
+        # Update atau Add berdasarkan id jika ada, atau service_id
+        for srv in update_data.service_ordered:
+            if srv.id:
+                # Update berdasarkan id
+                so = db.query(ServiceOrdered).filter(ServiceOrdered.id == srv.id, ServiceOrdered.workorder_id == workorder_id).first()
+                if so:
+                    so.service_id = srv.service_id
+                    so.quantity = srv.quantity
                     so.price = srv.price
-                db.add(so)
-
-                # Log perubahan pada ServiceOrdered
-                log_entry = WorkOrderActivityLog(
-                    id=uuid.uuid4(),
-                    workorder_id=wo.id,
-                    activity=f"ServiceOrdered {so.id} updated: quantity {old_quantity} -> {srv.quantity}, subtotal {old_subtotal} -> {srv.subtotal}, discount {old_discount} -> {srv.discount}, price {getattr(so, 'price', None)} -> {getattr(srv, 'price', None)}",
-                    performed_by=performed_by,
-                    timestamp=datetime.datetime.now()
-                )
-                db.add(log_entry)
+                    so.subtotal = srv.subtotal
+                    so.discount = srv.discount
+                    db.add(so)
             else:
-                # Tambah baru jika belum ada
-                new_so = ServiceOrdered(
-                    id=uuid.uuid4(),
-                    workorder_id=workorder_id,
-                    service_id=srv.service_id,
-                    quantity=srv.quantity,
-                    subtotal=srv.subtotal,
-                    discount=srv.discount,
-                    price=getattr(srv, 'price', 0)
-                )
-                db.add(new_so)
-                # Log penambahan baru
-                log_entry = WorkOrderActivityLog(
-                    id=uuid.uuid4(),
-                    workorder_id=wo.id,
-                    activity=f"ServiceOrdered {new_so.id} created: quantity {srv.quantity}, subtotal {srv.subtotal}, discount {srv.discount}, price {getattr(srv, 'price', 0)}",
-                    performed_by=performed_by,
-                    timestamp=datetime.datetime.now()
-                )
-                db.add(log_entry)
+                # Cari berdasarkan service_id, jika ada update, jika tidak add
+                so = db.query(ServiceOrdered).filter(ServiceOrdered.workorder_id == workorder_id, ServiceOrdered.service_id == srv.service_id).first()
+                if so:
+                    so.quantity = srv.quantity
+                    so.price = srv.price
+                    so.subtotal = srv.subtotal
+                    so.discount = srv.discount
+                    so.satuan = getattr(srv, 'satuan', None)
+                    db.add(so)
+                else:
+                    new_so = ServiceOrdered(
+                        id=uuid.uuid4(),
+                        workorder_id=workorder_id,
+                        service_id=srv.service_id,
+                        quantity=srv.quantity,
+                        price=srv.price,
+                        subtotal=srv.subtotal,
+                        discount=srv.discount,
+                        satuan=getattr(srv, 'satuan', None)
+                    )
+                    db.add(new_so)
+
+        # Delete ServiceOrdered yang id-nya tidak ada di new_so_ids
+        for so in list(wo.service_ordered):
+            if so.id not in new_so_ids:
+                db.delete(so)
 
     db.commit()
     db.refresh(wo)
@@ -492,7 +464,6 @@ def UpdateWorkorderOrdersnya(db: Session, workorder_id: str, update_data: Create
     wo_dict = to_dict(wo)
     wo_dict['customer_name'] = wo.customer.nama if wo.customer else None
     wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None
-    return wo_dict
 
 def updateServiceorderedOnlynya(db: Session, service_ordered_data: CreateServiceOrderedOnly):
     so = db.query(ServiceOrdered).filter(ServiceOrdered.workorder_id == service_ordered_data.workorder_id, ServiceOrdered.service_id == service_ordered_data.service_id).first()
@@ -545,65 +516,7 @@ def updateProductOrderedOnlynya(db: Session, product_ordered_data: CreateProduct
     wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None
     return wo_dict
 
-def createNewWorkorderActivityLog(db: Session, log_data: CreateWorkActivityLog):
-    wo = db.query(Workorder).filter(Workorder.id == log_data.workorder_id).first()
-    if not wo:
-        return None
 
-    new_log = WorkOrderActivityLog(
-        id=uuid.uuid4(),
-        workorder_id=log_data.workorder_id,
-        activity=log_data.activity,
-        performed_by=log_data.performed_by,
-        timestamp=datetime.datetime.now()
-    )
-    db.add(new_log)
-    db.commit()
-    db.refresh(new_log)
-
-    wo_dict = to_dict(wo)
-    wo_dict['customer_name'] = wo.customer.nama if wo.customer else None
-    wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None
-    return wo_dict
-def getWorkorderActivityLogs(db: Session, workorder_id: str):
-    logs = db.query(WorkOrderActivityLog).filter(WorkOrderActivityLog.workorder_id == workorder_id).order_by(WorkOrderActivityLog.timestamp.desc()).all()
-    result = []
-    for log in logs:
-        log_dict = to_dict(log)
-        result.append(log_dict)
-    return result
-
-def get_workorder_activitylog_by_customer(db: Session, customer_id: str):
-    # Ambil semua workorder milik customer
-    workorders = db.query(Workorder).filter(Workorder.customer_id == customer_id).all()
-    activity_logs = []
-    for wo in workorders:
-        logs = db.query(WorkOrderActivityLog).filter(WorkOrderActivityLog.workorder_id == wo.id).all()
-        for log in logs:
-            log_dict = to_dict(log)
-            log_dict['workorder_no_wo'] = wo.no_wo
-            activity_logs.append(log_dict)
-    return activity_logs
-
-def updateWorkorderActivityLognya(db: Session, log_id: str, data: CreateWorkActivityLog):
-    log = db.query(WorkOrderActivityLog).filter(WorkOrderActivityLog.id == log_id).first()
-    if not log:
-        return None
-
-    old_activity = log.activity
-    log.activity = data.activity
-    log.performed_by = data.performed_by
-    log.timestamp = data.timestamp
-    db.add(log)
-    db.commit()
-    db.refresh(log)
-
-    wo = db.query(Workorder).filter(Workorder.id == log.workorder_id).first()
-    if not wo:
-        return None
-
-    wo_dict = to_dict(wo)
-    return wo_dict
 
 def update_only_workorder(db: Session, workorder_id: str, data: CreateWorkorderOnly):
     wo = db.query(Workorder).filter(Workorder.id == workorder_id).first()
@@ -683,10 +596,8 @@ def deleteWorkorder(db: Session, workorder_id: str):
     for so in wo.service_ordered:
         db.delete(so)
 
-    # Hapus semua WorkOrderActivityLog terkait
-    for log in wo.activity_logs:
-        db.delete(log)
-
+    
+    
     db.delete(wo)
     db.commit()
     return True
@@ -709,67 +620,161 @@ def update_workorder_lengkap(db: Session, workorder_id: str, data: CreateWorkOrd
     wo.vehicle_id = data.vehicle_id
     wo.pajak = data.pajak
     db.add(wo)
-
-    # --- Sinkronisasi ProductOrdered ---
-    # Hapus yang tidak ada di data baru
-    new_po_ids = set([str(po.product_id) for po in (data.product_ordered or [])])
-    for po in list(wo.product_ordered):
-        if str(po.product_id) not in new_po_ids:
-            db.delete(po)
-
-    # Tambah/update yang ada di data baru
-    for prod in (data.product_ordered or []):
-        po = db.query(ProductOrdered).filter(ProductOrdered.workorder_id == workorder_id, ProductOrdered.product_id == prod.product_id).first()
-        if po:
-            po.quantity = prod.quantity
-            po.satuan_id = getattr(prod, 'satuan_id', None)
-            po.price = prod.price
-            po.subtotal = prod.subtotal
-            po.discount = prod.discount
-            db.add(po)
-        else:
-            new_po = ProductOrdered(
-                id=uuid.uuid4(),
-                workorder_id=workorder_id,
-                product_id=prod.product_id,
-                quantity=prod.quantity,
-                satuan_id=getattr(prod, 'satuan_id', None),
-                price=prod.price,
-                subtotal=prod.subtotal,
-                discount=prod.discount
-            )
-            db.add(new_po)
-
-    # --- Sinkronisasi ServiceOrdered ---
-    new_so_ids = set([str(so.service_id) for so in (data.service_ordered or [])])
-    for so in list(wo.service_ordered):
-        if str(so.service_id) not in new_so_ids:
-            db.delete(so)
-
-    for srv in (data.service_ordered or []):
-        so = db.query(ServiceOrdered).filter(ServiceOrdered.workorder_id == workorder_id, ServiceOrdered.service_id == srv.service_id).first()
-        if so:
-            so.quantity = srv.quantity
-            so.satuan = getattr(srv, 'satuan', None)
-            so.price = srv.price
-            so.subtotal = srv.subtotal
-            so.discount = srv.discount
-            db.add(so)
-        else:
-            new_so = ServiceOrdered(
-                id=uuid.uuid4(),
-                workorder_id=workorder_id,
-                service_id=srv.service_id,
-                quantity=srv.quantity,
-                satuan=getattr(srv, 'satuan', None),
-                price=srv.price,
-                subtotal=srv.subtotal,
-                discount=srv.discount
-            )
-            db.add(new_so)
-
     db.commit()
     db.refresh(wo)
+    wo_dict = to_dict(wo)
+    wo_dict['customer_name'] = wo.customer.nama if wo.customer else None
+    wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None
+    return wo_dict
+
+def addProductOrder(db: Session, data: AddProductOrderById):
+    # Create new ProductOrdered
+    new_po = ProductOrdered(
+        id=uuid.uuid4(),
+        workorder_id=data.workorder_id,
+        product_id=data.product_id,
+        quantity=data.quantity,
+        subtotal=data.subtotal,
+        discount=data.discount,
+        satuan_id=data.satuan_id,
+        price=data.price
+    )
+    db.add(new_po)
+    db.commit()
+    db.refresh(new_po)
+
+    # Return updated workorder
+    wo = db.query(Workorder).filter(Workorder.id == data.workorder_id).first()
+    if not wo:
+        return None
+
+    wo_dict = to_dict(wo)
+    wo_dict['customer_name'] = wo.customer.nama if wo.customer else None
+    wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None
+    return wo_dict
+
+def updateProductOrder(db: Session, product_ordered_id: str, data: UpdateProductOrderById):
+    po = db.query(ProductOrdered).filter(ProductOrdered.id == product_ordered_id).first()
+    if not po:
+        return None
+
+    # Update only provided fields
+    if data.product_id is not None:
+        po.product_id = data.product_id
+    if data.quantity is not None:
+        po.quantity = data.quantity
+    if data.subtotal is not None:
+        po.subtotal = data.subtotal
+    if data.discount is not None:
+        po.discount = data.discount
+    if data.satuan_id is not None:
+        po.satuan_id = data.satuan_id
+    if data.price is not None:
+        po.price = data.price
+
+    db.add(po)
+    db.commit()
+    db.refresh(po)
+
+    # Return updated workorder
+    wo = db.query(Workorder).filter(Workorder.id == po.workorder_id).first()
+    if not wo:
+        return None
+
+    wo_dict = to_dict(wo)
+    wo_dict['customer_name'] = wo.customer.nama if wo.customer else None
+    wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None
+    return wo_dict
+
+def deleteProductOrder(db: Session, product_ordered_id: str):
+    po = db.query(ProductOrdered).filter(ProductOrdered.id == product_ordered_id).first()
+    if not po:
+        return None
+
+    workorder_id = po.workorder_id
+    db.delete(po)
+    db.commit()
+
+    # Return updated workorder
+    wo = db.query(Workorder).filter(Workorder.id == workorder_id).first()
+    if not wo:
+        return None
+
+    wo_dict = to_dict(wo)
+    wo_dict['customer_name'] = wo.customer.nama if wo.customer else None
+    wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None
+    return wo_dict
+
+def addServiceOrder(db: Session, data: AddServiceOrderById):
+    # Create new ServiceOrdered
+    new_so = ServiceOrdered(
+        id=uuid.uuid4(),
+        workorder_id=data.workorder_id,
+        service_id=data.service_id,
+        quantity=data.quantity,
+        subtotal=data.subtotal,
+        discount=data.discount,
+        price=data.price
+    )
+    db.add(new_so)
+    db.commit()
+    db.refresh(new_so)
+
+    # Return updated workorder
+    wo = db.query(Workorder).filter(Workorder.id == data.workorder_id).first()
+    if not wo:
+        return None
+
+    wo_dict = to_dict(wo)
+    wo_dict['customer_name'] = wo.customer.nama if wo.customer else None
+    wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None
+    return wo_dict
+
+def updateServiceOrder(db: Session, service_ordered_id: str, data: UpdateServiceOrderById):
+    so = db.query(ServiceOrdered).filter(ServiceOrdered.id == service_ordered_id).first()
+    if not so:
+        return None
+
+    # Update only provided fields
+    if data.service_id is not None:
+        so.service_id = data.service_id
+    if data.quantity is not None:
+        so.quantity = data.quantity
+    if data.subtotal is not None:
+        so.subtotal = data.subtotal
+    if data.discount is not None:
+        so.discount = data.discount
+    if data.price is not None:
+        so.price = data.price
+
+    db.add(so)
+    db.commit()
+    db.refresh(so)
+
+    # Return updated workorder
+    wo = db.query(Workorder).filter(Workorder.id == so.workorder_id).first()
+    if not wo:
+        return None
+
+    wo_dict = to_dict(wo)
+    wo_dict['customer_name'] = wo.customer.nama if wo.customer else None
+    wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None
+    return wo_dict
+
+def deleteServiceOrder(db: Session, service_ordered_id: str):
+    so = db.query(ServiceOrdered).filter(ServiceOrdered.id == service_ordered_id).first()
+    if not so:
+        return None
+
+    workorder_id = so.workorder_id
+    db.delete(so)
+    db.commit()
+
+    # Return updated workorder
+    wo = db.query(Workorder).filter(Workorder.id == workorder_id).first()
+    if not wo:
+        return None
+
     wo_dict = to_dict(wo)
     wo_dict['customer_name'] = wo.customer.nama if wo.customer else None
     wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None

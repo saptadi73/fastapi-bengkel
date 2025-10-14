@@ -122,19 +122,7 @@ class Workorder(Base):
     product_ordered = relationship('ProductOrdered', back_populates='workorder')
     service_ordered = relationship('ServiceOrdered', back_populates='workorder')
 
-    WorkOrderActivityLog = relationship('WorkOrderActivityLog', back_populates='Workorder')
     journal_entries = relationship('JournalEntry', back_populates='workorder')
-
-class WorkOrderActivityLog(Base):
-    __tablename__ = 'workorder_activity_log'
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, index=True)
-    
-    workorder_id = Column(UUID(as_uuid=True), ForeignKey('workorder.id'))
-    Workorder = relationship('Workorder', back_populates='WorkOrderActivityLog')
-
-    action = Column(String, nullable=False)
-    timestamp = Column(DateTime, nullable=False)
-    performed_by = Column(String, nullable=False)
 
 # Agar relationship('Inventory', ...) dapat ditemukan oleh SQLAlchemy
 

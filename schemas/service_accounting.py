@@ -174,6 +174,18 @@ class PurchaseJournalEntry(BaseModel):
     pajak: Optional[Decimal] = Decimal("0.00")
 
 
+class PurchasePaymentJournalEntry(BaseModel):
+    date: date
+    memo: Optional[str]
+    supplier_id: Optional[UUID] = None
+    workorder_id: Optional[UUID] = None
+    amount: Decimal
+    kas_bank_code: str
+    hutang_code: str = "2100"
+    discount: Decimal = Decimal("0.00")
+    potongan_pembelian_code: Optional[str] = None
+
+
 class ExpenseJournalEntry(BaseModel):
     date: date
     memo: Optional[str]
@@ -183,6 +195,17 @@ class ExpenseJournalEntry(BaseModel):
     expense_code: str
     pajak: Optional[Decimal] = Decimal("0.00")
     ppn_masukan_code: Optional[str] = None
+
+
+class ExpensePaymentJournalEntry(BaseModel):
+    date: date
+    memo: Optional[str]
+    expense_id: Optional[UUID] = None
+    amount: Decimal
+    kas_bank_code: str
+    expense_code: str = "6000"
+    discount: Decimal = Decimal("0.00")
+    potongan_biaya_code: Optional[str] = None
 
 
 

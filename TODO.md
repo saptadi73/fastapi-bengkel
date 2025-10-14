@@ -1,29 +1,29 @@
-# TODO List for Accounting UUID Changes
+# TODO: Implement Full CRUD for ProductOrdered and ServiceOrdered by ID
 
-## Models
-- [x] Update models/accounting.py: Change customer_id, supplier_id, workorder_id, purchase_id to UUID with ForeignKey
-- [x] Update related models: customer.py, supplier.py, workorder.py, purchase_order.py for back_populates
+## 1. Update Schemas (schemas/service_workorder.py)
+- [x] Add AddProductOrderById schema for POST /add/productorder
+- [x] Add UpdateProductOrderById schema for PUT /update/productorder/{id}
+- [x] Add DeleteProductOrderById schema for DELETE /delete/productorder/{id}
+- [x] Add AddServiceOrderById schema for POST /add/serviceorder
+- [x] Add UpdateServiceOrderById schema for PUT /update/serviceorder/{id}
+- [x] Add DeleteServiceOrderById schema for DELETE /delete/serviceorder/{id}
 
-## Schemas
-- [x] Update schemas/service_accounting.py: Change customer_id, supplier_id, workorder_id, purchase_id to Optional[UUID]
+## 2. Update Services (services/services_workorder.py)
+- [x] Add addProductOrder function to create new ProductOrdered
+- [x] Add updateProductOrder function to update by product_ordered_id
+- [x] Add deleteProductOrder function to delete by product_ordered_id
+- [x] Add addServiceOrder function to create new ServiceOrdered
+- [x] Add updateServiceOrder function to update by service_ordered_id
+- [x] Add deleteServiceOrder function to delete by service_ordered_id
 
-## Services
-- [x] Check services/services_accounting.py: No changes needed, handles UUID conversion
+## 3. Update Routes (routes/routes_workorder.py)
+- [x] Add POST /add/productorder route
+- [x] Add PUT /update/productorder/{product_ordered_id} route
+- [x] Add DELETE /delete/productorder/{product_ordered_id} route
+- [x] Add POST /add/serviceorder route
+- [x] Add PUT /update/serviceorder/{service_ordered_id} route
+- [x] Add DELETE /delete/serviceorder/{service_ordered_id} route
 
-## Routes
-- [x] Check routes/routes_accounting.py: No changes needed
-
-## Database Migration
-- [x] Update database_baru/accounting_postgres.sql to reflect UUID types and foreign keys
-- [x] Create database_baru/accounting_uuid_migration.sql for altering existing tables
-
-## Expenses Module
-- [x] Create expense journal entry function
-- [x] Add ExpenseJournalEntry schema
-- [x] Integrate with expense status update to 'dibayarkan'
-- [x] Create test for expense journal
-
-## Testing
-- [ ] Test API endpoints after changes
-- [ ] Verify database integrity
-- [ ] Run migration script if needed
+## 4. Testing
+- [x] Test the new endpoints to ensure CRUD operations work correctly
+- [x] Verify database commits, refreshes, and proper error handling
