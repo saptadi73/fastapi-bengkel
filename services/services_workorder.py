@@ -1,6 +1,8 @@
 from schemas.service_workorder_update import UpdateWorkorderOrders, UpdateProductOrder, UpdateServiceOrder
 from schemas.service_workorder import CreateWorkOrder,CreateServiceOrder,CreateProductOrder, CreateWorkorderOnly, CreateProductOrderedOnly, CreateServiceOrderedOnly, UpdateWorkorderComplaint, AddProductOrderById, UpdateProductOrderById, DeleteProductOrderById, AddServiceOrderById, UpdateServiceOrderById, DeleteServiceOrderById
 from schemas.service_inventory import CreateProductMovedHistory
+from services.services_accounting import create_sales_journal_entry
+from schemas.service_accounting import SalesJournalEntry
 from models.inventory import Inventory, ProductMovedHistory
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
@@ -56,6 +58,7 @@ def createNewWorkorder(db: Session, workorder_data: CreateWorkOrder):
         tanggal_keluar=workorder_data.tanggal_keluar,
         keluhan=workorder_data.keluhan,
         saran=workorder_data.saran,
+        keterangan=workorder_data.keterangan if hasattr(workorder_data, 'keterangan') else None,
         status=workorder_data.status,
         total_discount=workorder_data.total_discount,
         total_biaya=workorder_data.total_biaya,
@@ -527,6 +530,7 @@ def update_only_workorder(db: Session, workorder_id: str, data: CreateWorkorderO
     wo.tanggal_keluar = data.tanggal_keluar
     wo.keluhan = data.keluhan
     wo.saran = data.saran
+    wo.keterangan = data.keterangan if hasattr(data, 'keterangan') else None
     wo.status = data.status
     wo.total_discount = data.total_discount
     wo.total_biaya = data.total_biaya
@@ -607,6 +611,8 @@ def update_workorder_lengkap(db: Session, workorder_id: str, data: CreateWorkOrd
     if not wo:
         return None
 
+    old_status = wo.status
+
     # Update field utama
     wo.tanggal_masuk = data.tanggal_masuk
     wo.tanggal_keluar = data.tanggal_keluar
@@ -625,6 +631,43 @@ def update_workorder_lengkap(db: Session, workorder_id: str, data: CreateWorkOrd
     wo_dict = to_dict(wo)
     wo_dict['customer_name'] = wo.customer.nama if wo.customer else None
     wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None
+
+    print(f"Debug: old_status = {old_status}, data.status = {data.status}")
+    if old_status != 'selesai' and data.status == 'selesai':
+        print("Debug: Condition met, creating sales journal and moving stock")
+        harga_product = sum(po.subtotal for po in wo.product_ordered) if wo.product_ordered else decimal.Decimal("0.00")
+        harga_service = sum(so.subtotal for so in wo.service_ordered) if wo.service_ordered else decimal.Decimal("0.00")
+        sales_entry = SalesJournalEntry(
+            date=wo.tanggal_keluar.date() if wo.tanggal_keluar else datetime.date.today(),
+            memo=f"Penjualan dari Workorder {wo.no_wo}",
+            customer_id=data.customer_id,
+            workorder_id=wo.id,
+            harga_product=data.totalProductHarga,
+            harga_service=data.totalServiceHarga,
+            hpp_product=data.totalProductCost,
+            hpp_service=data.totalServiceCost,
+            pajak=data.pajak
+        )
+        print(f"Debug: sales masuk gak {sales_entry}")
+        total_create_sales = create_sales_journal_entry(db, sales_entry)
+
+        print(f"hasil : {total_create_sales}")
+
+        # Move stock for products if not already moved
+        if not _wo_stock_already_moved(db, str(wo.id)):
+            for po in wo.product_ordered:
+                move_data = CreateProductMovedHistory(
+                    product_id=po.product_id,
+                    type='outcome',
+                    quantity=po.quantity,
+                    performed_by='system',
+                    notes=f"WO:{wo.id} ({wo.no_wo}) complete → deduct for ProductOrdered:{po.id}",
+                    timestamp=datetime.datetime.now(datetime.timezone.utc)
+                )
+                createProductMoveHistoryNew(db, move_data)
+    else:
+        print("Debug: Condition not met, skipping sales journal and stock move")
+
     return wo_dict
 
 def addProductOrder(db: Session, data: AddProductOrderById):

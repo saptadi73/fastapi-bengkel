@@ -40,7 +40,7 @@ class CreateServiceOrder(BaseModel):
 class CreateWorkOrder(BaseModel):
     tanggal_masuk: datetime
     tanggal_keluar: Optional[datetime] = None
-    keluhan: Optional[str] = None
+    keluhan: str
     saran: Optional[str] = None
     status: str
     total_discount: Optional[float] = 0
@@ -49,6 +49,10 @@ class CreateWorkOrder(BaseModel):
     customer_id: UUID
     vehicle_id: UUID
     karyawan_id: Optional[UUID] = None
+    totalProductHarga: Optional[float]=0
+    totalServiceHarga:Optional[float]=0
+    totalServiceCost: Optional[float]=0
+    totalProductCost: Optional[float]=0
     product_ordered: Optional[list[CreateProductOrder]] = None
     service_ordered: Optional[list[CreateServiceOrder]] = None
 
@@ -57,7 +61,7 @@ class CreateWorkOrder(BaseModel):
 class CreateWorkorderOnly(BaseModel):
     tanggal_masuk: datetime
     tanggal_keluar: Optional[datetime] = None
-    keluhan: Optional[str] = None
+    keluhan: str
     saran: Optional[str] = None
     status: str
     pajak: Optional[float] = 0

@@ -176,16 +176,16 @@ def createProductMoveHistoryNew(db: Session, move_data: CreateProductMovedHistor
         timestamp=now_utc
     )
     db.add(new_move)
-    db.commit()
+    db.flush()
     db.refresh(new_move)
 
-    # Setelah commit, update inventory.quantity = sum seluruh ProductMovedHistory.quantity untuk product_id terkait
+    # Setelah flush, update inventory.quantity = sum seluruh ProductMovedHistory.quantity untuk product_id terkait
     inventory = db.query(Inventory).filter(Inventory.product_id == move_data.product_id).first()
     if inventory:
         total_quantity = db.scalar(select(func.sum(ProductMovedHistory.quantity)).where(ProductMovedHistory.product_id == move_data.product_id)) or 0
         inventory.quantity = total_quantity
         inventory.updated_at = datetime.datetime.now(datetime.timezone.utc)
-        db.commit()
+        db.flush()
         db.refresh(inventory)
 
     return to_dict(new_move)

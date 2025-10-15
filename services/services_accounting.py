@@ -47,21 +47,6 @@ def to_dict(obj):
         result[c.name] = value
     return result
 
-def create_account(db: Session, account_data: CreateAccount):
-    # Create a new account
-    new_account = Account(
-        id=uuid.uuid4(),
-        code=account_data.code,
-        name=account_data.name,
-        normal_balance=account_data.normal_balance,
-        is_active=account_data.is_active
-    )
-    db.add(new_account)
-    db.commit()
-    db.refresh(new_account)
-
-    return to_dict(new_account)
-
 # ---------- Helpers ----------
 def _get_account_by_code(db: Session, code: str) -> Account:
     """
@@ -157,19 +142,21 @@ def _create_entry(db: Session, payload: JournalEntryCreate, created_by: Optional
         )
         db.add(jl)
 
+    db.flush()  # Ensure lines are flushed to the database
+    db.commit()  # Commit the transaction
     return entry
 
 
-def _to_entry_out(db: Session, entry: JournalEntry) -> JournalEntryOut:
+def _to_entry_out(db: Session, entry: JournalEntry) -> dict:
     """
-    Convert a JournalEntry object to JournalEntryOut schema.
+    Convert a JournalEntry object to a dictionary for JSON serialization.
 
     Args:
         db: Database session (for loading relationships if needed).
         entry: JournalEntry object to convert.
 
     Returns:
-        JournalEntryOut: The output schema object.
+        dict: The output dictionary.
     """
     # Ensure accounts are loaded
     lines_out = []
@@ -178,17 +165,17 @@ def _to_entry_out(db: Session, entry: JournalEntry) -> JournalEntryOut:
             "account_code": ln.account.code,
             "account_name": ln.account.name,
             "description": ln.description,
-            "debit": ln.debit,
-            "credit": ln.credit,
+            "debit": float(ln.debit),
+            "credit": float(ln.credit),
         })
-    return JournalEntryOut(
-        id=str(entry.id),
-        entry_no=entry.entry_no,
-        date=entry.date,
-        memo=entry.memo,
-        journal_type=JT(entry.journal_type.value),
-        lines=lines_out
-    )
+    return {
+        "id": str(entry.id),
+        "entry_no": entry.entry_no,
+        "date": entry.date.isoformat() if entry.date else None,
+        "memo": entry.memo,
+        "journal_type": entry.journal_type.value,
+        "lines": lines_out
+    }
 
 
 # ---------- API Tipe Jurnal Siap Pakai ----------
@@ -197,7 +184,7 @@ def record_purchase(
     db: Session,
     *,
     purchase_data: PurchaseRecordCreate
-) -> JournalEntryOut:
+) -> dict:
     """
     Jurnal pembelian (perpetual):
     Dr Persediaan (atau Beban Pembelian)      xxx
@@ -253,8 +240,7 @@ def record_purchase(
         workorder_id=None,
         lines=lines
     )
-    with db.begin():
-        entry = _create_entry(db, payload, created_by=purchase_data.created_by)
+    entry = _create_entry(db, payload, created_by=purchase_data.created_by)
     return _to_entry_out(db, entry)
 
 
@@ -262,7 +248,7 @@ def record_sale(
     db: Session,
     *,
     sale_data: SaleRecordCreate
-) -> JournalEntryOut:
+) -> dict:
     """
     Jurnal penjualan (perpetual):
     Dr Piutang/Kas-Bank                         total_bersih + PPN
@@ -331,8 +317,7 @@ def record_sale(
         workorder_id=None,
         lines=lines
     )
-    with db.begin():
-        entry = _create_entry(db, payload, created_by=sale_data.created_by)
+    entry = _create_entry(db, payload, created_by=sale_data.created_by)
     return _to_entry_out(db, entry)
 
 
@@ -340,7 +325,7 @@ def receive_payment_ar(
     db: Session,
     *,
     payment_ar_data: PaymentARCreate
-) -> JournalEntryOut:
+) -> dict:
     """
     Pembayaran piutang (pelunasan AR):
     Dr Kas/Bank                        amount - discount
@@ -382,8 +367,7 @@ def receive_payment_ar(
         workorder_id=None,
         lines=lines
     )
-    with db.begin():
-        entry = _create_entry(db, payload, created_by=payment_ar_data.created_by)
+    entry = _create_entry(db, payload, created_by=payment_ar_data.created_by)
     return _to_entry_out(db, entry)
 
 
@@ -391,7 +375,7 @@ def pay_ap(
     db: Session,
     *,
     payment_ap_data: PaymentAPCreate
-) -> JournalEntryOut:
+) -> dict:
     """
     Pembayaran hutang (pelunasan AP):
     Dr Hutang Usaha                    amount
@@ -433,8 +417,7 @@ def pay_ap(
         workorder_id=None,
         lines=lines
     )
-    with db.begin():
-        entry = _create_entry(db, payload, created_by=payment_ap_data.created_by)
+    entry = _create_entry(db, payload, created_by=payment_ap_data.created_by)
     return _to_entry_out(db, entry)
 
 
@@ -442,7 +425,7 @@ def record_expense(
     db: Session,
     *,
     expense_data: ExpenseRecordCreate
-) -> JournalEntryOut:
+) -> dict:
     """
     Pengeluaran biaya (tanpa hutang):
     Dr Beban XXX             amount (excl PPN)
@@ -486,8 +469,7 @@ def record_expense(
         workorder_id=None,
         lines=lines
     )
-    with db.begin():
-        entry = _create_entry(db, payload, created_by=expense_data.created_by)
+    entry = _create_entry(db, payload, created_by=expense_data.created_by)
     return _to_entry_out(db, entry)
 
 def create_account(db: Session, account_data: CreateAccount):
@@ -581,7 +563,7 @@ def generate_entry_no(db: Session, journal_type: str, date: date) -> str:
     return entry_no
 
 
-def create_sales_journal_entry(db: Session, data_entry: SalesJournalEntry) -> JournalEntryOut:
+def create_sales_journal_entry(db: Session, data_entry: SalesJournalEntry) -> dict:
     """
     Create a sales journal entry for product and service sales (perpetual inventory).
     Assumes piutang (receivable) for sales, with HPP for costs.
@@ -597,7 +579,7 @@ def create_sales_journal_entry(db: Session, data_entry: SalesJournalEntry) -> Jo
 
     # Debit Piutang (receivable) for total sales + tax
     lines.append(JournalLineCreate(
-        account_code="1200",  # Piutang Usaha
+        account_code="2001",  # Piutang Usaha
         description="Piutang Penjualan",
         debit=total_debit,
         credit=Decimal("0.00")
@@ -606,7 +588,7 @@ def create_sales_journal_entry(db: Session, data_entry: SalesJournalEntry) -> Jo
     # Credit Penjualan Product (if any)
     if total_product > 0:
         lines.append(JournalLineCreate(
-            account_code="4000",  # Penjualan
+            account_code="4001",  # Penjualan
             description="Penjualan Produk",
             debit=Decimal("0.00"),
             credit=total_product
@@ -615,7 +597,7 @@ def create_sales_journal_entry(db: Session, data_entry: SalesJournalEntry) -> Jo
     # Credit Penjualan Service (if any)
     if total_service > 0:
         lines.append(JournalLineCreate(
-            account_code="4001",  # Assume separate for service, or adjust
+            account_code="4002",  # Assume separate for service, or adjust
             description="Penjualan Jasa",
             debit=Decimal("0.00"),
             credit=total_service
@@ -633,13 +615,13 @@ def create_sales_journal_entry(db: Session, data_entry: SalesJournalEntry) -> Jo
     # HPP for Product (if provided)
     if data_entry.hpp_product and data_entry.hpp_product > 0:
         lines.append(JournalLineCreate(
-            account_code="5100",  # HPP
+            account_code="5001",  # HPP
             description="HPP Produk",
             debit=data_entry.hpp_product,
             credit=Decimal("0.00")
         ))
         lines.append(JournalLineCreate(
-            account_code="1300",  # Persediaan
+            account_code="2002",  # Persediaan
             description="Pengurangan Persediaan Produk",
             debit=Decimal("0.00"),
             credit=data_entry.hpp_product
@@ -648,13 +630,13 @@ def create_sales_journal_entry(db: Session, data_entry: SalesJournalEntry) -> Jo
     # HPP for Service (if provided, assuming service cost)
     if data_entry.hpp_service and data_entry.hpp_service > 0:
         lines.append(JournalLineCreate(
-            account_code="5101",  # Assume separate HPP for service
+            account_code="5002",  # Assume separate HPP for service
             description="HPP Jasa",
             debit=data_entry.hpp_service,
             credit=Decimal("0.00")
         ))
         lines.append(JournalLineCreate(
-            account_code="6000",  # Assume expense for service cost
+            account_code="6002",  # Assume expense for service cost
             description="Biaya Jasa",
             debit=Decimal("0.00"),
             credit=data_entry.hpp_service
@@ -670,12 +652,11 @@ def create_sales_journal_entry(db: Session, data_entry: SalesJournalEntry) -> Jo
         workorder_id=data_entry.workorder_id,
         lines=lines
     )
-    with db.begin():
-        entry = _create_entry(db, payload, created_by="system")
+    entry = _create_entry(db, payload, created_by="system")
     return _to_entry_out(db, entry)
 
 
-def create_sales_payment_journal_entry(db: Session, data_entry: SalesPaymentJournalEntry) -> JournalEntryOut:
+def create_sales_payment_journal_entry(db: Session, data_entry: SalesPaymentJournalEntry) -> dict:
     """
     Create a sales payment journal entry (AR receipt).
     Dr Kas/Bank                        amount - discount
@@ -717,11 +698,10 @@ def create_sales_payment_journal_entry(db: Session, data_entry: SalesPaymentJour
         workorder_id=data_entry.workorder_id,
         lines=lines
     )
-    with db.begin():
-        entry = _create_entry(db, payload, created_by="system")
+    entry = _create_entry(db, payload, created_by="system")
     return _to_entry_out(db, entry)
 
-def create_purchase_journal_entry(db: Session, data_entry: PurchaseJournalEntry) -> JournalEntryOut:
+def create_purchase_journal_entry(db: Session, data_entry: PurchaseJournalEntry) -> dict:
     """
     Create a purchase journal entry for product and service purchases (perpetual inventory).
     Assumes hutang (payable) for purchases, with HPP for costs.
@@ -780,17 +760,16 @@ def create_purchase_journal_entry(db: Session, data_entry: PurchaseJournalEntry)
         workorder_id=data_entry.workorder_id,
         lines=lines
     )
-    with db.begin():
-        entry = _create_entry(db, payload, created_by="system")
+    entry = _create_entry(db, payload, created_by="system")
     return _to_entry_out(db, entry)
 
 
-def create_purchase_payment_journal_entry(db: Session, data_entry: PurchasePaymentJournalEntry) -> JournalEntryOut:
+def create_purchase_payment_journal_entry(db: Session, data_entry: PurchasePaymentJournalEntry) -> dict:
     """
     Create a purchase payment journal entry (AP payment).
     Dr Hutang Usaha                    amount
-       Cr Kas/Bank                     amount - discount
-       Cr Potongan Pembelian           discount (optional)
+    Cr Kas/Bank                     amount - discount
+    Cr Potongan Pembelian           discount (optional)
     """
     cash_out = data_entry.amount - (data_entry.discount or Decimal("0.00"))
     lines: List[JournalLineCreate] = [
@@ -827,12 +806,11 @@ def create_purchase_payment_journal_entry(db: Session, data_entry: PurchasePayme
         workorder_id=data_entry.workorder_id,
         lines=lines
     )
-    with db.begin():
-        entry = _create_entry(db, payload, created_by="system")
+    entry = _create_entry(db, payload, created_by="system")
     return _to_entry_out(db, entry)
 
 
-def create_expense_journal_entry(db: Session, data_entry: ExpenseJournalEntry) -> JournalEntryOut:
+def create_expense_journal_entry(db: Session, data_entry: ExpenseJournalEntry) -> dict:
     """
     Create an expense journal entry when an expense is paid.
     Dr Expense Account             amount (excl PPN)
@@ -876,12 +854,11 @@ def create_expense_journal_entry(db: Session, data_entry: ExpenseJournalEntry) -
         workorder_id=None,
         lines=lines
     )
-    with db.begin():
-        entry = _create_entry(db, payload, created_by="system")
+    entry = _create_entry(db, payload, created_by="system")
     return _to_entry_out(db, entry)
 
 
-def create_expense_payment_journal_entry(db: Session, data_entry: ExpensePaymentJournalEntry) -> JournalEntryOut:
+def create_expense_payment_journal_entry(db: Session, data_entry: ExpensePaymentJournalEntry) -> dict:
     """
     Create an expense payment journal entry (similar to AP payment but for expenses).
     Dr Expense Account             amount - discount
@@ -923,6 +900,5 @@ def create_expense_payment_journal_entry(db: Session, data_entry: ExpensePayment
         workorder_id=None,
         lines=lines
     )
-    with db.begin():
-        entry = _create_entry(db, payload, created_by="system")
+    entry = _create_entry(db, payload, created_by="system")
     return _to_entry_out(db, entry)

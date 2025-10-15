@@ -64,10 +64,10 @@ def test_create_sales_payment_journal_entry():
     try:
         entry = create_sales_payment_journal_entry(db1, data)
         print("Test passed: Journal entry created successfully")
-        print(f"Entry No: {entry.entry_no}")
-        print(f"Total Lines: {len(entry.lines)}")
-        total_debit = sum(line.debit for line in entry.lines)
-        total_credit = sum(line.credit for line in entry.lines)
+        print(f"Entry No: {entry['entry_no']}")
+        print(f"Total Lines: {len(entry['lines'])}")
+        total_debit = sum(line['debit'] for line in entry['lines'])
+        total_credit = sum(line['credit'] for line in entry['lines'])
         print(f"Total Debit: {total_debit}, Total Credit: {total_credit}")
         assert total_debit == total_credit, "Journal not balanced"
         print("Balance check passed")
@@ -102,9 +102,9 @@ def test_create_sales_payment_journal_entry():
     try:
         entry2 = create_sales_payment_journal_entry(db2, data_no_discount)
         print("Test passed: Journal entry without discount created successfully")
-        print(f"Entry No: {entry2.entry_no}")
-        total_debit2 = sum(line.debit for line in entry2.lines)
-        total_credit2 = sum(line.credit for line in entry2.lines)
+        print(f"Entry No: {entry2['entry_no']}")
+        total_debit2 = sum(line['debit'] for line in entry2['lines'])
+        total_credit2 = sum(line['credit'] for line in entry2['lines'])
         assert total_debit2 == total_credit2, "Journal not balanced"
         print("Balance check passed for no discount")
     except Exception as e:

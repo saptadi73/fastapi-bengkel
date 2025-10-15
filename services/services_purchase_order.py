@@ -3,10 +3,13 @@ import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from models.purchase_order import PurchaseOrder, PurchaseOrderLine
+from schemas.service_accounting import PurchaseJournalEntry, PurchasePaymentJournalEntry
+from services.services_accounting import create_purchase_journal_entry,create_purchase_payment_journal_entry
 import uuid
 from schemas.service_purchase_order import CreatePurchaseOrder, UpdatePurchaseOrder, CreatePurchaseOrderLine, UpdatePurchaseOrderLine, UpdatePurchaseOrderLineSingle, CreatePurchaseOrderLineSingle
 from schemas.service_inventory import CreateProductMovedHistory
 from services.services_inventory import createProductMoveHistoryNew
+from services.services_product import createProductMoveHistoryNew
 import decimal
 from decimal import Decimal
 import enum
@@ -269,7 +272,7 @@ def edit_purchase_order(db: Session, purchase_order_id: str, data: UpdatePurchas
         db.commit()
         db.refresh(po)
 
-        # If status changed to 'diterima', call productMovedHistoryNew with type 'income'
+        # If status changed to 'diterima', call productMovedHistoryNew with type 'income' and create purchase journal entry
         if old_status != 'diterima' and po.status == 'diterima':
             for line in po.lines:
                 move_data = CreateProductMovedHistory(
@@ -281,6 +284,16 @@ def edit_purchase_order(db: Session, purchase_order_id: str, data: UpdatePurchas
                     timestamp=datetime.datetime.now()
                 )
                 createProductMoveHistoryNew(db, move_data)
+
+            # Create purchase journal entry
+            journal_data = PurchaseJournalEntry(
+                date=po.date,
+                memo=f'Purchase order {po.po_no} received',
+                supplier_id=po.supplier_id,
+                harga_product=po.total,
+                pajak=po.pajak
+            )
+            create_purchase_journal_entry(db, journal_data)
 
         return to_dict(po)
     except IntegrityError:
