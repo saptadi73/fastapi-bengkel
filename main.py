@@ -23,11 +23,12 @@ os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # Include all routers
+app.include_router(routes_auth.router)
 app.include_router(routes_booking.router)
 app.include_router(routes_workorder.router)
 app.include_router(routes_product.router)
 app.include_router(routes_customer.router)
-app.include_router(routes_auth.router)
+
 app.include_router(routes_packet_order.router)
 app.include_router(routes_karyawan.router)
 app.include_router(routes_accounting.router)

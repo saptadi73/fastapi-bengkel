@@ -1,6 +1,7 @@
 from schemas.service_workorder_update import UpdateWorkorderOrders, UpdateProductOrder, UpdateServiceOrder
 from schemas.service_workorder import CreateWorkOrder,CreateServiceOrder,CreateProductOrder, CreateWorkorderOnly, CreateProductOrderedOnly, CreateServiceOrderedOnly, UpdateWorkorderComplaint, AddProductOrderById, UpdateProductOrderById, DeleteProductOrderById, AddServiceOrderById, UpdateServiceOrderById, DeleteServiceOrderById
 from schemas.service_inventory import CreateProductMovedHistory
+from services.services_inventory import createProductMoveHistoryNew
 from services.services_accounting import create_sales_journal_entry
 from schemas.service_accounting import SalesJournalEntry
 from models.inventory import Inventory, ProductMovedHistory
@@ -11,7 +12,7 @@ from models.workorder import Product, Brand, Satuan, Category, Service, Workorde
 import uuid
 from models.database import get_db
 from schemas.service_product import CreateProduct, ProductResponse, BrandResponse, SatuanResponse, CategoryResponse, CreateService, ServiceResponse
-from services.services_product import createProductMoveHistoryNew, EditProductMovedHistory, deleteProductMovedHistory, createProductMoveHistoryNew
+from services.services_product import EditProductMovedHistory, deleteProductMovedHistory
 import decimal
 import datetime
 from collections.abc import Iterable
