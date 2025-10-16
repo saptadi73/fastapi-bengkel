@@ -9,10 +9,12 @@ import uuid
 from schemas.service_purchase_order import CreatePurchaseOrder, UpdatePurchaseOrder, CreatePurchaseOrderLine, UpdatePurchaseOrderLine, UpdatePurchaseOrderLineSingle, CreatePurchaseOrderLineSingle
 from schemas.service_inventory import CreateProductMovedHistory
 from services.services_inventory import createProductMoveHistoryNew
-from services.services_product import createProductMoveHistoryNew
 import decimal
 from decimal import Decimal
 import enum
+import logging
+
+logger = logging.getLogger(__name__)
 
 def to_dict(obj):
     result = {}
@@ -245,12 +247,19 @@ def update_purchase_order_status(db: Session, purchase_order_id: str, status: st
 
 def edit_purchase_order(db: Session, purchase_order_id: str, data: UpdatePurchaseOrder):
     try:
+        print(f"Starting edit_purchase_order for ID: {purchase_order_id}")
         po = db.query(PurchaseOrder).filter(PurchaseOrder.id == purchase_order_id).first()
         if not po:
+            print(f"PurchaseOrder not found: {purchase_order_id}")
             return {"message": "PurchaseOrder not found"}
 
         # Store old status for comparison
         old_status = po.status
+        lines_changed = data.lines is not None
+        old_lines = list(po.lines) if lines_changed and po.status == 'diterima' else None
+
+        print(f"Old status: {old_status}, New status: {data.status if data.status else 'unchanged'}")
+        print(f"Lines changed: {lines_changed}, Old lines count: {len(old_lines) if old_lines else 0}")
 
         # Update fields
         if data.supplier_id:
@@ -265,15 +274,15 @@ def edit_purchase_order(db: Session, purchase_order_id: str, data: UpdatePurchas
             po.status = data.status
         if data.bukti_transfer:
             po.bukti_transfer = data.bukti_transfer
-        if data.total:
-            po.total = data.total
         po.updated_at = datetime.datetime.now()
 
         db.commit()
         db.refresh(po)
+        print("Database commit successful")
 
         # If status changed to 'diterima', call productMovedHistoryNew with type 'income' and create purchase journal entry
-        if old_status != 'diterima' and po.status == 'diterima':
+        if old_status != 'diterima' and data.status == 'diterima':
+            print("Status changed to 'diterima', creating product moves and journal entry")
             for line in po.lines:
                 move_data = CreateProductMovedHistory(
                     product_id=line.product_id,
@@ -283,7 +292,9 @@ def edit_purchase_order(db: Session, purchase_order_id: str, data: UpdatePurchas
                     notes=f'Purchase order {po.po_no} received',
                     timestamp=datetime.datetime.now()
                 )
-                createProductMoveHistoryNew(db, move_data)
+                logger.info(f"Creating product move: {move_data.product_id}, type: {move_data.type}, quantity: {move_data.quantity}")
+                hasil_create_move = createProductMoveHistoryNew(db, move_data)
+                print(f"hasil moving : {hasil_create_move}")
 
             # Create purchase journal entry
             journal_data = PurchaseJournalEntry(
@@ -293,10 +304,18 @@ def edit_purchase_order(db: Session, purchase_order_id: str, data: UpdatePurchas
                 harga_product=po.total,
                 pajak=po.pajak
             )
-            create_purchase_journal_entry(db, journal_data)
+            print(f"Creating journal entry: {journal_data.memo}, total: {journal_data.harga_product}")
+            hasil_create_purchase = create_purchase_journal_entry(db, journal_data)
+            print(f"hasil create : {hasil_create_purchase}")
 
+        logger.info(f"edit_purchase_order completed successfully for ID: {purchase_order_id}")
         return to_dict(po)
-    except IntegrityError:
+    except IntegrityError as e:
+        logger.error(f"IntegrityError in edit_purchase_order: {str(e)}")
+        db.rollback()
+        return {"message": "Error editing PurchaseOrder"}
+    except Exception as e:
+        logger.error(f"Unexpected error in edit_purchase_order: {str(e)}")
         db.rollback()
         return {"message": "Error editing PurchaseOrder"}
 

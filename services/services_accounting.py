@@ -717,7 +717,7 @@ def create_purchase_journal_entry(db: Session, data_entry: PurchaseJournalEntry)
 
     # Debit Persediaan (inventory) for total purchases + tax
     lines.append(JournalLineCreate(
-        account_code="1300",  # Persediaan
+        account_code="2002",  # Persediaan
         description="Pembelian Persediaan",
         debit=total_credit,
         credit=Decimal("0.00")
@@ -725,7 +725,7 @@ def create_purchase_journal_entry(db: Session, data_entry: PurchaseJournalEntry)
 
     # Credit Hutang Usaha (payable) for total purchases + tax
     lines.append(JournalLineCreate(
-        account_code="2100",  # Hutang Usaha
+        account_code="3001",  # Hutang Usaha
         description="Hutang Pembelian",
         debit=Decimal("0.00"),
         credit=total_credit
@@ -738,13 +738,13 @@ def create_purchase_journal_entry(db: Session, data_entry: PurchaseJournalEntry)
     # For service purchases, if it's a cost, debit expense
     if data_entry.hpp_service and data_entry.hpp_service > 0:
         lines.append(JournalLineCreate(
-            account_code="6000",  # Assume expense for service cost
+            account_code="6002",  # Assume expense for service cost
             description="Biaya Jasa Pembelian",
             debit=data_entry.hpp_service,
             credit=Decimal("0.00")
         ))
         lines.append(JournalLineCreate(
-            account_code="2100",  # Hutang Usaha
+            account_code="3001",  # Hutang Usaha
             description="Hutang Biaya Jasa",
             debit=Decimal("0.00"),
             credit=data_entry.hpp_service
