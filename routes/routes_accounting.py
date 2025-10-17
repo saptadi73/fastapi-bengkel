@@ -4,13 +4,18 @@ from models.database import get_db
 from schemas.service_accounting import (
     JournalEntryCreate, JournalEntryOut,
     PurchaseRecordCreate, SaleRecordCreate,
-    PaymentARCreate, PaymentAPCreate, ExpenseRecordCreate, SalesJournalEntry, SalesPaymentJournalEntry,PurchaseJournalEntry,PurchasePaymentJournalEntry,ExpenseJournalEntry, ExpensePaymentJournalEntry
+    PaymentARCreate, PaymentAPCreate, ExpenseRecordCreate, SalesJournalEntry, SalesPaymentJournalEntry,PurchaseJournalEntry,PurchasePaymentJournalEntry,ExpenseJournalEntry, ExpensePaymentJournalEntry,
+    CashInCreate, CashOutCreate,
+    CashBookReportRequest, CashBookReport,
+    ExpenseReportRequest, ExpenseReport
 )
 from services.services_accounting import (
     record_purchase, record_sale, receive_payment_ar,
     pay_ap, record_expense, create_account, edit_account, get_account, get_all_accounts,
     create_sales_journal_entry, create_sales_payment_journal_entry, create_purchase_journal_entry,
-    create_purchase_payment_journal_entry, create_expense_journal_entry, create_expense_payment_journal_entry
+    create_purchase_payment_journal_entry, create_expense_journal_entry, create_expense_payment_journal_entry,
+    cash_in, cash_out,
+    generate_cash_book_report, generate_expense_report
 )
 
 from models.accounting import JournalEntry
@@ -109,6 +114,22 @@ def create_expense_payment_journal(data: ExpensePaymentJournalEntry, db: Session
     except Exception as e:
         return error_response(message=f"Gagal membuat jurnal pembayaran biaya: {str(e)}")
 
+@router.post("/cash-in", response_model=JournalEntryOut, dependencies=[Depends(jwt_required)])
+def create_cash_in(data: CashInCreate, db: Session = Depends(get_db)):
+    try:
+        result = cash_in(db, cash_in_data=data)
+        return success_response(data=result, message="Jurnal cash in berhasil dibuat")
+    except Exception as e:
+        return error_response(message=f"Gagal membuat jurnal cash in: {str(e)}")
+
+@router.post("/cash-out", response_model=JournalEntryOut, dependencies=[Depends(jwt_required)])
+def create_cash_out(data: CashOutCreate, db: Session = Depends(get_db)):
+    try:
+        result = cash_out(db, cash_out_data=data)
+        return success_response(data=result, message="Jurnal cash out berhasil dibuat")
+    except Exception as e:
+        return error_response(message=f"Gagal membuat jurnal cash out: {str(e)}")
+
 
 # GET list journal entries
 @router.get("/journals", response_model=list[JournalEntryOut])
@@ -153,3 +174,19 @@ def get_all_accounts_route(db: Session = Depends(get_db)):
         return success_response(data=result, message="List akun berhasil diambil")
     except Exception as e:
         return error_response(message=f"Gagal mengambil list akun: {str(e)}")
+
+@router.post("/cash-book-report", response_model=CashBookReport, dependencies=[Depends(jwt_required)])
+def generate_cash_book_report_route(request: CashBookReportRequest, db: Session = Depends(get_db)):
+    try:
+        result = generate_cash_book_report(db, request)
+        return success_response(data=result, message="Laporan buku kas berhasil dihasilkan")
+    except Exception as e:
+        return error_response(message=f"Gagal menghasilkan laporan buku kas: {str(e)}")
+
+@router.post("/expense-report", response_model=ExpenseReport, dependencies=[Depends(jwt_required)])
+def generate_expense_report_route(request: ExpenseReportRequest, db: Session = Depends(get_db)):
+    try:
+        result = generate_expense_report(db, request)
+        return success_response(data=result, message="Laporan biaya berhasil dihasilkan")
+    except Exception as e:
+        return error_response(message=f"Gagal menghasilkan laporan biaya: {str(e)}")

@@ -49,10 +49,15 @@ class CreateWorkOrder(BaseModel):
     customer_id: UUID
     vehicle_id: UUID
     karyawan_id: Optional[UUID] = None
+    
     totalProductHarga: Optional[float]=0
-    totalServiceHarga:Optional[float]=0
-    totalServiceCost: Optional[float]=0
+    totalProductDiscount: Optional[float]=0
     totalProductCost: Optional[float]=0
+
+    totalServiceHarga:Optional[float]=0
+    totalServiceDiscount:Optional[float]=0
+    totalServiceCost: Optional[float]=0
+    
     product_ordered: Optional[list[CreateProductOrder]] = None
     service_ordered: Optional[list[CreateServiceOrder]] = None
 

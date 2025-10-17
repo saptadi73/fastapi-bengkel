@@ -25,7 +25,15 @@ from schemas.service_accounting import (
     PurchaseJournalEntry,
     PurchasePaymentJournalEntry,
     ExpenseJournalEntry,
-    ExpensePaymentJournalEntry
+    ExpensePaymentJournalEntry,
+    CashInCreate,
+    CashOutCreate,
+    CashBookReportRequest,
+    CashBookReport,
+    CashBookEntry,
+    ExpenseReportRequest,
+    ExpenseReport,
+    ExpenseReportItem
 )
 
 def to_dict(obj):
@@ -656,6 +664,84 @@ def create_sales_journal_entry(db: Session, data_entry: SalesJournalEntry) -> di
     return _to_entry_out(db, entry)
 
 
+def cash_in(
+    db: Session,
+    *,
+    cash_in_data: CashInCreate
+) -> dict:
+    """
+    General cash-in transaction:
+    Dr Kas/Bank                        amount
+       Cr Specified Account             amount
+    """
+    lines: List[JournalLineCreate] = [
+        JournalLineCreate(
+            account_code=cash_in_data.kas_bank_code,
+            description="Cash In",
+            debit=cash_in_data.amount,
+            credit=Decimal("0.00")
+        ),
+        JournalLineCreate(
+            account_code=cash_in_data.credit_account_code,
+            description="Cash In",
+            debit=Decimal("0.00"),
+            credit=cash_in_data.amount
+        ),
+    ]
+
+    payload = JournalEntryCreate(
+        entry_no=cash_in_data.entry_no,
+        date=cash_in_data.tanggal,
+        memo=cash_in_data.memo,
+        journal_type=JT.GENERAL,
+        supplier_id=None,
+        customer_id=None,
+        workorder_id=None,
+        lines=lines
+    )
+    entry = _create_entry(db, payload, created_by=cash_in_data.created_by)
+    return _to_entry_out(db, entry)
+
+
+def cash_out(
+    db: Session,
+    *,
+    cash_out_data: CashOutCreate
+) -> dict:
+    """
+    General cash-out transaction:
+    Dr Specified Account               amount
+       Cr Kas/Bank                      amount
+    """
+    lines: List[JournalLineCreate] = [
+        JournalLineCreate(
+            account_code=cash_out_data.debit_account_code,
+            description="Cash Out",
+            debit=cash_out_data.amount,
+            credit=Decimal("0.00")
+        ),
+        JournalLineCreate(
+            account_code=cash_out_data.kas_bank_code,
+            description="Cash Out",
+            debit=Decimal("0.00"),
+            credit=cash_out_data.amount
+        ),
+    ]
+
+    payload = JournalEntryCreate(
+        entry_no=cash_out_data.entry_no,
+        date=cash_out_data.tanggal,
+        memo=cash_out_data.memo,
+        journal_type=JT.GENERAL,
+        supplier_id=None,
+        customer_id=None,
+        workorder_id=None,
+        lines=lines
+    )
+    entry = _create_entry(db, payload, created_by=cash_out_data.created_by)
+    return _to_entry_out(db, entry)
+
+
 def create_sales_payment_journal_entry(db: Session, data_entry: SalesPaymentJournalEntry) -> dict:
     """
     Create a sales payment journal entry (AR receipt).
@@ -758,6 +844,7 @@ def create_purchase_journal_entry(db: Session, data_entry: PurchaseJournalEntry)
         supplier_id=data_entry.supplier_id,
         customer_id=None,
         workorder_id=data_entry.workorder_id,
+        purchase_id=data_entry.purchase_id,
         lines=lines
     )
     entry = _create_entry(db, payload, created_by="system")
@@ -902,3 +989,112 @@ def create_expense_payment_journal_entry(db: Session, data_entry: ExpensePayment
     )
     entry = _create_entry(db, payload, created_by="system")
     return _to_entry_out(db, entry)
+
+
+def generate_cash_book_report(db: Session, request: CashBookReportRequest) -> CashBookReport:
+    """
+    Generate a cash book report for a specific account within a date range.
+    Includes opening balance, all transactions (cash-in and cash-out), and running balance.
+    """
+    # Get the account
+    account = db.query(Account).filter(Account.id == request.account_id).first()
+    if not account:
+        raise ValueError(f"Account with id '{request.account_id}' not found")
+
+    # Calculate opening balance (sum of all transactions before start_date)
+    opening_balance_query = db.query(
+        (JournalLine.debit - JournalLine.credit).label('net_change')
+    ).join(JournalEntry).filter(
+        JournalLine.account_id == request.account_id,
+        JournalEntry.date < request.start_date
+    )
+    opening_balance_result = db.execute(opening_balance_query).all()
+    opening_balance = sum(row.net_change for row in opening_balance_result)
+
+    # Get all journal lines for the account within the date range, ordered by date
+    lines_query = db.query(JournalLine, JournalEntry).join(JournalEntry).filter(
+        JournalLine.account_id == request.account_id,
+        JournalEntry.date >= request.start_date,
+        JournalEntry.date <= request.end_date
+    ).order_by(JournalEntry.date, JournalEntry.created_at)
+
+    entries = []
+    running_balance = opening_balance
+
+    for line, entry in lines_query:
+        # Determine debit and credit based on normal balance
+        if account.normal_balance == "debit":
+            debit = line.debit
+            credit = line.credit
+        else:
+            # For credit normal accounts, reverse the signs for cash book
+            debit = line.credit
+            credit = line.debit
+
+        # Update running balance
+        running_balance += debit - credit
+
+        entries.append(CashBookEntry(
+            date=entry.date,
+            memo=entry.memo,
+            debit=debit,
+            credit=credit,
+            balance=running_balance
+        ))
+
+    return CashBookReport(
+        opening_balance=opening_balance,
+        entries=entries
+    )
+
+
+def generate_expense_report(db: Session, request: ExpenseReportRequest) -> ExpenseReport:
+    """
+    Generate an expense report within a date range, optionally filtered by expense_type and status.
+    Summarizes total expenses and counts by expense type.
+    """
+    from models.expenses import Expenses
+
+    # Build query
+    query = db.query(Expenses).filter(
+        Expenses.date >= request.start_date,
+        Expenses.date <= request.end_date
+    )
+
+    if request.expense_type:
+        query = query.filter(Expenses.expense_type == request.expense_type)
+
+    if request.status:
+        query = query.filter(Expenses.status == request.status)
+
+    expenses = query.all()
+
+    # Aggregate by expense_type
+    from collections import defaultdict
+    summary = defaultdict(lambda: {"total_amount": Decimal("0.00"), "count": 0})
+
+    total_expenses = Decimal("0.00")
+    total_count = 0
+
+    for exp in expenses:
+        exp_type = exp.expense_type.value
+        summary[exp_type]["total_amount"] += exp.amount
+        summary[exp_type]["count"] += 1
+        total_expenses += exp.amount
+        total_count += 1
+
+    # Convert to list of ExpenseReportItem
+    items = [
+        ExpenseReportItem(
+            expense_type=exp_type,
+            total_amount=data["total_amount"],
+            count=data["count"]
+        )
+        for exp_type, data in summary.items()
+    ]
+
+    return ExpenseReport(
+        total_expenses=total_expenses,
+        total_count=total_count,
+        items=items
+    )

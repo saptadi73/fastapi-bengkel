@@ -45,7 +45,7 @@ def create_purchase_order(db: Session, data: CreatePurchaseOrder):
 
     # Create PurchaseOrder
     purchase_order = PurchaseOrder(
-        id=str(uuid.uuid4()),
+        id=uuid.uuid4(),
         po_no=po_no,
         supplier_id=data.supplier_id,
         date=data.date,
@@ -63,7 +63,7 @@ def create_purchase_order(db: Session, data: CreatePurchaseOrder):
     for line_data in data.lines:
         subtotal = (line_data.quantity * line_data.price) - line_data.discount
         line = PurchaseOrderLine(
-            id=str(uuid.uuid4()),
+            id=uuid.uuid4(),
             purchase_order_id=purchase_order.id,
             product_id=line_data.product_id,
             quantity=line_data.quantity,
@@ -274,12 +274,14 @@ def edit_purchase_order(db: Session, purchase_order_id: str, data: UpdatePurchas
             po.status = data.status
         if data.bukti_transfer:
             po.bukti_transfer = data.bukti_transfer
+        
         po.updated_at = datetime.datetime.now()
 
+        db.flush()
         db.commit()
         db.refresh(po)
         print("Database commit successful")
-
+        print(f" purchase order id: {po.id}")
         # If status changed to 'diterima', call productMovedHistoryNew with type 'income' and create purchase journal entry
         if old_status != 'diterima' and data.status == 'diterima':
             print("Status changed to 'diterima', creating product moves and journal entry")
@@ -301,10 +303,14 @@ def edit_purchase_order(db: Session, purchase_order_id: str, data: UpdatePurchas
                 date=po.date,
                 memo=f'Purchase order {po.po_no} received',
                 supplier_id=po.supplier_id,
+                purchase_id=po.id,
                 harga_product=po.total,
                 pajak=po.pajak
             )
             print(f"Creating journal entry: {journal_data.memo}, total: {journal_data.harga_product}")
+            print(f"po.id: {po.id}, type: {type(po.id)}")
+            print(f"po.id is None: {po.id is None}")
+
             hasil_create_purchase = create_purchase_journal_entry(db, journal_data)
             print(f"hasil create : {hasil_create_purchase}")
 
@@ -355,7 +361,7 @@ def add_purchase_order_line(db: Session, purchase_order_id: str, data: CreatePur
         # Create new line
         subtotal = (data.quantity * data.price) - data.discount
         line = PurchaseOrderLine(
-            id=str(uuid.uuid4()),
+            id=uuid.uuid4(),
             purchase_order_id=purchase_order_id,
             product_id=data.product_id,
             quantity=data.quantity,

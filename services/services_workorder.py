@@ -643,8 +643,8 @@ def update_workorder_lengkap(db: Session, workorder_id: str, data: CreateWorkOrd
             memo=f"Penjualan dari Workorder {wo.no_wo}",
             customer_id=data.customer_id,
             workorder_id=wo.id,
-            harga_product=data.totalProductHarga,
-            harga_service=data.totalServiceHarga,
+            harga_product=data.totalProductHarga - data.totalProductDiscount,
+            harga_service=data.totalServiceHarga - data.totalServiceDiscount,
             hpp_product=data.totalProductCost,
             hpp_service=data.totalServiceCost,
             pajak=data.pajak

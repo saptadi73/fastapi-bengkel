@@ -34,6 +34,7 @@ class JournalEntryBase(BaseModel):
     customer_id: Optional[UUID] = None
     supplier_id: Optional[UUID] = None
     workorder_id: Optional[UUID] = None
+    purchase_id: Optional[UUID] = None
 
 
 class JournalEntryCreate(JournalEntryBase):
@@ -166,6 +167,7 @@ class PurchaseJournalEntry(BaseModel):
     date: date
     memo: Optional[str]
     supplier_id: Optional[UUID] = None
+    purchase_id: Optional[UUID] = None
     workorder_id: Optional[UUID] = None
     harga_product: Decimal = Decimal("0.00")
     harga_service: Decimal = Decimal("0.00")
@@ -206,6 +208,64 @@ class ExpensePaymentJournalEntry(BaseModel):
     expense_code: str = "6000"
     discount: Decimal = Decimal("0.00")
     potongan_biaya_code: Optional[str] = None
+
+
+class CashInCreate(BaseModel):
+    entry_no: Optional[str] = None
+    tanggal: date
+    kas_bank_code: str
+    credit_account_code: str
+    amount: Decimal
+    memo: Optional[str] = None
+    created_by: Optional[str] = "system"
+
+
+class CashOutCreate(BaseModel):
+    entry_no: Optional[str] = None
+    tanggal: date
+    kas_bank_code: str
+    debit_account_code: str
+    amount: Decimal
+    memo: Optional[str] = None
+    created_by: Optional[str] = "system"
+
+
+class CashBookReportRequest(BaseModel):
+    account_id: UUID
+    start_date: date
+    end_date: date
+
+
+class CashBookEntry(BaseModel):
+    date: date
+    memo: Optional[str]
+    debit: Decimal = Decimal("0.00")
+    credit: Decimal = Decimal("0.00")
+    balance: Decimal = Decimal("0.00")
+
+
+class CashBookReport(BaseModel):
+    opening_balance: Decimal
+    entries: List[CashBookEntry]
+
+
+class ExpenseReportRequest(BaseModel):
+    start_date: date
+    end_date: date
+    expense_type: Optional[str] = None  # Filter by expense type, e.g., "listrik"
+    status: Optional[str] = None  # Filter by status, e.g., "dibayarkan"
+
+
+class ExpenseReportItem(BaseModel):
+    expense_type: str
+    total_amount: Decimal
+    count: int
+
+
+class ExpenseReport(BaseModel):
+    total_expenses: Decimal
+    total_count: int
+    items: List[ExpenseReportItem]
 
 
 
