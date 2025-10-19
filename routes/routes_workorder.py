@@ -7,6 +7,7 @@ from services.services_product import CreateProductNew, get_all_products, get_pr
 from services.services_workorder import createNewWorkorder,getAllWorkorders, getWorkorderByID, updateServiceorderedOnlynya,updateWorkOrdeKeluhannya,UpdateDateWorkordernya,UpdateWorkorderOrdersnya,updateProductOrderedOnlynya,updateStatusWorkorder,update_only_productordered, update_only_serviceordered,update_only_workorder,update_workorder_lengkap, addProductOrder, updateProductOrder, deleteProductOrder, addServiceOrder, updateServiceOrder, deleteServiceOrder
 from schemas.service_inventory import CreateProductMovedHistory
 from schemas.service_product import CreateProduct, ProductResponse, CreateService, ServiceResponse
+from schemas.service_accounting import SalesPaymentJournalEntry
 from schemas.service_workorder import CreateWorkOrder,UpdateProductOrderedOnly,UpdateServiceOrderedOnly,UpdateWorkoderOrders,UpdateWorkorderComplaint,UpdateWorkorderDates,UpdateWorkorderStatus,UpdateWorkorderTotalCost,DeleteProductOrderedOnly,DeleteServiceOrderedOnly,UpdateProductOrderedOnly, UpdateServiceOrderedOnly, AddProductOrderById, UpdateProductOrderById, DeleteProductOrderById, AddServiceOrderById, UpdateServiceOrderById, DeleteServiceOrderById
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
@@ -63,6 +64,21 @@ def getWorkorder(
     finally:
         db.close()
 
+@router.post("/update-only-status", dependencies=[Depends(jwt_required)])
+def updateWorkorderStatusRouter(
+    data_entry: SalesPaymentJournalEntry,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = updateStatusWorkorder(db, data_entry)
+        if not result:
+            return error_response(message="Failed to update workorder status")
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()
+
 @router.post("/update/{workorder_id}", dependencies=[Depends(jwt_required)])
 def updateWorkorderRouter(
     workorder_id: UUID,
@@ -75,7 +91,7 @@ def updateWorkorderRouter(
             return error_response(message="Failed to update workorder")
         return success_response(data=result)
     except Exception as e:
-        return error_response(message=str(e))   
+        return error_response(message=str(e))
     finally:
         db.close()
 
@@ -100,22 +116,6 @@ def updateDateWorkOrdernya(db: Session, workorder_id: str, tanggal_keluar: str):
         result = UpdateDateWorkordernya(db, workorder_id, tanggal_keluar)
         if not result:
             return error_response(message="Failed to update workorder tanggal keluar")
-        return success_response(data=result)
-    except Exception as e:
-        return error_response(message=str(e))
-    finally:
-        db.close()
-
-@router.post("/update/status/{workorder_id}", dependencies=[Depends(jwt_required)])
-def updateWorkorderStatusRouter(
-    workorder_id: UUID,
-    status: str,
-    db: Session = Depends(get_db)
-):
-    try:
-        result = updateStatusWorkorder(db, workorder_id, status)
-        if not result:
-            return error_response(message="Failed to update workorder status")
         return success_response(data=result)
     except Exception as e:
         return error_response(message=str(e))

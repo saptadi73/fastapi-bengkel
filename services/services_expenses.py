@@ -5,8 +5,6 @@ from models.expenses import Expenses
 from schemas.service_expenses import CreateExpenses, UpdateExpenses
 from models.expenses import ExpenseStatus
 from supports.utils_json_response import to_dict
-from services.services_accounting import create_expense_journal_entry
-from schemas.service_accounting import ExpenseJournalEntry
 from decimal import Decimal
 
 
@@ -86,6 +84,10 @@ def update_expenses(db: Session, expenses_id: str, data: UpdateExpenses):
 
         # If status changed to 'dibayarkan', create journal entry
         if status_changed_to_paid:
+            # Import here to avoid circular import
+            from services.services_accounting import create_expense_journal_entry
+            from schemas.service_accounting import ExpenseJournalEntry
+
             # Map expense_type to account code (assuming some mapping, e.g., listrik -> 6001, etc.)
             expense_account_map = {
                 "listrik": "6001",
@@ -116,3 +118,9 @@ def update_expenses(db: Session, expenses_id: str, data: UpdateExpenses):
     except IntegrityError:
         db.rollback()
         return {"message": "Error updating Expenses"}
+
+def edit_expense_status(db: Session, expense_id: str):
+    expenseku = db.query(Expenses).filter(Expenses.id == expense_id).first()
+    expenseku.status = 'dibayarkan'
+    db.commit()
+    return to_dict(expenseku)

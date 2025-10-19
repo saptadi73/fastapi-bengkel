@@ -3,14 +3,15 @@ import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from models.purchase_order import PurchaseOrder, PurchaseOrderLine
-from schemas.service_accounting import PurchaseJournalEntry, PurchasePaymentJournalEntry
-from services.services_accounting import create_purchase_journal_entry,create_purchase_payment_journal_entry
-import uuid
+from schemas.service_accounting import PurchaseJournalEntry
+from services.services_accounting import create_purchase_journal_entry
 from schemas.service_purchase_order import CreatePurchaseOrder, UpdatePurchaseOrder, CreatePurchaseOrderLine, UpdatePurchaseOrderLine, UpdatePurchaseOrderLineSingle, CreatePurchaseOrderLineSingle
 from schemas.service_inventory import CreateProductMovedHistory
 from services.services_inventory import createProductMoveHistoryNew
 import decimal
 from decimal import Decimal
+from uuid import uuid4
+import uuid
 import enum
 import logging
 
@@ -319,11 +320,11 @@ def edit_purchase_order(db: Session, purchase_order_id: str, data: UpdatePurchas
     except IntegrityError as e:
         logger.error(f"IntegrityError in edit_purchase_order: {str(e)}")
         db.rollback()
-        return {"message": "Error editing PurchaseOrder"}
+        return {"message": f"IntegrityError: {str(e)}"}
     except Exception as e:
         logger.error(f"Unexpected error in edit_purchase_order: {str(e)}")
         db.rollback()
-        return {"message": "Error editing PurchaseOrder"}
+        return {"message": f"Unexpected error: {str(e)}"}
 
 def update_purchase_order_line(db: Session, line_id: str, data: UpdatePurchaseOrderLineSingle):
     try:
@@ -402,6 +403,27 @@ def delete_purchase_order_line(db: Session, line_id: str):
     except IntegrityError:
         db.rollback()
         return {"message": "Error deleting PurchaseOrderLine"}
+    
+def update_only_status_purchase_order(db: Session, purchase_id: str):
+    try:
+
+        po = db.query(PurchaseOrder).filter(PurchaseOrder.id == purchase_id).first()
+        if not po:
+            return {"message": "PurchaseOrder not found"}
+
+        po.status = 'dibayarkan'
+        po.updated_at = datetime.datetime.now()
+
+        db.commit()
+        db.refresh(po)
+
+        return to_dict(po)
+    except IntegrityError:
+        db.rollback()
+        return {"message": "Error updating PurchaseOrder status"}
+    except Exception as e:
+        db.rollback()
+        return {"message": f"Unexpected error: {str(e)}"}
 
 
 

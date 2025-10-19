@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from typing import List
 from models.database import get_db
 from schemas.service_accounting import (
     JournalEntryCreate, JournalEntryOut,
@@ -7,7 +8,7 @@ from schemas.service_accounting import (
     PaymentARCreate, PaymentAPCreate, ExpenseRecordCreate, SalesJournalEntry, SalesPaymentJournalEntry,PurchaseJournalEntry,PurchasePaymentJournalEntry,ExpenseJournalEntry, ExpensePaymentJournalEntry,
     CashInCreate, CashOutCreate,
     CashBookReportRequest, CashBookReport,
-    ExpenseReportRequest, ExpenseReport
+    ExpenseReportRequest, ExpenseReport,
 )
 from services.services_accounting import (
     record_purchase, record_sale, receive_payment_ar,
@@ -15,7 +16,7 @@ from services.services_accounting import (
     create_sales_journal_entry, create_sales_payment_journal_entry, create_purchase_journal_entry,
     create_purchase_payment_journal_entry, create_expense_journal_entry, create_expense_payment_journal_entry,
     cash_in, cash_out,
-    generate_cash_book_report, generate_expense_report
+    generate_cash_book_report, generate_expense_report, getBankCodes
 )
 
 from models.accounting import JournalEntry
@@ -132,7 +133,7 @@ def create_cash_out(data: CashOutCreate, db: Session = Depends(get_db)):
 
 
 # GET list journal entries
-@router.get("/journals", response_model=list[JournalEntryOut])
+@router.get("/journals", response_model=List[JournalEntryOut])
 def get_journal_list(db: Session = Depends(get_db), ):
     try:
         # Query all journal entries, order by date desc
@@ -190,3 +191,12 @@ def generate_expense_report_route(request: ExpenseReportRequest, db: Session = D
         return success_response(data=result, message="Laporan biaya berhasil dihasilkan")
     except Exception as e:
         return error_response(message=f"Gagal menghasilkan laporan biaya: {str(e)}")
+    
+@router.get("/bankcodes")
+def getAllBankCodes(db: Session = Depends(get_db)):
+    try:
+        result = getBankCodes(db)
+        return success_response(data=result, message="Daftar Bank Codes telah berhasil didapatkan")
+    except Exception as e:
+        return error_response(message=f"Gagal dapatkan data Bank Codes karena {str(e)}")
+

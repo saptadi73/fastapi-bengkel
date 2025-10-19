@@ -6,7 +6,7 @@ import json
 from typing import Optional
 from models.database import SessionLocal
 from schemas.service_purchase_order import CreatePurchaseOrder, UpdatePurchaseOrder, UpdatePurchaseOrderLineSingle, CreatePurchaseOrderLineSingle
-from services.services_purchase_order import create_purchase_order, get_all_purchase_orders, get_purchase_order_by_id, update_purchase_order, delete_purchase_order, update_purchase_order_status, edit_purchase_order, update_purchase_order_line, add_purchase_order_line, delete_purchase_order_line
+from services.services_purchase_order import create_purchase_order, get_all_purchase_orders, get_purchase_order_by_id, update_purchase_order, delete_purchase_order, update_purchase_order_status, edit_purchase_order, update_purchase_order_line, add_purchase_order_line, delete_purchase_order_line, update_only_status_purchase_order
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
 from models.purchase_order import PurchaseOrder
@@ -282,6 +282,17 @@ def delete_purchase_order_line_router(
 ):
     try:
         result = delete_purchase_order_line(db, line_id)
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+
+@router.post("/pay/{purchase_id}", dependencies=[Depends(jwt_required)])
+def update_only_status_purchase_order_router(
+    purchase_id: str ,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = update_only_status_purchase_order(db, purchase_id)
         return success_response(data=result)
     except Exception as e:
         return error_response(message=str(e))

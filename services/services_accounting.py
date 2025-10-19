@@ -7,6 +7,8 @@ from sqlalchemy import select
 from datetime import date
 import decimal
 import datetime
+from models.expenses import Expenses
+from services.services_expenses import edit_expense_status
 
 from models.accounting import Account, JournalEntry, JournalLine, JournalType
 from schemas.service_accounting import (
@@ -749,7 +751,7 @@ def create_sales_payment_journal_entry(db: Session, data_entry: SalesPaymentJour
     Dr Potongan Penjualan (optional)   discount
        Cr Piutang Usaha                amount
     """
-    cash_in = data_entry.amount - (data_entry.discount or Decimal("0.00"))
+    cash_in = data_entry.amount
     lines: List[JournalLineCreate] = [
         JournalLineCreate(
             account_code=data_entry.kas_bank_code,
@@ -764,15 +766,6 @@ def create_sales_payment_journal_entry(db: Session, data_entry: SalesPaymentJour
             credit=data_entry.amount
         ),
     ]
-    if data_entry.discount and data_entry.discount > 0:
-        if not data_entry.potongan_penjualan_code:
-            raise ValueError("potongan_penjualan_code wajib diisi bila discount > 0")
-        lines.append(JournalLineCreate(
-            account_code=data_entry.potongan_penjualan_code,
-            description="Diskon Pelunasan Piutang Penjualan",
-            debit=data_entry.discount,
-            credit=Decimal("0.00")
-        ))
 
     payload = JournalEntryCreate(
         entry_no=None,  # Auto-generate
@@ -843,7 +836,6 @@ def create_purchase_journal_entry(db: Session, data_entry: PurchaseJournalEntry)
         journal_type=JT.PURCHASE,
         supplier_id=data_entry.supplier_id,
         customer_id=None,
-        workorder_id=data_entry.workorder_id,
         purchase_id=data_entry.purchase_id,
         lines=lines
     )
@@ -858,7 +850,7 @@ def create_purchase_payment_journal_entry(db: Session, data_entry: PurchasePayme
     Cr Kas/Bank                     amount - discount
     Cr Potongan Pembelian           discount (optional)
     """
-    cash_out = data_entry.amount - (data_entry.discount or Decimal("0.00"))
+    cash_out = data_entry.amount
     lines: List[JournalLineCreate] = [
         JournalLineCreate(
             account_code=data_entry.hutang_code,
@@ -873,15 +865,7 @@ def create_purchase_payment_journal_entry(db: Session, data_entry: PurchasePayme
             credit=cash_out
         ),
     ]
-    if data_entry.discount and data_entry.discount > 0:
-        if not data_entry.potongan_pembelian_code:
-            raise ValueError("potongan_pembelian_code wajib diisi bila discount > 0")
-        lines.append(JournalLineCreate(
-            account_code=data_entry.potongan_pembelian_code,
-            description="Diskon Pembayaran Hutang Pembelian",
-            debit=Decimal("0.00"),
-            credit=data_entry.discount
-        ))
+    
 
     payload = JournalEntryCreate(
         entry_no=None,  # Auto-generate
@@ -890,7 +874,7 @@ def create_purchase_payment_journal_entry(db: Session, data_entry: PurchasePayme
         journal_type=JT.AP_PAYMENT,
         supplier_id=data_entry.supplier_id,
         customer_id=None,
-        workorder_id=data_entry.workorder_id,
+        purchase_id=data_entry.purchase_id,
         lines=lines
     )
     entry = _create_entry(db, payload, created_by="system")
@@ -947,17 +931,15 @@ def create_expense_journal_entry(db: Session, data_entry: ExpenseJournalEntry) -
 
 def create_expense_payment_journal_entry(db: Session, data_entry: ExpensePaymentJournalEntry) -> dict:
     """
-    Create an expense payment journal entry (similar to AP payment but for expenses).
-    Dr Expense Account             amount - discount
-    Dr Potongan Biaya (optional)   discount
+    Create an expense payment journal entry.
+    Dr Expense Account             amount
        Cr Kas/Bank                 amount
     """
-    cash_out = data_entry.amount - (data_entry.discount or Decimal("0.00"))
     lines: List[JournalLineCreate] = [
         JournalLineCreate(
             account_code=data_entry.expense_code,
             description="Pelunasan Biaya",
-            debit=cash_out,
+            debit=data_entry.amount,
             credit=Decimal("0.00")
         ),
         JournalLineCreate(
@@ -967,15 +949,6 @@ def create_expense_payment_journal_entry(db: Session, data_entry: ExpensePayment
             credit=data_entry.amount
         ),
     ]
-    if data_entry.discount and data_entry.discount > 0:
-        if not data_entry.potongan_biaya_code:
-            raise ValueError("potongan_biaya_code wajib diisi bila discount > 0")
-        lines.append(JournalLineCreate(
-            account_code=data_entry.potongan_biaya_code,
-            description="Diskon Pembayaran Biaya",
-            debit=data_entry.discount,
-            credit=Decimal("0.00")
-        ))
 
     payload = JournalEntryCreate(
         entry_no=None,  # Auto-generate
@@ -988,6 +961,7 @@ def create_expense_payment_journal_entry(db: Session, data_entry: ExpensePayment
         lines=lines
     )
     entry = _create_entry(db, payload, created_by="system")
+    edit_expense_status(db, data_entry.expense_id)
     return _to_entry_out(db, entry)
 
 
@@ -1053,7 +1027,7 @@ def generate_expense_report(db: Session, request: ExpenseReportRequest) -> Expen
     Generate an expense report within a date range, optionally filtered by expense_type and status.
     Summarizes total expenses and counts by expense type.
     """
-    from models.expenses import Expenses
+    
 
     # Build query
     query = db.query(Expenses).filter(
@@ -1098,3 +1072,11 @@ def generate_expense_report(db: Session, request: ExpenseReportRequest) -> Expen
         total_count=total_count,
         items=items
     )
+
+def getBankCodes(db: Session): 
+    banks = db.query(Account).filter(Account.code.like("10%")).all()
+    result = []
+    for banku in banks:
+        b_dict = to_dict(banku)
+        result.append(b_dict)
+    return result

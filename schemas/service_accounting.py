@@ -158,9 +158,7 @@ class SalesPaymentJournalEntry(BaseModel):
     workorder_id: Optional[UUID] = None
     amount: Decimal
     kas_bank_code: str
-    piutang_code: str = "1200"
-    discount: Decimal = Decimal("0.00")
-    potongan_penjualan_code: Optional[str] = None
+    piutang_code: str = "2001"
 
 
 class PurchaseJournalEntry(BaseModel):
@@ -168,7 +166,7 @@ class PurchaseJournalEntry(BaseModel):
     memo: Optional[str]
     supplier_id: Optional[UUID] = None
     purchase_id: Optional[UUID] = None
-    workorder_id: Optional[UUID] = None
+    
     harga_product: Decimal = Decimal("0.00")
     harga_service: Decimal = Decimal("0.00")
     hpp_product: Optional[Decimal] = None
@@ -180,12 +178,10 @@ class PurchasePaymentJournalEntry(BaseModel):
     date: date
     memo: Optional[str]
     supplier_id: Optional[UUID] = None
-    workorder_id: Optional[UUID] = None
+    purchase_id: Optional[UUID] = None
     amount: Decimal
     kas_bank_code: str
     hutang_code: str = "2100"
-    discount: Decimal = Decimal("0.00")
-    potongan_pembelian_code: Optional[str] = None
 
 
 class ExpenseJournalEntry(BaseModel):
@@ -206,8 +202,7 @@ class ExpensePaymentJournalEntry(BaseModel):
     amount: Decimal
     kas_bank_code: str
     expense_code: str = "6000"
-    discount: Decimal = Decimal("0.00")
-    potongan_biaya_code: Optional[str] = None
+    
 
 
 class CashInCreate(BaseModel):

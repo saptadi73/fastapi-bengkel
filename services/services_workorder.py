@@ -1,6 +1,8 @@
 from schemas.service_workorder_update import UpdateWorkorderOrders, UpdateProductOrder, UpdateServiceOrder
 from schemas.service_workorder import CreateWorkOrder,CreateServiceOrder,CreateProductOrder, CreateWorkorderOnly, CreateProductOrderedOnly, CreateServiceOrderedOnly, UpdateWorkorderComplaint, AddProductOrderById, UpdateProductOrderById, DeleteProductOrderById, AddServiceOrderById, UpdateServiceOrderById, DeleteServiceOrderById
 from schemas.service_inventory import CreateProductMovedHistory
+from schemas.service_accounting import SalesPaymentJournalEntry
+from services.services_accounting import create_sales_payment_journal_entry
 from services.services_inventory import createProductMoveHistoryNew
 from services.services_accounting import create_sales_journal_entry
 from schemas.service_accounting import SalesJournalEntry
@@ -221,39 +223,12 @@ def _wo_stock_already_moved(db: Session, wo_id: str) -> bool:
 
 
 # --- Gantikan fungsi updateStatusWorkorder dengan versi yang memproses stok saat complete ---
-def updateStatusWorkorder(db: Session, workorder_id: str, new_status: str, performed_by: str = 'system'):
-    wo = db.query(Workorder).filter(Workorder.id == workorder_id).first()
+def updateStatusWorkorder(db: Session, data_entry: SalesPaymentJournalEntry):
+    wo = db.query(Workorder).filter(Workorder.id == data_entry.workorder_id).first()
     if not wo:
         return None
-
-    old_status = wo.status
-    wo.status = new_status
+    wo.status = 'dibayar'
     db.add(wo)
-
-    
-
-    # === Jika status menjadi COMPLETE, pindahkan stok sesuai ProductOrdered ===
-    if (old_status or "").lower() != "selesai" and (new_status or "").lower() == "selesai":
-        # Hindari dobel jika fungsi ini terpanggil dua kali (idempotent)
-        if not _wo_stock_already_moved(db, str(wo.id)):
-            for po in wo.product_ordered:
-                # Catatan memakai jejak 'WO:{wo.id}' agar _wo_stock_already_moved bisa mendeteksi
-                move_data = CreateProductMovedHistory(
-                    product_id=po.product_id,
-                    type='outcome',
-                    quantity=po.quantity,
-                    performed_by=performed_by,
-                    notes=f"WO:{wo.id} ({wo.no_wo}) complete → deduct for ProductOrdered:{po.id}",
-                    timestamp=datetime.datetime.now(datetime.timezone.utc)
-                )
-                # Utilitas ini akan:
-                # - membuat riwayat ProductMovedHistory
-                # - update Inventory.quantity sesuai akumulasi history
-                createProductMoveHistoryNew(db, move_data)
-
-           
-        # else: sudah pernah dipindah—diamkan agar tidak minus dobel
-
     db.commit()
     db.refresh(wo)
 
@@ -262,21 +237,8 @@ def updateStatusWorkorder(db: Session, workorder_id: str, new_status: str, perfo
     wo_dict['customer_name']   = wo.customer.nama if wo.customer else None
     wo_dict['vehicle_no_pol']  = wo.vehicle.no_pol if wo.vehicle else None
 
-    product_ordered_list = []
-    for po in wo.product_ordered:
-        po_dict = to_dict(po)
-        if po.product:
-            po_dict['product_name'] = po.product.name
-        product_ordered_list.append(po_dict)
-    wo_dict['product_ordered'] = product_ordered_list
 
-    service_ordered_list = []
-    for so in wo.service_ordered:
-        so_dict = to_dict(so)
-        if so.service:
-            so_dict['service_name'] = so.service.name
-        service_ordered_list.append(so_dict)
-    wo_dict['service_ordered'] = service_ordered_list
+    create_sales_payment_journal_entry(db,data_entry)
 
     return wo_dict
 
