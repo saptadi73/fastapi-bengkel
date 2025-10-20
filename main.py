@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
 
-from routes import routes_customer, routes_auth, routes_product, routes_workorder,routes_booking, routes_packet_order, routes_karyawan, routes_accounting, routes_supplier, routes_purchase_order, routes_expenses, routes_inventory
+from routes import routes_customer, routes_auth, routes_product, routes_workorder,routes_booking, routes_packet_order, routes_karyawan, routes_accounting, routes_supplier, routes_purchase_order, routes_expenses, routes_inventory, routes_attendance
 
 app = FastAPI()
 
@@ -36,6 +36,7 @@ app.include_router(routes_supplier.router)
 app.include_router(routes_purchase_order.router)
 app.include_router(routes_expenses.router)
 app.include_router(routes_inventory.router)
+app.include_router(routes_attendance.router)
 
 @app.get("/")
 def root():

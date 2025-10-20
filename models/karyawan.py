@@ -18,3 +18,4 @@ class Karyawan(Base):
     updated_at = Column(Date, nullable=False, server_default=text('now()'))
     
     workorders = relationship('Workorder', back_populates='karyawan')
+    attendances = relationship('Attendance', back_populates='karyawan')

@@ -425,5 +425,20 @@ def update_only_status_purchase_order(db: Session, purchase_id: str):
         db.rollback()
         return {"message": f"Unexpected error: {str(e)}"}
 
+def getPurchaseOrdersBySupplierID(db: Session, supplier_id: str):
+    purchase_orders = db.query(PurchaseOrder).filter(PurchaseOrder.supplier_id == supplier_id).all()
+    result = []
+    for po in purchase_orders:
+        po_dict = to_dict(po)
+        po_dict['supplier_name'] = po.supplier.nama if po.supplier else None
+        lines = []
+        for line in po.lines:
+            line_dict = to_dict(line)
+            line_dict['product_name'] = line.product.name if line.product else None
+            lines.append(line_dict)
+        po_dict['lines'] = lines
+        result.append(po_dict)
+    return result
+
 
 

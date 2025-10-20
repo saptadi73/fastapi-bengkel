@@ -5,6 +5,7 @@ from .customer import *
 from .expenses import *
 from .inventory import *
 from .karyawan import *
+from .attendance import *
 from .packet_order import *
 from .purchase_order import *
 from .supplier import *

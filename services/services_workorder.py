@@ -195,6 +195,7 @@ def getWorkorderByID(db: Session, workorder_id: str):
         # Tambahkan info produk jika perlu
         if po.product:
             po_dict['product_name'] = po.product.name
+            po_dict['satuan_name'] = po.satuan.name
         product_ordered_list.append(po_dict)
     wo_dict['product_ordered'] = product_ordered_list
 
@@ -785,4 +786,40 @@ def deleteServiceOrder(db: Session, service_ordered_id: str):
     wo_dict['customer_name'] = wo.customer.nama if wo.customer else None
     wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None
     return wo_dict
+
+def getWorkordersByCustomerID(db: Session, customer_id: str):
+    workorders = db.query(Workorder).filter(Workorder.customer_id == customer_id).all()
+    result = []
+    for wo in workorders:
+        wo_dict = to_dict(wo)
+        wo_dict['customer_name'] = wo.customer.nama if wo.customer else None
+        wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None
+        wo_dict['karyawan_name'] = wo.karyawan.nama if wo.karyawan else None
+        wo_dict['vehicle_model'] = wo.vehicle.model if wo.vehicle else None
+        wo_dict['vehicle_brand'] = wo.vehicle.brand.name if wo.vehicle else None
+        wo_dict['vehicle_color'] = wo.vehicle.warna if wo.vehicle else None
+        wo_dict['customer_hp'] = wo.customer.hp if wo.customer else None
+
+        # Tambahkan detail product_ordered
+        product_ordered_list = []
+        for po in wo.product_ordered:
+            po_dict = to_dict(po)
+            # Tambahkan info produk jika perlu
+            if po.product:
+                po_dict['product_name'] = po.product.name
+            product_ordered_list.append(po_dict)
+        wo_dict['product_ordered'] = product_ordered_list
+
+        # Tambahkan detail service_ordered
+        service_ordered_list = []
+        for so in wo.service_ordered:
+            so_dict = to_dict(so)
+            # Tambahkan info service jika perlu
+            if so.service:
+                so_dict['service_name'] = so.service.name
+            service_ordered_list.append(so_dict)
+        wo_dict['service_ordered'] = service_ordered_list
+
+        result.append(wo_dict)
+    return result
 

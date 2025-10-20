@@ -243,6 +243,11 @@ class CashBookReport(BaseModel):
     opening_balance: Decimal
     entries: List[CashBookEntry]
 
+    class Config:
+        json_encoders = {
+            Decimal: lambda v: float(v)
+        }
+
 
 class ExpenseReportRequest(BaseModel):
     start_date: date
@@ -261,6 +266,96 @@ class ExpenseReport(BaseModel):
     total_expenses: Decimal
     total_count: int
     items: List[ExpenseReportItem]
+
+    class Config:
+        json_encoders = {
+            Decimal: lambda v: float(v)
+        }
+
+
+class ProfitLossReportRequest(BaseModel):
+    start_date: date
+    end_date: date
+
+
+class ProfitLossReportItem(BaseModel):
+    account_code: str
+    account_name: str
+    amount: Decimal
+
+
+class ProfitLossReport(BaseModel):
+    total_revenue: Decimal
+    total_expenses: Decimal
+    net_profit: Decimal
+    revenues: List[ProfitLossReportItem]
+    expenses: List[ProfitLossReportItem]
+
+    class Config:
+        json_encoders = {
+            Decimal: lambda v: float(v)
+        }
+
+
+class CashReportRequest(BaseModel):
+    start_date: date
+    end_date: date
+    account_ids: Optional[List[UUID]] = None  # Filter by specific cash/bank accounts
+    transaction_type: Optional[str] = None  # "cash_in", "cash_out", or None for both
+
+
+class CashReportEntry(BaseModel):
+    date: date
+    memo: Optional[str]
+    account_code: str
+    account_name: str
+    amount: Decimal
+    transaction_type: str  # "cash_in" or "cash_out"
+
+
+class CashReport(BaseModel):
+    total_cash_in: Decimal
+    total_cash_out: Decimal
+    net_cash_flow: Decimal
+    entries: List[CashReportEntry]
+
+    class Config:
+        json_encoders = {
+            Decimal: lambda v: float(v)
+        }
+
+
+class ReceivablePayableReportRequest(BaseModel):
+    start_date: date
+    end_date: date
+
+
+class ReceivablePayableItem(BaseModel):
+    entity_id: str  # customer_id or supplier_id
+    entity_name: str  # customer.nama or supplier.nama
+    entity_type: str  # "customer" or "supplier"
+    customer_id: Optional[str] = None  # customer_id if entity_type is customer
+    supplier_id: Optional[str] = None  # supplier_id if entity_type is supplier
+    total_receivable: Decimal  # for customers
+    total_payable: Decimal  # for suppliers
+    balance: Decimal  # receivable - payable (positive = receivable, negative = payable)
+
+
+class ReceivablePayableReport(BaseModel):
+    total_receivable: Decimal
+    total_payable: Decimal
+    net_balance: Decimal
+    items: List[ReceivablePayableItem]
+
+    class Config:
+        json_encoders = {
+            Decimal: lambda v: float(v)
+        }
+
+
+
+
+
 
 
 

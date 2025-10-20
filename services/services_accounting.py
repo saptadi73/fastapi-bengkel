@@ -35,7 +35,16 @@ from schemas.service_accounting import (
     CashBookEntry,
     ExpenseReportRequest,
     ExpenseReport,
-    ExpenseReportItem
+    ExpenseReportItem,
+    ProfitLossReportRequest,
+    ProfitLossReport,
+    ProfitLossReportItem,
+    CashReportRequest,
+    CashReport,
+    CashReportEntry,
+    ReceivablePayableReportRequest,
+    ReceivablePayableReport,
+    ReceivablePayableItem
 )
 
 def to_dict(obj):
@@ -1073,10 +1082,264 @@ def generate_expense_report(db: Session, request: ExpenseReportRequest) -> Expen
         items=items
     )
 
-def getBankCodes(db: Session): 
+def getBankCodes(db: Session):
     banks = db.query(Account).filter(Account.code.like("10%")).all()
     result = []
     for banku in banks:
         b_dict = to_dict(banku)
         result.append(b_dict)
     return result
+
+def getEquityCodes(db: Session):
+    banks = db.query(Account).filter(Account.code.like("90%")).all()
+    result = []
+    for banku in banks:
+        b_dict = to_dict(banku)
+        result.append(b_dict)
+    return result
+
+def getTarikCodes(db: Session):
+    banks = db.query(Account).filter(Account.code.like("22%")).all()
+    result = []
+    for banku in banks:
+        b_dict = to_dict(banku)
+        result.append(b_dict)
+    return result
+
+
+def generate_profit_loss_report(db: Session, request: ProfitLossReportRequest) -> ProfitLossReport:
+    """
+    Generate a profit and loss report within a date range.
+    Summarizes total revenue and total expenses, calculates net profit.
+    """
+    # Get all revenue accounts (account_type == 'revenue')
+    revenue_accounts = db.query(Account).filter(Account.account_type == 'revenue', Account.is_active == True).all()
+    revenue_account_ids = [acc.id for acc in revenue_accounts]
+
+    # Get all expense accounts (account_type == 'expense')
+    expense_accounts = db.query(Account).filter(Account.account_type == 'expense', Account.is_active == True).all()
+    expense_account_ids = [acc.id for acc in expense_accounts]
+
+    # Calculate total revenue: sum of credits for revenue accounts (since revenue is credited)
+    revenue_query = db.query(
+        (JournalLine.credit - JournalLine.debit).label('net_revenue')
+    ).join(JournalEntry).filter(
+        JournalLine.account_id.in_(revenue_account_ids),
+        JournalEntry.date >= request.start_date,
+        JournalEntry.date <= request.end_date
+    )
+    revenue_result = db.execute(revenue_query).all()
+    total_revenue = sum(row.net_revenue for row in revenue_result)
+
+    # Calculate total expenses: sum of debits for expense accounts (since expenses are debited)
+    expense_query = db.query(
+        (JournalLine.debit - JournalLine.credit).label('net_expense')
+    ).join(JournalEntry).filter(
+        JournalLine.account_id.in_(expense_account_ids),
+        JournalEntry.date >= request.start_date,
+        JournalEntry.date <= request.end_date
+    )
+    expense_result = db.execute(expense_query).all()
+    total_expenses = sum(row.net_expense for row in expense_result)
+
+    # Calculate net profit
+    net_profit = total_revenue - total_expenses
+
+    # Build revenue items
+    revenues = []
+    for acc in revenue_accounts:
+        rev_query = db.query(
+            (JournalLine.credit - JournalLine.debit).label('amount')
+        ).join(JournalEntry).filter(
+            JournalLine.account_id == acc.id,
+            JournalEntry.date >= request.start_date,
+            JournalEntry.date <= request.end_date
+        )
+        rev_amount = sum(row.amount for row in db.execute(rev_query).all())
+        if rev_amount != 0:
+            revenues.append(ProfitLossReportItem(
+                account_code=acc.code,
+                account_name=acc.name,
+                amount=rev_amount
+            ))
+
+    # Build expense items
+    expenses = []
+    for acc in expense_accounts:
+        exp_query = db.query(
+            (JournalLine.debit - JournalLine.credit).label('amount')
+        ).join(JournalEntry).filter(
+            JournalLine.account_id == acc.id,
+            JournalEntry.date >= request.start_date,
+            JournalEntry.date <= request.end_date
+        )
+        exp_amount = sum(row.amount for row in db.execute(exp_query).all())
+        if exp_amount != 0:
+            expenses.append(ProfitLossReportItem(
+                account_code=acc.code,
+                account_name=acc.name,
+                amount=exp_amount
+            ))
+
+    return ProfitLossReport(
+        total_revenue=total_revenue,
+        total_expenses=total_expenses,
+        net_profit=net_profit,
+        revenues=revenues,
+        expenses=expenses
+    )
+
+
+def generate_cash_report(db: Session, request: CashReportRequest) -> CashReport:
+    """
+    Generate a cash report within a date range, optionally filtered by account_ids and transaction_type.
+    Summarizes cash-in and cash-out transactions.
+    """
+    # Get cash/bank accounts (assuming account_type == 'asset' and code starts with '1' for cash/bank)
+    cash_accounts_query = db.query(Account).filter(Account.account_type == 'asset', Account.code.like('1%'), Account.is_active == True)
+    if request.account_ids:
+        cash_accounts_query = cash_accounts_query.filter(Account.id.in_(request.account_ids))
+    cash_accounts = cash_accounts_query.all()
+    cash_account_ids = [acc.id for acc in cash_accounts]
+
+    # Query journal lines for cash accounts within date range
+    lines_query = db.query(JournalLine, JournalEntry, Account).join(JournalEntry).join(Account).filter(
+        JournalLine.account_id.in_(cash_account_ids),
+        JournalEntry.date >= request.start_date,
+        JournalEntry.date <= request.end_date
+    ).order_by(JournalEntry.date)
+
+    entries = []
+    total_cash_in = Decimal("0.00")
+    total_cash_out = Decimal("0.00")
+
+    for line, entry, account in lines_query:
+        # Determine transaction type based on normal balance
+        if account.normal_balance == "debit":
+            # Debit increases cash (cash_in), credit decreases cash (cash_out)
+            if line.debit > 0:
+                transaction_type = "cash_in"
+                amount = line.debit
+                total_cash_in += amount
+            elif line.credit > 0:
+                transaction_type = "cash_out"
+                amount = line.credit
+                total_cash_out += amount
+            else:
+                continue  # Skip zero amounts
+        else:
+            # For credit normal accounts, reverse
+            if line.credit > 0:
+                transaction_type = "cash_in"
+                amount = line.credit
+                total_cash_in += amount
+            elif line.debit > 0:
+                transaction_type = "cash_out"
+                amount = line.debit
+                total_cash_out += amount
+            else:
+                continue
+
+        # Filter by transaction_type if specified
+        if request.transaction_type and transaction_type != request.transaction_type:
+            continue
+
+        entries.append(CashReportEntry(
+            date=entry.date,
+            memo=entry.memo,
+            account_code=account.code,
+            account_name=account.name,
+            amount=amount,
+            transaction_type=transaction_type
+        ))
+
+    net_cash_flow = total_cash_in - total_cash_out
+
+    return CashReport(
+        total_cash_in=total_cash_in,
+        total_cash_out=total_cash_out,
+        net_cash_flow=net_cash_flow,
+        entries=entries
+    )
+
+def generate_receivable_payable_report(db: Session, request: ReceivablePayableReportRequest):
+    from models.customer import Customer
+    from models.supplier import Supplier
+    from sqlalchemy import func, select
+
+    # Get all customers with receivable balances
+    customer_receivables = db.query(
+        Customer.id.label('entity_id'),
+        Customer.nama.label('entity_name'),
+        func.sum(
+            func.coalesce(
+                select(func.sum(JournalLine.debit - JournalLine.credit))
+                .where(JournalLine.account_id == select(Account.id).where(Account.code == '2001'))
+                .where(JournalEntry.customer_id == Customer.id)
+                .where(JournalEntry.date >= request.start_date)
+                .where(JournalEntry.date <= request.end_date)
+                .scalar_subquery(), 0
+            )
+        ).label('total_receivable')
+    ).group_by(Customer.id, Customer.nama).all()
+
+    # Get all suppliers with payable balances
+    supplier_payables = db.query(
+        Supplier.id.label('entity_id'),
+        Supplier.nama.label('entity_name'),
+        func.sum(
+            func.coalesce(
+                select(func.sum(JournalLine.credit - JournalLine.debit))
+                .where(JournalLine.account_id == select(Account.id).where(Account.code == '3001'))
+                .where(JournalEntry.supplier_id == Supplier.id)
+                .where(JournalEntry.date >= request.start_date)
+                .where(JournalEntry.date <= request.end_date)
+                .scalar_subquery(), 0
+            )
+        ).label('total_payable')
+    ).group_by(Supplier.id, Supplier.nama).all()
+
+    items = []
+    total_receivable = Decimal("0.00")
+    total_payable = Decimal("0.00")
+
+    # Process customers (receivables)
+    for cust in customer_receivables:
+        if cust.total_receivable > 0:
+            item = ReceivablePayableItem(
+                entity_id=str(cust.entity_id),
+                entity_name=cust.entity_name,
+                entity_type="customer",
+                customer_id=str(cust.entity_id),
+                supplier_id=None,
+                total_receivable=cust.total_receivable,
+                total_payable=Decimal("0.00"),
+                balance=cust.total_receivable
+            )
+            items.append(item)
+            total_receivable += cust.total_receivable
+
+    # Process suppliers (payables)
+    for supp in supplier_payables:
+        if supp.total_payable > 0:
+            item = ReceivablePayableItem(
+                entity_id=str(supp.entity_id),
+                entity_name=supp.entity_name,
+                entity_type="supplier",
+                customer_id=None,
+                supplier_id=str(supp.entity_id),
+                total_receivable=Decimal("0.00"),
+                total_payable=supp.total_payable,
+                balance=-supp.total_payable
+            )
+            items.append(item)
+            total_payable += supp.total_payable
+
+    net_balance = total_receivable - total_payable
+
+    return ReceivablePayableReport(
+        total_receivable=total_receivable,
+        total_payable=total_payable,
+        net_balance=net_balance,
+        items=items
+    )

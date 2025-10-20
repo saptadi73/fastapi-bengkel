@@ -1,4 +1,4 @@
-from schemas.service_inventory import CreateProductMovedHistory
+from schemas.service_inventory import CreateProductMovedHistory, ProductMoveHistoryReportRequest, ProductMoveHistoryReport, ProductMoveHistoryReportItem
 from models.inventory import Inventory, ProductMovedHistory
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
@@ -7,6 +7,9 @@ from sqlalchemy import func, select
 import uuid
 import decimal
 import datetime
+from models.workorder import Product  # Product model is in workorder.py
+from models.customer import Customer
+from models.supplier import Supplier
 
 def to_dict(obj):
     result = {}
@@ -99,5 +102,59 @@ def createProductMoveHistoryNew(db: Session, move_data: CreateProductMovedHistor
         db.refresh(inventory)
 
     return to_dict(new_move)
+
+def generate_product_move_history_report(db: Session, request: ProductMoveHistoryReportRequest) -> ProductMoveHistoryReport:
+    """
+    Generate a product move history report within a date range.
+    Lists all product movement entries with product details, customer for outcome, supplier for income.
+    """
+    
+
+    # Query ProductMovedHistory with product join
+    query = db.query(ProductMovedHistory, Product).join(Product, ProductMovedHistory.product_id == Product.id).filter(
+        ProductMovedHistory.timestamp >= request.start_date,
+        ProductMovedHistory.timestamp <= request.end_date
+    ).order_by(ProductMovedHistory.timestamp)
+
+    moves = query.all()
+
+    items = []
+    for move, product in moves:
+        customer_name = None
+        supplier_name = None
+
+        # For outcome, get customer from related workorder or sale
+        if move.type.lower() == 'outcome':
+            # Assuming notes or performed_by might contain customer info, or we need to join with workorder
+            # For simplicity, if notes contain customer name, or we can add logic to fetch from workorder
+            # Since the model doesn't have direct customer_id, we might need to parse notes or add a field
+            # For now, leave as None, or assume notes contain customer name
+            if move.notes and "customer:" in move.notes.lower():
+                # Parse customer name from notes if present
+                customer_name = move.notes.split("customer:")[1].strip() if "customer:" in move.notes.lower() else None
+
+        # For income, get supplier from related purchase
+        elif move.type.lower() == 'income':
+            if move.notes and "supplier:" in move.notes.lower():
+                supplier_name = move.notes.split("supplier:")[1].strip() if "supplier:" in move.notes.lower() else None
+
+        items.append(ProductMoveHistoryReportItem(
+            product_id=str(move.product_id),
+            product_name=product.name,
+            type=move.type,
+            quantity=move.quantity,
+            timestamp=move.timestamp,
+            performed_by=move.performed_by,
+            notes=move.notes,
+            customer_name=customer_name,
+            supplier_name=supplier_name
+        ))
+
+    return ProductMoveHistoryReport(
+        total_entries=len(items),
+        items=items
+    )
+
+
 
 
