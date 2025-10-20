@@ -5,7 +5,7 @@ from schemas.service_attendance import CreateAttendance, UpdateAttendance
 from services.services_attendance import (
     create_attendance, get_attendance_by_id, get_all_attendances,
     get_attendances_by_karyawan, get_attendances_by_date_range,
-    update_attendance, delete_attendance, check_in, check_out
+    update_attendance, delete_attendance, check_in, check_out, is_attendance_completed_today
 )
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
@@ -130,6 +130,20 @@ def check_out_router(
     try:
         result = check_out(db, karyawan_id, date)
         if "message" in result and ("Already checked out" in result["message"] or "No attendance record" in result["message"] or "Error" in result["message"]):
+            return error_response(message=result["message"])
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+
+@router.get("/status/{karyawan_id}")
+def is_attendance_completed_today_router(
+    karyawan_id: str,
+    date: str = Query(None, description="Date in ISO format (YYYY-MM-DD), defaults to today"),
+    db: Session = Depends(get_db)
+):
+    try:
+        result = is_attendance_completed_today(db, karyawan_id, date)
+        if "message" in result and "Unexpected error" in result["message"]:
             return error_response(message=result["message"])
         return success_response(data=result)
     except Exception as e:

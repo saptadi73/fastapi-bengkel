@@ -211,3 +211,31 @@ def check_out(db: Session, karyawan_id: str, date: str = None):
         db.rollback()
         logger.error(f"Unexpected error in check_out: {str(e)}")
         return {"message": f"Unexpected error: {str(e)}"}
+
+def is_attendance_completed_today(db: Session, karyawan_id: str, date: str = None):
+    try:
+        if date is None:
+            date = datetime.date.today()
+        else:
+            date = datetime.datetime.fromisoformat(date).date()
+
+        attendance = db.query(Attendance).filter(
+            Attendance.karyawan_id == karyawan_id,
+            Attendance.date == date
+        ).first()
+
+        if not attendance:
+            return {"completed": False, "message": "No attendance record found for today"}
+
+        completed = attendance.check_in_time is not None and attendance.check_out_time is not None
+        return {
+            "completed": completed,
+            "check_in_time": attendance.check_in_time.isoformat() if attendance.check_in_time else None,
+            "check_out_time": attendance.check_out_time.isoformat() if attendance.check_out_time else None,
+            "status": attendance.status
+        }
+    except Exception as e:
+        logger.error(f"Unexpected error in is_attendance_completed_today: {str(e)}")
+        return {"message": f"Unexpected error: {str(e)}"}
+    
+    

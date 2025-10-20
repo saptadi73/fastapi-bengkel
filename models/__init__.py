@@ -11,3 +11,4 @@ from .purchase_order import *
 from .supplier import *
 from .user import *
 from .workorder import *
+from .accounting import *
