@@ -9,6 +9,8 @@ import decimal
 import datetime
 from models.expenses import Expenses
 from services.services_expenses import edit_expense_status
+from models.workorder import Workorder, ProductOrdered, Product, ServiceOrdered, Service
+from models.customer import Customer
 
 from models.accounting import Account, JournalEntry, JournalLine, JournalType
 from schemas.service_accounting import (
@@ -44,7 +46,13 @@ from schemas.service_accounting import (
     CashReportEntry,
     ReceivablePayableReportRequest,
     ReceivablePayableReport,
-    ReceivablePayableItem
+    ReceivablePayableItem,
+    ProductSalesReportRequest,
+    ProductSalesReport,
+    ProductSalesReportItem,
+    ServiceSalesReportRequest,
+    ServiceSalesReport,
+    ServiceSalesReportItem
 )
 
 def to_dict(obj):
@@ -1274,6 +1282,7 @@ def generate_receivable_payable_report(db: Session, request: ReceivablePayableRe
         func.sum(
             func.coalesce(
                 select(func.sum(JournalLine.debit - JournalLine.credit))
+                .join(JournalEntry, JournalLine.entry_id == JournalEntry.id)
                 .where(JournalLine.account_id == select(Account.id).where(Account.code == '2001'))
                 .where(JournalEntry.customer_id == Customer.id)
                 .where(JournalEntry.date >= request.start_date)
@@ -1290,6 +1299,7 @@ def generate_receivable_payable_report(db: Session, request: ReceivablePayableRe
         func.sum(
             func.coalesce(
                 select(func.sum(JournalLine.credit - JournalLine.debit))
+                .join(JournalEntry, JournalLine.entry_id == JournalEntry.id)
                 .where(JournalLine.account_id == select(Account.id).where(Account.code == '3001'))
                 .where(JournalEntry.supplier_id == Supplier.id)
                 .where(JournalEntry.date >= request.start_date)
@@ -1341,5 +1351,127 @@ def generate_receivable_payable_report(db: Session, request: ReceivablePayableRe
         total_receivable=total_receivable,
         total_payable=total_payable,
         net_balance=net_balance,
+        items=items
+    )
+
+
+def generate_product_sales_report(db: Session, request: ProductSalesReportRequest) -> ProductSalesReport:
+    """
+    Generate a product sales report within a date range.
+    Lists each product line sold in workorders, with totals for quantity and sales.
+    Optionally filters by product_id and customer_id.
+    """
+
+
+    # Query product_ordered joined with workorder, product, customer
+    query = db.query(
+        Workorder.no_wo,
+        Workorder.tanggal_masuk,
+        Customer.nama.label('customer_name'),
+        Product.name.label('product_name'),
+        ProductOrdered.quantity,
+        ProductOrdered.price,
+        ProductOrdered.subtotal,
+        ProductOrdered.discount
+    ).join(ProductOrdered, Workorder.id == ProductOrdered.workorder_id)\
+     .join(Product, ProductOrdered.product_id == Product.id)\
+     .join(Customer, Workorder.customer_id == Customer.id)\
+     .filter(Workorder.tanggal_masuk >= request.start_date)\
+     .filter(Workorder.tanggal_masuk <= request.end_date)
+
+    if request.product_id:
+        query = query.filter(ProductOrdered.product_id == request.product_id)
+
+    if request.customer_id:
+        query = query.filter(Workorder.customer_id == request.customer_id)
+
+    query = query.order_by(Workorder.tanggal_masuk, Workorder.no_wo)
+
+    results = query.all()
+
+    items = []
+    total_quantity = Decimal("0.00")
+    total_sales = Decimal("0.00")
+
+    for row in results:
+        item = ProductSalesReportItem(
+            workorder_no=row.no_wo,
+            workorder_date=row.tanggal_masuk.date() if isinstance(row.tanggal_masuk, datetime.datetime) else row.tanggal_masuk,
+            customer_name=row.customer_name,
+            product_name=row.product_name,
+            quantity=row.quantity,
+            price=row.price,
+            subtotal=row.subtotal,
+            discount=row.discount
+        )
+        items.append(item)
+        total_quantity += row.quantity
+        total_sales += row.subtotal
+
+    return ProductSalesReport(
+        total_quantity=total_quantity,
+        total_sales=total_sales,
+        items=items
+    )
+
+
+def generate_service_sales_report(db: Session, request: ServiceSalesReportRequest) -> ServiceSalesReport:
+    """
+    Generate a service sales report within a date range.
+    Lists each service line sold in workorders, with totals for quantity and sales.
+    Optionally filters by service_id and customer_id.
+    """
+    from models.workorder import Workorder, ServiceOrdered, Service
+    from models.customer import Customer
+    from sqlalchemy import func
+
+    # Query service_ordered joined with workorder, service, customer
+    query = db.query(
+        Workorder.no_wo,
+        Workorder.tanggal_masuk,
+        Customer.nama.label('customer_name'),
+        Service.name.label('service_name'),
+        ServiceOrdered.quantity,
+        ServiceOrdered.price,
+        ServiceOrdered.subtotal,
+        ServiceOrdered.discount
+    ).join(ServiceOrdered, Workorder.id == ServiceOrdered.workorder_id)\
+     .join(Service, ServiceOrdered.service_id == Service.id)\
+     .join(Customer, Workorder.customer_id == Customer.id)\
+     .filter(func.date(Workorder.tanggal_masuk) >= request.start_date)\
+     .filter(func.date(Workorder.tanggal_masuk) <= request.end_date)
+
+    if request.service_id:
+        query = query.filter(ServiceOrdered.service_id == request.service_id)
+
+    if request.customer_id:
+        query = query.filter(Workorder.customer_id == request.customer_id)
+
+    query = query.order_by(Workorder.tanggal_masuk, Workorder.no_wo)
+
+    results = query.all()
+
+    items = []
+    total_quantity = Decimal("0.00")
+    total_sales = Decimal("0.00")
+
+    for row in results:
+        item = ServiceSalesReportItem(
+            workorder_no=row.no_wo,
+            workorder_date=row.tanggal_masuk.date() if isinstance(row.tanggal_masuk, datetime.datetime) else row.tanggal_masuk,
+            customer_name=row.customer_name,
+            service_name=row.service_name,
+            quantity=row.quantity,
+            price=row.price,
+            subtotal=row.subtotal,
+            discount=row.discount
+        )
+        items.append(item)
+        total_quantity += row.quantity
+        total_sales += row.subtotal
+
+    return ServiceSalesReport(
+        total_quantity=total_quantity,
+        total_sales=total_sales,
         items=items
     )

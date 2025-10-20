@@ -12,6 +12,8 @@ from schemas.service_accounting import (
     ProfitLossReportRequest, ProfitLossReport,
     CashReportRequest, CashReport,
     ReceivablePayableReportRequest, ReceivablePayableReport,
+    ProductSalesReportRequest, ProductSalesReport,
+    ServiceSalesReportRequest, ServiceSalesReport,
 )
 from services.services_accounting import (
     record_purchase, record_sale, receive_payment_ar,
@@ -19,7 +21,7 @@ from services.services_accounting import (
     create_sales_journal_entry, create_sales_payment_journal_entry, create_purchase_journal_entry,
     create_purchase_payment_journal_entry, create_expense_journal_entry, create_expense_payment_journal_entry,
     cash_in, cash_out,
-    generate_cash_book_report, generate_expense_report, getBankCodes, generate_profit_loss_report, generate_cash_report, getEquityCodes, getTarikCodes, generate_receivable_payable_report
+    generate_cash_book_report, generate_expense_report, getBankCodes, generate_profit_loss_report, generate_cash_report, getEquityCodes, getTarikCodes, generate_receivable_payable_report, generate_product_sales_report, generate_service_sales_report
 )
 
 from models.accounting import JournalEntry
@@ -252,4 +254,24 @@ def generate_receivable_payable_report_route(request: ReceivablePayableReportReq
         return success_response(data=data, message="Laporan piutang hutang berhasil dihasilkan")
     except Exception as e:
         return error_response(message=f"Gagal menghasilkan laporan piutang hutang: {str(e)}")
+
+@router.post("/product-sales-report", response_model=ProductSalesReport, dependencies=[Depends(jwt_required)])
+def generate_product_sales_report_route(request: ProductSalesReportRequest, db: Session = Depends(get_db)):
+    try:
+        result = generate_product_sales_report(db, request)
+        import json
+        data = json.loads(result.json())
+        return success_response(data=data, message="Laporan penjualan produk berhasil dihasilkan")
+    except Exception as e:
+        return error_response(message=f"Gagal menghasilkan laporan penjualan produk: {str(e)}")
+
+@router.post("/service-sales-report", response_model=ServiceSalesReport, dependencies=[Depends(jwt_required)])
+def generate_service_sales_report_route(request: ServiceSalesReportRequest, db: Session = Depends(get_db)):
+    try:
+        result = generate_service_sales_report(db, request)
+        import json
+        data = json.loads(result.json())
+        return success_response(data=data, message="Laporan penjualan jasa berhasil dihasilkan")
+    except Exception as e:
+        return error_response(message=f"Gagal menghasilkan laporan penjualan jasa: {str(e)}")
 

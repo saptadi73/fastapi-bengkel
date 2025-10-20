@@ -353,6 +353,64 @@ class ReceivablePayableReport(BaseModel):
         }
 
 
+class ProductSalesReportRequest(BaseModel):
+    start_date: date
+    end_date: date
+    product_id: Optional[UUID] = None
+    customer_id: Optional[UUID] = None
+
+
+class ProductSalesReportItem(BaseModel):
+    workorder_no: str
+    workorder_date: date
+    customer_name: str
+    product_name: str
+    quantity: Decimal
+    price: Decimal
+    subtotal: Decimal
+    discount: Decimal
+
+
+class ProductSalesReport(BaseModel):
+    total_quantity: Decimal
+    total_sales: Decimal
+    items: List[ProductSalesReportItem]
+
+    class Config:
+        json_encoders = {
+            Decimal: lambda v: float(v)
+        }
+
+
+class ServiceSalesReportRequest(BaseModel):
+    start_date: date
+    end_date: date
+    service_id: Optional[UUID] = None
+    customer_id: Optional[UUID] = None
+
+
+class ServiceSalesReportItem(BaseModel):
+    workorder_no: str
+    workorder_date: date
+    customer_name: str
+    service_name: str
+    quantity: Decimal
+    price: Decimal
+    subtotal: Decimal
+    discount: Decimal
+
+
+class ServiceSalesReport(BaseModel):
+    total_quantity: Decimal
+    total_sales: Decimal
+    items: List[ServiceSalesReportItem]
+
+    class Config:
+        json_encoders = {
+            Decimal: lambda v: float(v)
+        }
+
+
 
 
 
