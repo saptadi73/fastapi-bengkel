@@ -202,6 +202,15 @@ class ExpensePaymentJournalEntry(BaseModel):
     amount: Decimal
     kas_bank_code: str
     expense_code: str = "6000"
+
+
+class LostGoodsJournalEntry(BaseModel):
+    date: date
+    memo: Optional[str]
+    product_id: UUID
+    quantity: Decimal
+    loss_account_code: str = "6003"  # Kerugian Barang
+    inventory_account_code: str = "2002"  # Persediaan Barang
     
 
 

@@ -60,9 +60,11 @@ def createNewWorkorder(db: Session, workorder_data: CreateWorkOrder):
         tanggal_masuk=workorder_data.tanggal_masuk,
         tanggal_keluar=workorder_data.tanggal_keluar,
         keluhan=workorder_data.keluhan,
+        kilometer=workorder_data.kilometer,
         saran=workorder_data.saran,
         keterangan=workorder_data.keterangan if hasattr(workorder_data, 'keterangan') else None,
         status=workorder_data.status,
+        status_pembayaran=workorder_data.status_pembayaran,
         total_discount=workorder_data.total_discount,
         total_biaya=workorder_data.total_biaya,
         customer_id=workorder_data.customer_id,
@@ -493,9 +495,11 @@ def update_only_workorder(db: Session, workorder_id: str, data: CreateWorkorderO
     wo.tanggal_masuk = data.tanggal_masuk
     wo.tanggal_keluar = data.tanggal_keluar
     wo.keluhan = data.keluhan
+    wo.kilometer = data.kilometer
     wo.saran = data.saran
     wo.keterangan = data.keterangan if hasattr(data, 'keterangan') else None
     wo.status = data.status
+    wo.status_pembayaran = data.status_pembayaran
     wo.total_discount = data.total_discount
     wo.total_biaya = data.total_biaya
     wo.customer_id = data.customer_id
@@ -581,8 +585,10 @@ def update_workorder_lengkap(db: Session, workorder_id: str, data: CreateWorkOrd
     wo.tanggal_masuk = data.tanggal_masuk
     wo.tanggal_keluar = data.tanggal_keluar
     wo.keluhan = data.keluhan
+    wo.kilometer = data.kilometer
     wo.saran = data.saran
     wo.status = data.status
+    wo.status_pembayaran = data.status_pembayaran
     wo.total_discount = data.total_discount
     wo.total_biaya = data.total_biaya
     wo.customer_id = data.customer_id

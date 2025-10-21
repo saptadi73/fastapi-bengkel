@@ -30,6 +30,7 @@ from schemas.service_accounting import (
     PurchasePaymentJournalEntry,
     ExpenseJournalEntry,
     ExpensePaymentJournalEntry,
+    LostGoodsJournalEntry,
     CashInCreate,
     CashOutCreate,
     CashBookReportRequest,
@@ -979,6 +980,54 @@ def create_expense_payment_journal_entry(db: Session, data_entry: ExpensePayment
     )
     entry = _create_entry(db, payload, created_by="system")
     edit_expense_status(db, data_entry.expense_id)
+    return _to_entry_out(db, entry)
+
+
+def create_lost_goods_journal_entry(db: Session, data_entry: LostGoodsJournalEntry) -> dict:
+    """
+    Create a lost goods journal entry.
+    Dr Loss Account (Kerugian Barang)    amount
+       Cr Inventory Account (Persediaan Barang)    amount
+    """
+    if data_entry.quantity <= 0:
+        raise ValueError("Quantity must be positive for lost goods entry")
+
+    # Get product cost from database
+    from models.workorder import Product
+    product = db.query(Product).filter(Product.id == data_entry.product_id).first()
+    if not product:
+        raise ValueError(f"Product with id '{data_entry.product_id}' not found")
+    if not product.cost:
+        raise ValueError(f"Product '{product.name}' does not have a cost defined")
+
+    amount = product.cost * data_entry.quantity
+
+    lines: List[JournalLineCreate] = [
+        JournalLineCreate(
+            account_code=data_entry.loss_account_code,
+            description="Kerugian Barang",
+            debit=amount,
+            credit=Decimal("0.00")
+        ),
+        JournalLineCreate(
+            account_code=data_entry.inventory_account_code,
+            description="Pengurangan Persediaan Barang",
+            debit=Decimal("0.00"),
+            credit=amount
+        ),
+    ]
+
+    payload = JournalEntryCreate(
+        entry_no=None,  # Auto-generate
+        date=data_entry.date,
+        memo=data_entry.memo,
+        journal_type=JT.EXPENSE,  # Or JT.GENERAL, depending on classification
+        supplier_id=None,
+        customer_id=None,
+        workorder_id=None,
+        lines=lines
+    )
+    entry = _create_entry(db, payload, created_by="system")
     return _to_entry_out(db, entry)
 
 

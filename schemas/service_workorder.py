@@ -41,15 +41,17 @@ class CreateWorkOrder(BaseModel):
     tanggal_masuk: datetime
     tanggal_keluar: Optional[datetime] = None
     keluhan: str
+    kilometer: Optional[float] = None
     saran: Optional[str] = None
     status: str
+    status_pembayaran: Optional[str] = None
     total_discount: Optional[float] = 0
     total_biaya: float = 0
     pajak: Optional[float] = 0
     customer_id: UUID
     vehicle_id: UUID
     karyawan_id: Optional[UUID] = None
-    
+
     totalProductHarga: Optional[float]=0
     totalProductDiscount: Optional[float]=0
     totalProductCost: Optional[float]=0
@@ -57,7 +59,7 @@ class CreateWorkOrder(BaseModel):
     totalServiceHarga:Optional[float]=0
     totalServiceDiscount:Optional[float]=0
     totalServiceCost: Optional[float]=0
-    
+
     product_ordered: Optional[list[CreateProductOrder]] = None
     service_ordered: Optional[list[CreateServiceOrder]] = None
 
@@ -67,8 +69,10 @@ class CreateWorkorderOnly(BaseModel):
     tanggal_masuk: datetime
     tanggal_keluar: Optional[datetime] = None
     keluhan: str
+    kilometer: Optional[float] = None
     saran: Optional[str] = None
     status: str
+    status_pembayaran: Optional[str] = None
     pajak: Optional[float] = 0
     total_discount: Optional[float] = 0
     total_biaya: float
@@ -101,6 +105,7 @@ class WorkOrderResponse(BaseModel):
     keluhan: Optional[str] = None
     saran: Optional[str] = None
     status: str
+    status_pembayaran: Optional[str] = None
     total_discount: Optional[float] = 0
     total_biaya: float
     customer_id: UUID

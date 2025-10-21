@@ -4,6 +4,7 @@ import uuid
 from sqlalchemy.dialects.postgresql import UUID
 from .database import Base
 from .workorder import Brand
+from sqlalchemy import text
 
 
 class Customer(Base):
@@ -14,7 +15,7 @@ class Customer(Base):
     alamat = Column(String, nullable=True)
     email = Column(String, nullable=True, unique=True)
     tanggal_lahir = Column(Date, nullable=True)
-    from sqlalchemy import text
+    
     created_at = Column(Date, nullable=False, server_default=text('now()'))
     updated_at = Column(Date, nullable=False, server_default=text('now()'))
     vehicles = relationship('Vehicle', back_populates='customer')

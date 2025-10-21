@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import List, Optional
 from uuid import UUID
 from decimal import Decimal
@@ -12,3 +12,10 @@ class CreateKaryawan(BaseModel):
     tanggal_lahir: Optional[date] = None
     posisi: Optional[str] = None
     gaji: Optional[Decimal] = None
+
+    @field_validator('tanggal_lahir', mode='before')
+    @classmethod
+    def validate_tanggal_lahir(cls, v):
+        if v == "":
+            return None
+        return v
