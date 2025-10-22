@@ -45,6 +45,7 @@ class CreateWorkOrder(BaseModel):
     saran: Optional[str] = None
     status: str
     status_pembayaran: Optional[str] = None
+    update_pembayaran: Optional[float] = None
     total_discount: Optional[float] = 0
     total_biaya: float = 0
     pajak: Optional[float] = 0
@@ -73,6 +74,7 @@ class CreateWorkorderOnly(BaseModel):
     saran: Optional[str] = None
     status: str
     status_pembayaran: Optional[str] = None
+    update_pembayaran: Optional[float] = None
     pajak: Optional[float] = 0
     total_discount: Optional[float] = 0
     total_biaya: float
@@ -106,6 +108,7 @@ class WorkOrderResponse(BaseModel):
     saran: Optional[str] = None
     status: str
     status_pembayaran: Optional[str] = None
+    update_pembayaran: Optional[float] = None
     total_discount: Optional[float] = 0
     total_biaya: float
     customer_id: UUID

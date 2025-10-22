@@ -1,23 +1,18 @@
-# TODO List
+# TODO: Update Workorder for update_pembayaran Field
 
-## Fix 422 Error for tanggal_lahir Field ✅
+## Tasks to Complete
 
-### Step 1: Update schemas/service_customer.py ✅
-- Add field_validator for tanggal_lahir in CreateCustomerWithVehicles and CreateCustomer classes to convert empty string to None.
+- [ ] Update `schemas/service_workorder.py`:
+  - Add `update_pembayaran: Optional[float] = None` to `CreateWorkOrder` schema.
+  - Add `update_pembayaran: Optional[float] = None` to `CreateWorkorderOnly` schema.
+  - Add `update_pembayaran: Optional[float] = None` to `WorkOrderResponse` schema.
 
-### Step 2: Update schemas/service_karyawan.py ✅
-- Add field_validator for tanggal_lahir in relevant schema classes (e.g., CreateKaryawan) to convert empty string to None.
+- [ ] Update `services/services_workorder.py`:
+  - In `createNewWorkorder` function, add assignment for `update_pembayaran` from `workorder_data`.
+  - In `update_only_workorder` function, add assignment for `update_pembayaran` from `data`.
+  - In `update_workorder_lengkap` function, add assignment for `update_pembayaran` from `data`.
+  - Verify that `to_dict` function includes `update_pembayaran` (it should, as it iterates over columns).
 
-### Step 3: Test the Changes ✅
-- Test endpoints by sending requests without tanggal_lahir or with empty string to ensure 422 error is resolved.
-
-## Add Validation for Lost Goods Journal Entry ✅
-
-### Step 1: Update services/services_accounting.py ✅
-- Add validation to ensure quantity is positive in create_lost_goods_journal_entry function.
-
-### Step 2: Update test_lost_goods_journal.py ✅
-- Update the test case for zero quantity to expect ValueError instead of allowing zero quantity.
-
-### Step 3: Run Tests ✅
-- Execute the test to verify the validation works correctly.
+## Followup Steps
+- [ ] Verify that workorder creation and updates include the new field.
+- [ ] Test the API endpoints to ensure no errors.

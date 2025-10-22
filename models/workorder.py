@@ -37,7 +37,6 @@ class Product(Base):
     description = Column(String, nullable=True)
     price = Column(Numeric(10,2), nullable=True)
     cost = Column(Numeric(10,2), nullable=True)
-
     min_stock = Column(Numeric(10,2), nullable=False)
     
 
@@ -112,6 +111,7 @@ class Workorder(Base):
     pajak = Column(Numeric(10,2), nullable=True, default=0)
     keterangan=Column(String,nullable=True)
     status_pembayaran=Column(String,nullable=True, default='belum ada pembayaran')
+    update_pembayaran = Column(Numeric(10,2), nullable=True)
 
     karyawan_id = Column(UUID(as_uuid=True), ForeignKey('karyawan.id'))
     karyawan = relationship('Karyawan', back_populates='workorders')
