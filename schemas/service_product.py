@@ -89,3 +89,28 @@ class CreateSatuan(BaseModel):
 
 class CreateBrand(BaseModel):
     name: str
+
+class ProductCostHistoryResponse(BaseModel):
+    id: UUID
+    product_id: UUID
+    product_name: Optional[str] = None
+    old_cost: Optional[Decimal] = None
+    new_cost: Decimal
+    old_quantity: Optional[Decimal] = None
+    new_quantity: Decimal
+    purchase_quantity: Optional[Decimal] = None
+    purchase_price: Optional[Decimal] = None
+    calculation_method: str
+    notes: Optional[str] = None
+    created_at: datetime
+    created_by: str
+
+    model_config = {
+        "from_attributes": True
+    }
+
+class ProductCostHistoryRequest(BaseModel):
+    product_id: Optional[UUID] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    calculation_method: Optional[str] = None

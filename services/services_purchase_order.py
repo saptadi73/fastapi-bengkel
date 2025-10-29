@@ -8,6 +8,7 @@ from services.services_accounting import create_purchase_journal_entry
 from schemas.service_purchase_order import CreatePurchaseOrder, UpdatePurchaseOrder, CreatePurchaseOrderLine, UpdatePurchaseOrderLine, UpdatePurchaseOrderLineSingle, CreatePurchaseOrderLineSingle
 from schemas.service_inventory import CreateProductMovedHistory
 from services.services_inventory import createProductMoveHistoryNew
+from services.services_costing import calculate_average_cost
 import decimal
 from decimal import Decimal
 from uuid import uuid4
@@ -285,8 +286,9 @@ def edit_purchase_order(db: Session, purchase_order_id: str, data: UpdatePurchas
         print(f" purchase order id: {po.id}")
         # If status changed to 'diterima', call productMovedHistoryNew with type 'income' and create purchase journal entry
         if old_status != 'diterima' and data.status == 'diterima':
-            print("Status changed to 'diterima', creating product moves and journal entry")
+            print("Status changed to 'diterima', creating product moves, calculating average cost, and journal entry")
             for line in po.lines:
+                # Create product move history
                 move_data = CreateProductMovedHistory(
                     product_id=line.product_id,
                     type='income',
@@ -298,6 +300,23 @@ def edit_purchase_order(db: Session, purchase_order_id: str, data: UpdatePurchas
                 logger.info(f"Creating product move: {move_data.product_id}, type: {move_data.type}, quantity: {move_data.quantity}")
                 hasil_create_move = createProductMoveHistoryNew(db, move_data)
                 print(f"hasil moving : {hasil_create_move}")
+                
+                # Calculate average cost for the product
+                try:
+                    cost_result = calculate_average_cost(
+                        db=db,
+                        product_id=str(line.product_id),
+                        purchase_quantity=line.quantity,
+                        purchase_price=line.price,
+                        created_by='system',
+                        notes=f'Purchase order {po.po_no} received'
+                    )
+                    logger.info(f"Average cost calculation result: {cost_result}")
+                    print(f"Average cost calculated: {cost_result}")
+                except Exception as e:
+                    logger.error(f"Error calculating average cost: {str(e)}")
+                    print(f"Error calculating average cost: {str(e)}")
+                    # Continue with other operations even if costing fails
 
             # Create purchase journal entry
             journal_data = PurchaseJournalEntry(

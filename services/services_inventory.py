@@ -1,5 +1,6 @@
 from schemas.service_inventory import CreateProductMovedHistory, ProductMoveHistoryReportRequest, ProductMoveHistoryReport, ProductMoveHistoryReportItem, ManualAdjustment
 from models.inventory import Inventory, ProductMovedHistory
+from services.services_costing import calculate_average_cost_for_adjustment
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -197,6 +198,20 @@ def manual_adjustment_inventory(db: Session, adjustment_data: ManualAdjustment):
     inventory.updated_at = datetime.datetime.now(datetime.timezone.utc)
     db.commit()
     db.refresh(inventory)
+
+    # Track cost history for adjustment (cost doesn't change, but we track quantity change)
+    try:
+        cost_result = calculate_average_cost_for_adjustment(
+            db=db,
+            product_id=str(adjustment_data.product_id),
+            adjustment_quantity=adjustment_data.quantity,
+            created_by=adjustment_data.performed_by,
+            notes=adjustment_data.notes or 'Manual inventory adjustment'
+        )
+        print(f"Cost history tracked for adjustment: {cost_result}")
+    except Exception as e:
+        print(f"Error tracking cost history for adjustment: {str(e)}")
+        # Continue even if cost tracking fails
 
     return to_dict(new_move)
 

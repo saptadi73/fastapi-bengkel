@@ -4,8 +4,11 @@ from models.database import SessionLocal
 from services.services_customer import create_customer_with_vehicles,getListCustomersWithvehicles, getListCustomersWithVehiclesCustomersID
 from services.services_product import CreateProductNew, get_all_products, get_product_by_id, createServicenya,get_all_services, createBrandnya, createCategorynya, createSatuannya, getAllBrands, getAllCategories, getAllSatuans, getAllInventoryProducts, getInventoryByProductID, createProductMoveHistoryNew, get_service_by_id, update_product_cost
 from services.services_inventory import manual_adjustment_inventory
+from services.services_costing import get_product_cost_history, get_product_cost_summary
 from schemas.service_inventory import CreateProductMovedHistory, ManualAdjustment
-from schemas.service_product import CreateProduct, ProductResponse, CreateService, ServiceResponse, CreateBrand, CreateCategory, CreateSatuan, UpdateProductCost
+from schemas.service_product import CreateProduct, ProductResponse, CreateService, ServiceResponse, CreateBrand, CreateCategory, CreateSatuan, UpdateProductCost, ProductCostHistoryRequest, ProductCostHistoryResponse
+from typing import Optional
+from datetime import datetime
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
 from schemas.service_customer import CreateCustomerWithVehicles, CustomerWithVehicleResponse
@@ -253,6 +256,95 @@ def manual_adjustment_inventory_router(
         if not result:
             return error_response(message="Failed to perform manual adjustment")
         return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()
+
+# Cost History Endpoints
+@router.get("/cost-history", response_model=list[ProductCostHistoryResponse])
+def get_cost_history_router(
+    product_id: Optional[str] = None,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    calculation_method: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Get product cost history with optional filters.
+    
+    Query Parameters:
+    - product_id: Filter by specific product UUID
+    - start_date: Filter by start date (ISO format)
+    - end_date: Filter by end date (ISO format)
+    - calculation_method: Filter by method (average, adjustment, manual)
+    """
+    try:
+        result = get_product_cost_history(
+            db=db,
+            product_id=product_id,
+            start_date=start_date,
+            end_date=end_date,
+            calculation_method=calculation_method
+        )
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()
+
+@router.get("/{product_id}/cost-history", response_model=list[ProductCostHistoryResponse])
+def get_product_cost_history_router(
+    product_id: str,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Get cost history for a specific product.
+    
+    Path Parameters:
+    - product_id: Product UUID
+    
+    Query Parameters:
+    - start_date: Filter by start date (ISO format)
+    - end_date: Filter by end date (ISO format)
+    """
+    try:
+        result = get_product_cost_history(
+            db=db,
+            product_id=product_id,
+            start_date=start_date,
+            end_date=end_date
+        )
+        if not result:
+            return success_response(data=[], message="No cost history found for this product")
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()
+
+@router.get("/{product_id}/cost-summary")
+def get_product_cost_summary_router(
+    product_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Get cost summary for a specific product.
+    
+    Returns current cost, quantity, and latest cost change information.
+    
+    Path Parameters:
+    - product_id: Product UUID
+    """
+    try:
+        result = get_product_cost_summary(db=db, product_id=product_id)
+        if not result:
+            return error_response(message="Product not found", status_code=404)
+        return success_response(data=result)
+    except ValueError as e:
+        return error_response(message=str(e), status_code=404)
     except Exception as e:
         return error_response(message=str(e))
     finally:
