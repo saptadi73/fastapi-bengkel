@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, ForeignKey, Numeric, DateTime, Date
+from sqlalchemy import Column, String, ForeignKey, Numeric, DateTime, Date, Boolean
 from sqlalchemy.orm import relationship
 import uuid
 from sqlalchemy.dialects.postgresql import UUID
@@ -38,7 +38,9 @@ class Product(Base):
     price = Column(Numeric(10,2), nullable=True)
     cost = Column(Numeric(10,2), nullable=True)
     min_stock = Column(Numeric(10,2), nullable=False)
-    
+    supplier_id = Column(UUID(as_uuid=True), ForeignKey('supplier.id'), nullable=True)
+    is_consignment = Column(Boolean, nullable=False, default=False)
+    consignment_commission = Column(Numeric(10,2), nullable=True)
 
     brand_id = Column(UUID(as_uuid=True),ForeignKey('brand.id'))
     brand = relationship('Brand', back_populates='products')
@@ -49,11 +51,13 @@ class Product(Base):
     category_id = Column(UUID(as_uuid=True), ForeignKey('category.id'))
     category = relationship('Category', back_populates='products')
 
+    supplier = relationship('Supplier', back_populates='products')
     product_ordereds = relationship('ProductOrdered', back_populates='product')
     inventory = relationship('Inventory', back_populates='product')
     product_moved_history = relationship('ProductMovedHistory', back_populates='product')
     product_line_packet_order = relationship('ProductLinePacketOrder', back_populates='product')
     purchase_order_lines = relationship('PurchaseOrderLine', back_populates='product')
+    
 
 class Service(Base):
     __tablename__ = 'service'
@@ -111,7 +115,9 @@ class Workorder(Base):
     pajak = Column(Numeric(10,2), nullable=True, default=0)
     keterangan=Column(String,nullable=True)
     status_pembayaran=Column(String,nullable=True, default='belum ada pembayaran')
-    update_pembayaran = Column(Numeric(10,2), nullable=True)
+    dp = Column(Numeric(10,2), nullable=True)
+    next_service_date = Column(Date, nullable=True)
+    next_service_km = Column(Numeric(10,2), nullable=True)
 
     karyawan_id = Column(UUID(as_uuid=True), ForeignKey('karyawan.id'))
     karyawan = relationship('Karyawan', back_populates='workorders')

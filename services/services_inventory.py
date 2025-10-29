@@ -1,4 +1,4 @@
-from schemas.service_inventory import CreateProductMovedHistory, ProductMoveHistoryReportRequest, ProductMoveHistoryReport, ProductMoveHistoryReportItem
+from schemas.service_inventory import CreateProductMovedHistory, ProductMoveHistoryReportRequest, ProductMoveHistoryReport, ProductMoveHistoryReportItem, ManualAdjustment
 from models.inventory import Inventory, ProductMovedHistory
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
@@ -154,6 +154,51 @@ def generate_product_move_history_report(db: Session, request: ProductMoveHistor
         total_entries=len(items),
         items=items
     )
+
+def manual_adjustment_inventory(db: Session, adjustment_data: ManualAdjustment):
+    """
+    Perform manual adjustment to inventory quantity.
+    This creates a ProductMovedHistory entry with type 'adjustment'.
+    """
+    # Get or create inventory
+    inventory = db.query(Inventory).filter(Inventory.product_id == adjustment_data.product_id).first()
+    now_utc = adjustment_data.timestamp or datetime.datetime.now(datetime.timezone.utc)
+    if not inventory:
+        inventory = Inventory(
+            id=str(uuid.uuid4()),
+            product_id=adjustment_data.product_id,
+            quantity=adjustment_data.quantity,
+            created_at=now_utc,
+            updated_at=now_utc
+        )
+        db.add(inventory)
+    else:
+        # Update quantity with adjustment
+        inventory.quantity += adjustment_data.quantity
+        inventory.updated_at = now_utc
+
+    # Create ProductMovedHistory entry for adjustment
+    new_move = ProductMovedHistory(
+        id=str(uuid.uuid4()),
+        product_id=adjustment_data.product_id,
+        type='adjustment',
+        quantity=adjustment_data.quantity,
+        performed_by=adjustment_data.performed_by,
+        notes=adjustment_data.notes,
+        timestamp=now_utc
+    )
+    db.add(new_move)
+    db.commit()
+    db.refresh(new_move)
+
+    # Update inventory quantity based on sum of all ProductMovedHistory
+    total_quantity = db.scalar(select(func.sum(ProductMovedHistory.quantity)).where(ProductMovedHistory.product_id == adjustment_data.product_id)) or 0
+    inventory.quantity = total_quantity
+    inventory.updated_at = datetime.datetime.now(datetime.timezone.utc)
+    db.commit()
+    db.refresh(inventory)
+
+    return to_dict(new_move)
 
 
 

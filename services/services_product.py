@@ -44,7 +44,10 @@ def CreateProductNew(db:Session, product_data: CreateProduct):
         min_stock=product_data.min_stock,
         brand_id=product_data.brand_id,
         satuan_id=product_data.satuan_id,
-        category_id=product_data.category_id
+        category_id=product_data.category_id,
+        supplier_id=product_data.supplier_id,
+        is_consignment=product_data.is_consignment,
+        consignment_commission=product_data.consignment_commission
     )
     db.add(new_product)
     db.commit()
@@ -59,6 +62,7 @@ def get_all_products(db: Session):
         p_dict['category_name'] = product.category.name if product.category else None
         p_dict['brand_name'] = product.brand.name if product.brand else None
         p_dict['satuan_name'] = product.satuan.name if product.satuan else None
+        p_dict['supplier_name'] = product.supplier.nama if product.supplier else None
         result.append(p_dict)
     return result
 
@@ -69,6 +73,7 @@ def get_product_by_id(db: Session, product_id: str):
         p_dict['category_name'] = product.category.name if product.category else None
         p_dict['brand_name'] = product.brand.name if product.brand else None
         p_dict['satuan_name'] = product.satuan.name if product.satuan else None
+        p_dict['supplier_name'] = product.supplier.nama if product.supplier else None
         return p_dict
     return None
 
@@ -113,6 +118,7 @@ def getAllInventoryProducts(db: Session):
         p_dict['category_name'] = product.category.name if product.category else None
         p_dict['brand_name'] = product.brand.name if product.brand else None
         p_dict['satuan_name'] = product.satuan.name if product.satuan else None
+        p_dict['supplier_name'] = product.supplier.nama if product.supplier else None
         # Hitung total stock dari inventory
         total_stock = sum(inv.quantity for inv in product.inventory) if product.inventory else 0
         p_dict['total_stock'] = float(total_stock)  # Konversi Decimal ke float
@@ -128,6 +134,7 @@ def getInventoryByProductID(db: Session, product_id: str):
     p_dict['category_name'] = product.category.name if product.category else None
     p_dict['brand_name'] = product.brand.name if product.brand else None
     p_dict['satuan_name'] = product.satuan.name if product.satuan else None
+    p_dict['supplier_name'] = product.supplier.nama if product.supplier else None
     # Hitung total stock dari inventory
     total_stock = sum(inv.quantity for inv in product.inventory) if product.inventory else 0
     p_dict['total_stock'] = float(total_stock)  # Konversi Decimal ke float

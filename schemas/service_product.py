@@ -14,7 +14,9 @@ class CreateProduct(BaseModel):
     brand_id: UUID
     satuan_id: UUID
     category_id: UUID
-
+    supplier_id: Optional[UUID] = None
+    is_consignment: bool = False
+    consignment_commission: Optional[Decimal] = None
 class UpdateProductCost(BaseModel):
     product_id: UUID
     cost: Decimal
@@ -30,6 +32,9 @@ class ProductResponse(BaseModel):
     brand_id: UUID
     satuan_id: UUID
     category_id: UUID
+    supplier_id: Optional[UUID] = None
+    is_consignment: bool = False
+    consignment_commission: Optional[Decimal] = None
 
     model_config = {
         "from_attributes": True

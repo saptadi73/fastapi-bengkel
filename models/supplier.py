@@ -18,5 +18,6 @@ class Supplier(Base):
     toko = Column(String, nullable=True)
     created_at = Column(Date, nullable=False, server_default=text('now()'))
     updated_at = Column(Date, nullable=False, server_default=text('now()'))
+    products = relationship('Product', back_populates='supplier')
     purchase_orders = relationship('PurchaseOrder', back_populates='supplier')
     journal_entries = relationship('JournalEntry', back_populates='supplier')

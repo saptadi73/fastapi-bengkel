@@ -23,7 +23,7 @@ headers = {
 }
 
 # Generate a test workorder ID (this should be an existing one in your DB)
-test_workorder_id = str(uuid.uuid4())  # Replace with actual ID if known
+test_workorder_id = '453b177d-b404-45ae-907a-1ff8d58c2d9e'  # Use actual ID from DB
 
 # Test payload for updating workorder with status_pembayaran
 payload = {
@@ -34,12 +34,15 @@ payload = {
     'saran': 'Test suggestion',
     'status': 'selesai',
     'status_pembayaran': 'lunas',  # New field
+    'dp': 10000.0,  # Add dp field
+    'next_service_date': '2024-12-01',  # Add next_service_date
+    'next_service_km': 200.0,  # Add next_service_km
     'total_discount': 0.0,
     'total_biaya': 50000.0,
     'pajak': 0.0,
-    'customer_id': str(uuid.uuid4()),  # Replace with actual customer ID
-    'vehicle_id': str(uuid.uuid4()),   # Replace with actual vehicle ID
-    'karyawan_id': str(uuid.uuid4()),  # Replace with actual karyawan ID
+    'customer_id': 'e7cc9352-2bdc-49a3-9f0c-80a935f15227',  # Use actual customer ID
+    'vehicle_id': '6834d9fe-afd7-4853-b87a-a7ea43df2f3e',   # Use actual vehicle ID
+    'karyawan_id': 'b089e1e8-45d3-48b5-9579-5c054a1d3487',  # Use actual karyawan ID
     'totalProductHarga': 40000.0,
     'totalProductDiscount': 0.0,
     'totalProductCost': 30000.0,

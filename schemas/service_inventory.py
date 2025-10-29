@@ -36,4 +36,11 @@ class ProductMoveHistoryReport(BaseModel):
             Decimal: lambda v: float(v)
         }
 
+class ManualAdjustment(BaseModel):
+    product_id: UUID
+    quantity: Decimal
+    performed_by: str
+    notes: Optional[str] = None
+    timestamp: Optional[datetime] = None
+
 

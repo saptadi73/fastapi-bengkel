@@ -3,7 +3,7 @@ import uuid
 from decimal import Decimal
 from typing import Iterable, List, Optional
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import func, select
 from datetime import date
 import decimal
 import datetime
@@ -11,6 +11,7 @@ from models.expenses import Expenses
 from services.services_expenses import edit_expense_status
 from models.workorder import Workorder, ProductOrdered, Product, ServiceOrdered, Service
 from models.customer import Customer
+from models.supplier import Supplier
 
 from models.accounting import Account, JournalEntry, JournalLine, JournalType
 from schemas.service_accounting import (
@@ -571,7 +572,6 @@ def generate_entry_no(db: Session, journal_type: str, date: date) -> str:
     date_str = date.strftime('%Y%m%d')
 
     # Find the next sequential number for this prefix and date
-    from sqlalchemy import func
     max_entry_no = db.query(func.max(JournalEntry.entry_no)).filter(
         JournalEntry.entry_no.like(f'{prefix}-{date_str}-%')
     ).scalar()
@@ -595,6 +595,7 @@ def create_sales_journal_entry(db: Session, data_entry: SalesJournalEntry) -> di
     """
     Create a sales journal entry for product and service sales (perpetual inventory).
     Assumes piutang (receivable) for sales, with HPP for costs.
+    Also handles consignment commission for consignment products.
     """
     lines: List[JournalLineCreate] = []
 
@@ -669,6 +670,33 @@ def create_sales_journal_entry(db: Session, data_entry: SalesJournalEntry) -> di
             debit=Decimal("0.00"),
             credit=data_entry.hpp_service
         ))
+
+    # Calculate and record consignment commission if workorder has consignment products
+    if data_entry.workorder_id:
+        workorder = db.query(Workorder).filter(Workorder.id == data_entry.workorder_id).first()
+        if workorder:
+            total_commission = Decimal("0.00")
+            for po in workorder.product_ordered:
+                product = po.product
+                if product and product.is_consignment and product.consignment_commission:
+                    # Calculate commission: quantity * commission rate
+                    commission = po.quantity * product.consignment_commission
+                    total_commission += commission
+            
+            # Record consignment commission as expense if there's any
+            if total_commission > 0:
+                lines.append(JournalLineCreate(
+                    account_code="6003",  # Beban Komisi Konsinyasi
+                    description="Komisi Konsinyasi",
+                    debit=total_commission,
+                    credit=Decimal("0.00")
+                ))
+                lines.append(JournalLineCreate(
+                    account_code="3002",  # Hutang Komisi Konsinyasi (payable to supplier)
+                    description="Hutang Komisi Konsinyasi",
+                    debit=Decimal("0.00"),
+                    credit=total_commission
+                ))
 
     payload = JournalEntryCreate(
         entry_no=None,  # Auto-generate
@@ -1320,9 +1348,6 @@ def generate_cash_report(db: Session, request: CashReportRequest) -> CashReport:
     )
 
 def generate_receivable_payable_report(db: Session, request: ReceivablePayableReportRequest):
-    from models.customer import Customer
-    from models.supplier import Supplier
-    from sqlalchemy import func, select
 
     # Get all customers with receivable balances
     customer_receivables = db.query(
