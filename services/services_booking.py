@@ -41,7 +41,6 @@ def createBookingnya(db: Session, booking_data: CreateBooking):
         no_pol=booking_data.no_pol,
         warna=booking_data.warna,
         tanggal_booking=booking_data.tanggal_booking,
-        jam_booking=booking_data.jam_booking,
         customer_id=booking_data.customer_id,
         vehicle_id=booking_data.vehicle_id
     )

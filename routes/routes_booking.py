@@ -37,7 +37,7 @@ def create_booking_router(
     finally:
         db.close()
 
-@router.get("/all", response_model=list[CreateBooking])
+@router.get("/all", response_model=list[BookingResponse])
 def list_all_bookings(
     db: Session = Depends(get_db)
 ):
@@ -45,11 +45,11 @@ def list_all_bookings(
         result = get_all_bookings(db)
         return success_response(data=result)
     except Exception as e:
-        return error_response(message=str(e))   
+        return error_response(message=str(e))
     finally:
         db.close()
 
-@router.get("/{booking_id}", response_model=CreateBooking)
+@router.get("/{booking_id}", response_model=BookingResponse)
 def get_booking(
     booking_id: str,
     db: Session = Depends(get_db)
@@ -60,7 +60,7 @@ def get_booking(
             raise HTTPException(status_code=404, detail="Booking not found")
         return success_response(data=result)
     except Exception as e:
-        return error_response(message=str(e))   
+        return error_response(message=str(e))
     finally:
         db.close()
 

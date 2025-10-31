@@ -13,8 +13,7 @@ class CreateBooking(BaseModel):
     type: Optional[str] = None
     no_pol: str
     warna: Optional[str] = None
-    tanggal_booking: Optional[date] = None
-    jam_booking: Optional[time] = None
+    tanggal_booking: Optional[datetime] = None
     vehicle_id: Optional[UUID] = None
     customer_id: Optional[UUID] = None
 
@@ -26,8 +25,7 @@ class BookingResponse(BaseModel):
     type: Optional[str] = None
     no_pol: str
     warna: Optional[str] = None
-    tanggal_booking: Optional[date] = None
-    jam_booking: Optional[time] = None
+    tanggal_booking: Optional[datetime] = None
     vehicle_id: Optional[UUID] = None
     customer_id: Optional[UUID] = None
     created_at: datetime

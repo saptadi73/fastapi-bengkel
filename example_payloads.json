@@ -1,0 +1,277 @@
+{
+  "workorder_payloads": {
+    "description": "Valid payload examples for WorkOrder API",
+    
+    "1_create_workorder_complete": {
+      "endpoint": "POST /workorders/create",
+      "description": "Create complete workorder with products and services",
+      "payload": {
+        "tanggal_masuk": "2025-01-30T10:00:00",
+        "tanggal_keluar": null,
+        "keluhan": "Ganti oli dan tune up mesin",
+        "kilometer": 45000,
+        "saran": "Service berkala setiap 5000 km",
+        "status": "pending",
+        "status_pembayaran": "belum ada pembayaran",
+        "dp": 0,
+        "next_service_date": "2025-04-30",
+        "next_service_km": 50000,
+        "total_discount": 50000,
+        "total_biaya": 850000,
+        "pajak": 85000,
+        "customer_id": "replace-with-valid-customer-uuid",
+        "vehicle_id": "replace-with-valid-vehicle-uuid",
+        "karyawan_id": "replace-with-valid-karyawan-uuid",
+        "totalProductHarga": 500000,
+        "totalProductDiscount": 25000,
+        "totalProductCost": 300000,
+        "totalServiceHarga": 400000,
+        "totalServiceDiscount": 25000,
+        "totalServiceCost": 200000,
+        "product_ordered": [
+          {
+            "product_id": "replace-with-valid-product-uuid",
+            "quantity": 4,
+            "satuan_id": "replace-with-valid-satuan-uuid",
+            "price": 125000,
+            "subtotal": 475000,
+            "discount": 25000,
+            "cost": 75000,
+            "productSubtotalHPP": 300000,
+            "stockku": 100,
+            "product_name": "Oli Mesin Synthetic 5W-30"
+          }
+        ],
+        "service_ordered": [
+          {
+            "service_id": "replace-with-valid-service-uuid",
+            "quantity": 1,
+            "satuan": "paket",
+            "price": 400000,
+            "subtotal": 375000,
+            "discount": 25000,
+            "cost": 200000,
+            "serviceSubtotal": 375000,
+            "serviceSubtotalHPP": 200000,
+            "service_name": "Tune Up Mesin"
+          }
+        ]
+      }
+    },
+
+    "2_create_workorder_minimal": {
+      "endpoint": "POST /workorders/create",
+      "description": "Create workorder with minimal required fields",
+      "payload": {
+        "tanggal_masuk": "2025-01-30T10:00:00",
+        "keluhan": "Servis rutin",
+        "status": "pending",
+        "total_biaya": 500000,
+        "customer_id": "replace-with-valid-customer-uuid",
+        "vehicle_id": "replace-with-valid-vehicle-uuid"
+      }
+    },
+
+    "3_create_workorder_only": {
+      "endpoint": "POST /workorders/create/only",
+      "description": "Create workorder without products/services",
+      "payload": {
+        "tanggal_masuk": "2025-01-30T10:00:00",
+        "tanggal_keluar": null,
+        "keluhan": "Check engine light menyala",
+        "kilometer": 35000,
+        "saran": "Perlu diagnosa lebih lanjut",
+        "status": "pending",
+        "status_pembayaran": "belum ada pembayaran",
+        "dp": 100000,
+        "next_service_date": null,
+        "next_service_km": null,
+        "pajak": 0,
+        "total_discount": 0,
+        "total_biaya": 0,
+        "customer_id": "replace-with-valid-customer-uuid",
+        "vehicle_id": "replace-with-valid-vehicle-uuid"
+      }
+    },
+
+    "4_update_workorder_status": {
+      "endpoint": "PUT /workorders/status",
+      "description": "Update workorder status",
+      "payload": {
+        "workorder_id": "replace-with-valid-workorder-uuid",
+        "status": "completed",
+        "performed_by": "admin"
+      }
+    },
+
+    "5_add_product_to_workorder": {
+      "endpoint": "POST /workorders/{workorder_id}/products",
+      "description": "Add product to existing workorder",
+      "payload": {
+        "workorder_id": "replace-with-valid-workorder-uuid",
+        "product_id": "replace-with-valid-product-uuid",
+        "quantity": 2,
+        "subtotal": 250000,
+        "discount": 0,
+        "satuan_id": "replace-with-valid-satuan-uuid",
+        "price": 125000,
+        "performed_by": "admin"
+      }
+    },
+
+    "6_add_service_to_workorder": {
+      "endpoint": "POST /workorders/{workorder_id}/services",
+      "description": "Add service to existing workorder",
+      "payload": {
+        "workorder_id": "replace-with-valid-workorder-uuid",
+        "service_id": "replace-with-valid-service-uuid",
+        "quantity": 1,
+        "subtotal": 300000,
+        "discount": 0,
+        "price": 300000,
+        "performed_by": "admin"
+      }
+    },
+
+    "7_update_product_order": {
+      "endpoint": "PUT /workorders/products/{product_order_id}",
+      "description": "Update product order in workorder",
+      "payload": {
+        "product_id": "replace-with-valid-product-uuid",
+        "quantity": 3,
+        "subtotal": 375000,
+        "discount": 0,
+        "satuan_id": "replace-with-valid-satuan-uuid",
+        "price": 125000,
+        "performed_by": "admin"
+      }
+    },
+
+    "8_update_service_order": {
+      "endpoint": "PUT /workorders/services/{service_order_id}",
+      "description": "Update service order in workorder",
+      "payload": {
+        "service_id": "replace-with-valid-service-uuid",
+        "quantity": 1,
+        "subtotal": 350000,
+        "discount": 50000,
+        "price": 400000,
+        "performed_by": "admin"
+      }
+    }
+  },
+
+  "purchase_order_payloads": {
+    "description": "Valid payload examples for Purchase Order API (for testing average costing)",
+    
+    "1_create_purchase_order": {
+      "endpoint": "POST /purchase-orders/create",
+      "description": "Create purchase order (will trigger average costing when status = 'diterima')",
+      "payload": {
+        "supplier_id": "replace-with-valid-supplier-uuid",
+        "date": "2025-01-30",
+        "pajak": 100000,
+        "pembayaran": 0,
+        "status": "draft",
+        "bukti_transfer": null,
+        "lines": [
+          {
+            "product_id": "replace-with-valid-product-uuid",
+            "quantity": 10,
+            "price": 100000,
+            "discount": 0,
+            "subtotal": 1000000
+          }
+        ]
+      }
+    },
+
+    "2_update_po_to_received": {
+      "endpoint": "PUT /purchase-orders/{po_id}/edit",
+      "description": "Update PO status to 'diterima' - THIS TRIGGERS AVERAGE COSTING",
+      "payload": {
+        "status": "diterima",
+        "date": "2025-01-30",
+        "supplier_id": "replace-with-valid-supplier-uuid",
+        "pajak": 100000,
+        "pembayaran": 0,
+        "bukti_transfer": null
+      }
+    }
+  },
+
+  "inventory_adjustment_payloads": {
+    "description": "Valid payload examples for Manual Inventory Adjustment (triggers cost tracking)",
+    
+    "1_manual_adjustment": {
+      "endpoint": "POST /products/inventory/adjustment",
+      "description": "Manual inventory adjustment - triggers cost history tracking",
+      "payload": {
+        "product_id": "replace-with-valid-product-uuid",
+        "quantity": 5,
+        "performed_by": "admin",
+        "notes": "Stock opname - tambah stock",
+        "timestamp": "2025-01-30T10:00:00"
+      }
+    },
+
+    "2_negative_adjustment": {
+      "endpoint": "POST /products/inventory/adjustment",
+      "description": "Reduce inventory (negative adjustment)",
+      "payload": {
+        "product_id": "replace-with-valid-product-uuid",
+        "quantity": -3,
+        "performed_by": "admin",
+        "notes": "Koreksi stock - barang rusak",
+        "timestamp": "2025-01-30T10:00:00"
+      }
+    }
+  },
+
+  "cost_history_queries": {
+    "description": "Query examples for Cost History endpoints",
+    
+    "1_get_all_cost_history": {
+      "endpoint": "GET /products/cost-history",
+      "description": "Get all cost history with optional filters",
+      "query_params": {
+        "product_id": "optional-product-uuid",
+        "start_date": "2025-01-01T00:00:00",
+        "end_date": "2025-01-31T23:59:59",
+        "calculation_method": "average"
+      },
+      "example_url": "http://localhost:8000/products/cost-history?start_date=2025-01-01T00:00:00&calculation_method=average"
+    },
+
+    "2_get_product_cost_history": {
+      "endpoint": "GET /products/{product_id}/cost-history",
+      "description": "Get cost history for specific product",
+      "example_url": "http://localhost:8000/products/550e8400-e29b-41d4-a716-446655440000/cost-history"
+    },
+
+    "3_get_product_cost_summary": {
+      "endpoint": "GET /products/{product_id}/cost-summary",
+      "description": "Get cost summary for specific product",
+      "example_url": "http://localhost:8000/products/550e8400-e29b-41d4-a716-446655440000/cost-summary"
+    }
+  },
+
+  "notes": {
+    "important": [
+      "Replace all 'replace-with-valid-*-uuid' with actual UUIDs from your database",
+      "Dates should be in ISO format: YYYY-MM-DDTHH:MM:SS",
+      "For testing average costing: Create PO with status='draft', then update to status='diterima'",
+      "Average costing only applies to products with is_consignment=False",
+      "Cost history is automatically created when PO status changes to 'diterima'"
+    ],
+    "testing_workflow": [
+      "1. Create a product (non-consignment)",
+      "2. Check initial cost: GET /products/{product_id}",
+      "3. Create Purchase Order with status='draft'",
+      "4. Update PO status to 'diterima' - triggers average costing",
+      "5. Verify cost updated: GET /products/{product_id}",
+      "6. Check cost history: GET /products/{product_id}/cost-history",
+      "7. Check cost summary: GET /products/{product_id}/cost-summary"
+    ]
+  }
+}

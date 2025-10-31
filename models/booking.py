@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, ForeignKey,Numeric,Date,Time, text
+from sqlalchemy import Column, String, ForeignKey,Numeric,Date,DateTime,Time, text
 from sqlalchemy.orm import relationship
 import uuid
 from sqlalchemy.dialects.postgresql import UUID
@@ -14,9 +14,8 @@ class Booking(Base):
     type= Column(String, nullable=True)
     no_pol= Column(String, nullable=True)
     warna= Column(String, nullable=True)
-    tanggal_booking= Column(Date, nullable=True)
+    tanggal_booking= Column(DateTime, nullable=True)
     vehicle_id = Column(UUID(as_uuid=True), nullable=True)
     customer_id = Column(UUID(as_uuid=True), nullable=True)
-    jam_booking= Column(Time, nullable=True)
     created_at = Column(Date, nullable=False, server_default=text('now()'))
     updated_at = Column(Date, nullable=False, server_default=text('now()'))
