@@ -6,9 +6,10 @@ from models.purchase_order import PurchaseOrder, PurchaseOrderLine
 from schemas.service_accounting import PurchaseJournalEntry
 from services.services_accounting import create_purchase_journal_entry
 from schemas.service_purchase_order import CreatePurchaseOrder, UpdatePurchaseOrder, CreatePurchaseOrderLine, UpdatePurchaseOrderLine, UpdatePurchaseOrderLineSingle, CreatePurchaseOrderLineSingle
-from schemas.service_inventory import CreateProductMovedHistory
+from schemas.service_inventory import CreateProductMovedHistory, PurchaseOrderUpdateCost
 from services.services_inventory import createProductMoveHistoryNew, updateCostCostingMethodeAverage
 from services.services_costing import calculate_average_cost
+from services.services_expenses import edit_expense_status
 import decimal
 from decimal import Decimal
 from uuid import uuid4

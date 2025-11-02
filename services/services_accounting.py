@@ -11,6 +11,7 @@ from models.expenses import Expenses
 from models.workorder import Workorder, ProductOrdered, Product, ServiceOrdered, Service
 from models.customer import Customer
 from models.supplier import Supplier
+from services.services_expenses import edit_expense_status
 
 from models.accounting import Account, JournalEntry, JournalLine, JournalType
 from schemas.service_accounting import (
