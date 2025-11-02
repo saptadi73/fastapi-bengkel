@@ -11,7 +11,6 @@ from models.expenses import Expenses
 from models.workorder import Workorder, ProductOrdered, Product, ServiceOrdered, Service
 from models.customer import Customer
 from models.supplier import Supplier
-from services.services_expenses import edit_expense_status
 
 from models.accounting import Account, JournalEntry, JournalLine, JournalType
 from schemas.service_accounting import (
@@ -1007,6 +1006,7 @@ def create_expense_payment_journal_entry(db: Session, data_entry: ExpensePayment
         lines=lines
     )
     entry = _create_entry(db, payload, created_by="system")
+    from services.services_expenses import edit_expense_status
     edit_expense_status(db, data_entry.expense_id)
     return _to_entry_out(db, entry)
 

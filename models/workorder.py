@@ -115,7 +115,7 @@ class Workorder(Base):
     pajak = Column(Numeric(10,2), nullable=True, default=0)
     keterangan=Column(String,nullable=True)
     status_pembayaran=Column(String,nullable=True, default='belum ada pembayaran')
-    dp = Column(Numeric(10,2), nullable=True)
+    dp = Column(Numeric(10,2), nullable=True, default=0)
     next_service_date = Column(Date, nullable=True)
     next_service_km = Column(Numeric(10,2), nullable=True)
 
