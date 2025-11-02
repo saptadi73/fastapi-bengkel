@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from services.services_inventory import get_or_create_inventory, createProductMoveHistoryNew, generate_product_move_history_report, createProductMoveHistoryNewLoss
-from schemas.service_inventory import CreateProductMovedHistory, ProductMoveHistoryReportRequest, ProductMoveHistoryReport
+from services.services_inventory import get_or_create_inventory, createProductMoveHistoryNew, generate_product_move_history_report, createProductMoveHistoryNewLoss, updateCostCostingMethodeAverage
+from schemas.service_inventory import CreateProductMovedHistory, ProductMoveHistoryReportRequest, ProductMoveHistoryReport, PurchaseOrderUpdateCost
 from models.database import SessionLocal
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
@@ -57,6 +57,17 @@ def product_move_router(
 ):
     try:
         result = createProductMoveHistoryNewLoss(db, data_move)
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+
+@router.post("/update-cost", dependencies=[Depends(jwt_required)])
+def update_cost_route(
+    data: PurchaseOrderUpdateCost,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = updateCostCostingMethodeAverage(db, data)
         return success_response(data=result)
     except Exception as e:
         return error_response(message=str(e))

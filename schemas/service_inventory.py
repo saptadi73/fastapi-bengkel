@@ -44,4 +44,9 @@ class ManualAdjustment(BaseModel):
     notes: Optional[str] = None
     timestamp: Optional[datetime] = None
 
+class PurchaseOrderUpdateCost(BaseModel):
+    product_id: UUID
+    quantity: Decimal
+    price: Decimal
+
 

@@ -1,8 +1,9 @@
-from schemas.service_inventory import CreateProductMovedHistory, ProductMoveHistoryReportRequest, ProductMoveHistoryReport, ProductMoveHistoryReportItem, ManualAdjustment
+from schemas.service_inventory import CreateProductMovedHistory, ProductMoveHistoryReportRequest, ProductMoveHistoryReport, ProductMoveHistoryReportItem, ManualAdjustment, PurchaseOrderUpdateCost
 from models.inventory import Inventory, ProductMovedHistory
 from services.services_costing import calculate_average_cost_for_adjustment
 from services.services_accounting import create_lost_goods_journal_entry
 from schemas.service_accounting import LostGoodsJournalEntry
+from services.services_product import getInventoryByProductID
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -269,6 +270,41 @@ def manual_adjustment_inventory(db: Session, adjustment_data: ManualAdjustment):
         # Continue even if cost tracking fails
 
     return to_dict(new_move)
+
+def updateCostCostingMethodeAverage(db: Session, dataPurchase: PurchaseOrderUpdateCost):
+    """
+    Update the average cost for a product based on current inventory and costing method.
+    """
+    try:
+        # Get the current cost of the product
+        product = db.query(Product).filter(Product.id == dataPurchase.product_id).first()
+        if not product:
+            raise ValueError("Product not found")
+        current_cost = product.cost
+
+        # Get current stock quantity
+        inventory = getInventoryByProductID(db, dataPurchase.product_id)
+        current_stock = inventory['total_stock'] if inventory else 0
+
+        # Calculate new average cost
+        total_cost = (decimal.Decimal(current_cost) * decimal.Decimal(current_stock)) + (decimal.Decimal(dataPurchase.price) * decimal.Decimal(dataPurchase.quantity))
+        total_quantity = decimal.Decimal(current_stock) + decimal.Decimal(dataPurchase.quantity)
+        if total_quantity == 0:
+            new_average_cost = decimal.Decimal("0.00")
+        else:
+            new_average_cost = total_cost / total_quantity
+
+        # Update product cost
+        product.cost = new_average_cost
+        db.commit()
+        db.refresh(product)
+        return {
+            "new_average_cost": float(new_average_cost),
+            "error_product": None,
+            "error_inventory": None
+        }
+    except Exception as e:
+        raise ValueError(f"Error updating average cost: {str(e)}")
 
 
 

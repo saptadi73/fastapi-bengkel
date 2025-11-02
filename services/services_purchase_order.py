@@ -7,7 +7,7 @@ from schemas.service_accounting import PurchaseJournalEntry
 from services.services_accounting import create_purchase_journal_entry
 from schemas.service_purchase_order import CreatePurchaseOrder, UpdatePurchaseOrder, CreatePurchaseOrderLine, UpdatePurchaseOrderLine, UpdatePurchaseOrderLineSingle, CreatePurchaseOrderLineSingle
 from schemas.service_inventory import CreateProductMovedHistory
-from services.services_inventory import createProductMoveHistoryNew
+from services.services_inventory import createProductMoveHistoryNew, updateCostCostingMethodeAverage
 from services.services_costing import calculate_average_cost
 import decimal
 from decimal import Decimal
@@ -317,6 +317,23 @@ def edit_purchase_order(db: Session, purchase_order_id: str, data: UpdatePurchas
                     logger.error(f"Error calculating average cost: {str(e)}")
                     print(f"Error calculating average cost: {str(e)}")
                     # Continue with other operations even if costing fails
+
+                # Update cost using the new function
+                try:
+                    update_result = updateCostCostingMethodeAverage(
+                        db=db,
+                        dataPurchase=PurchaseOrderUpdateCost(
+                            product_id=line.product_id,
+                            quantity=line.quantity,
+                            price=line.price
+                        )
+                    )
+                    logger.info(f"Cost update result: {update_result}")
+                    print(f"Cost updated: {update_result}")
+                except Exception as e:
+                    logger.error(f"Error updating cost: {str(e)}")
+                    print(f"Error updating cost: {str(e)}")
+                    # Continue with other operations even if cost update fails
 
             # Create purchase journal entry
             journal_data = PurchaseJournalEntry(

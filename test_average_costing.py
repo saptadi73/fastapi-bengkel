@@ -51,17 +51,17 @@ def test_1_get_products():
         response = requests.get(f"{BASE_URL}/products/all")
         if response.status_code == 200:
             data = response.json()
-            if data.get('success') and data.get('data'):
+            if data.get('status') == 'success' and data.get('data'):
                 products = data['data']
                 print(f"   Found {len(products)} products")
-                
+
                 # Find a non-consignment product for testing
                 test_product = None
                 for p in products:
                     if not p.get('is_consignment', False):
                         test_product = p
                         break
-                
+
                 if test_product:
                     log_test("Get Products", True, f"Found test product: {test_product['name']}")
                     return test_product
@@ -85,7 +85,7 @@ def test_2_get_suppliers():
         response = requests.get(f"{BASE_URL}/suppliers/all")
         if response.status_code == 200:
             data = response.json()
-            if data.get('success') and data.get('data'):
+            if data.get('status') == 'success' and data.get('data'):
                 suppliers = data['data']
                 if suppliers:
                     log_test("Get Suppliers", True, f"Found {len(suppliers)} suppliers")
@@ -110,7 +110,7 @@ def test_3_check_initial_cost(product_id):
         response = requests.get(f"{BASE_URL}/products/{product_id}")
         if response.status_code == 200:
             data = response.json()
-            if data.get('success'):
+            if data.get('status') == 'success':
                 product = data['data']
                 initial_cost = product.get('cost')
                 print(f"   Initial cost: {initial_cost}")
@@ -133,7 +133,7 @@ def test_4_check_inventory(product_id):
         response = requests.get(f"{BASE_URL}/products/inventory/{product_id}")
         if response.status_code == 200:
             data = response.json()
-            if data.get('success'):
+            if data.get('status') == 'success':
                 inventory = data['data']
                 quantity = inventory.get('total_stock', 0)
                 print(f"   Initial quantity: {quantity}")
@@ -156,7 +156,7 @@ def test_5_get_cost_history(product_id):
         response = requests.get(f"{BASE_URL}/products/{product_id}/cost-history")
         if response.status_code == 200:
             data = response.json()
-            if data.get('success'):
+            if data.get('status') == 'success':
                 history = data['data']
                 print(f"   Found {len(history)} cost history records")
                 log_test("Get Cost History", True, f"Initial history count: {len(history)}")
@@ -178,7 +178,7 @@ def test_6_get_cost_summary(product_id):
         response = requests.get(f"{BASE_URL}/products/{product_id}/cost-summary")
         if response.status_code == 200:
             data = response.json()
-            if data.get('success'):
+            if data.get('status') == 'success':
                 summary = data['data']
                 print(f"   Current cost: {summary.get('current_cost')}")
                 print(f"   Current quantity: {summary.get('current_quantity')}")
