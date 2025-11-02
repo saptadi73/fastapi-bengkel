@@ -299,7 +299,7 @@ def updateCostCostingMethodeAverage(db: Session, dataPurchase: PurchaseOrderUpda
         db.commit()
         db.refresh(product)
         return {
-            "new_average_cost": float(new_average_cost),
+            "new_average_cost": round(float(new_average_cost)),
             "error_product": None,
             "error_inventory": None
         }
