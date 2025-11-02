@@ -12,6 +12,7 @@ class CreateProductMovedHistory(BaseModel):
     performed_by: str
     notes: Optional[str] = None
 
+
 class ProductMoveHistoryReportRequest(BaseModel):
     start_date: date
     end_date: date

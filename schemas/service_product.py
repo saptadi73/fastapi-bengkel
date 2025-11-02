@@ -6,7 +6,7 @@ from datetime import date,datetime
 
 class CreateProduct(BaseModel):
     name: str
-    type: str
+    type: Optional[str] = None
     description: Optional[str] = None
     price: Decimal
     cost: Optional[Decimal] = None
@@ -24,7 +24,7 @@ class UpdateProductCost(BaseModel):
 class ProductResponse(BaseModel):
     id: UUID
     name: str
-    type: str
+    type: Optional[str] = None
     description: Optional[str] = None
     price: Decimal
     cost: Optional[Decimal]

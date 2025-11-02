@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from models.database import SessionLocal
 from services.services_customer import create_customer_with_vehicles,getListCustomersWithvehicles, getListCustomersWithVehiclesCustomersID
-from services.services_product import CreateProductNew, get_all_products, get_product_by_id, createServicenya,get_all_services, createBrandnya, createCategorynya, createSatuannya, getAllBrands, getAllCategories, getAllSatuans, getAllInventoryProducts, getInventoryByProductID, createProductMoveHistoryNew, get_service_by_id, update_product_cost
+from services.services_product import CreateProductNew, get_all_products, get_product_by_id, createServicenya,get_all_services, createBrandnya, createCategorynya, createSatuannya, getAllBrands, getAllCategories, getAllSatuans, getAllInventoryProducts, getInventoryByProductID, createProductMoveHistoryNew, get_service_by_id, update_product_cost, getAllInventoryProductsConsignment,getAllInventoryProductsExcConsignment
 from services.services_inventory import manual_adjustment_inventory
 from services.services_costing import get_product_cost_history, get_product_cost_summary
 from schemas.service_inventory import CreateProductMovedHistory, ManualAdjustment
@@ -195,6 +195,30 @@ def getAllInventoryProduct(
 ):
     try:
         result = getAllInventoryProducts(db)
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()
+
+@router.get("/inventory/all/consignment")
+def getAllInventoryProduct(
+    db: Session = Depends(get_db)
+):
+    try:
+        result = getAllInventoryProductsConsignment(db)
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()
+
+@router.get("/inventory/all/excconsignment")
+def getAllInventoryProduct(
+    db: Session = Depends(get_db)
+):
+    try:
+        result = getAllInventoryProductsExcConsignment(db)
         return success_response(data=result)
     except Exception as e:
         return error_response(message=str(e))

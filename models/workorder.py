@@ -33,7 +33,7 @@ class Product(Base):
     __tablename__ = 'product'
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, index=True)
     name = Column(String, nullable=False)
-    type = Column(String, nullable=False)
+    type = Column(String, nullable=True)
     description = Column(String, nullable=True)
     price = Column(Numeric(10,2), nullable=True)
     cost = Column(Numeric(10,2), nullable=True)

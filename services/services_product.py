@@ -126,6 +126,38 @@ def getAllInventoryProducts(db: Session):
         result.append(p_dict)
     return result
 
+def getAllInventoryProductsExcConsignment(db: Session):
+    products = db.query(Product).filter(Product.is_consignment == False).all()
+    result = []
+    for product in products:
+        p_dict = to_dict(product)
+        p_dict['category_name'] = product.category.name if product.category else None
+        p_dict['brand_name'] = product.brand.name if product.brand else None
+        p_dict['satuan_name'] = product.satuan.name if product.satuan else None
+        p_dict['supplier_name'] = product.supplier.nama if product.supplier else None
+        # Hitung total stock dari inventory
+        total_stock = sum(inv.quantity for inv in product.inventory) if product.inventory else 0
+        p_dict['total_stock'] = float(total_stock)  # Konversi Decimal ke float
+        p_dict['cost'] = float(product.cost) if product.cost is not None else None
+        result.append(p_dict)
+    return result
+
+def getAllInventoryProductsConsignment(db: Session):
+    products = db.query(Product).filter(Product.is_consignment == True).all()
+    result = []
+    for product in products:
+        p_dict = to_dict(product)
+        p_dict['category_name'] = product.category.name if product.category else None
+        p_dict['brand_name'] = product.brand.name if product.brand else None
+        p_dict['satuan_name'] = product.satuan.name if product.satuan else None
+        p_dict['supplier_name'] = product.supplier.nama if product.supplier else None
+        # Hitung total stock dari inventory
+        total_stock = sum(inv.quantity for inv in product.inventory) if product.inventory else 0
+        p_dict['total_stock'] = float(total_stock)  # Konversi Decimal ke float
+        p_dict['cost'] = float(product.cost) if product.cost is not None else None
+        result.append(p_dict)
+    return result
+
 def getInventoryByProductID(db: Session, product_id: str):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:

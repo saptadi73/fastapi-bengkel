@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS product (
     id UUID PRIMARY KEY,
     name VARCHAR NOT NULL,
-    type VARCHAR NOT NULL,
+    type VARCHAR,
     description VARCHAR,
     price NUMERIC(10,2),
     cost NUMERIC(10,2),

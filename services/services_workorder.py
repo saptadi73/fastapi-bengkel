@@ -580,8 +580,10 @@ def deleteWorkorder(db: Session, workorder_id: str):
     db.commit()
     return True
 
+
 def update_workorder_lengkap(db: Session, workorder_id: str, data: CreateWorkOrder):
     wo = db.query(Workorder).filter(Workorder.id == workorder_id).first()
+    today = datetime.datetime.now()
     if not wo:
         return None
 
@@ -589,7 +591,13 @@ def update_workorder_lengkap(db: Session, workorder_id: str, data: CreateWorkOrd
 
     # Update field utama
     wo.tanggal_masuk = data.tanggal_masuk
-    wo.tanggal_keluar = data.tanggal_keluar
+    if data.status == 'selesai':
+        wo.tanggal_keluar = today
+    elif data.tanggal_keluar is not None:
+        wo.tanggal_keluar = data.tanggal_keluar
+    else:
+        wo.tanggal_keluar = None  # or some default
+
     wo.keluhan = data.keluhan
     wo.kilometer = data.kilometer
     wo.saran = data.saran

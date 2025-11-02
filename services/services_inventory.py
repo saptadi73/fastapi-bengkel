@@ -1,6 +1,8 @@
 from schemas.service_inventory import CreateProductMovedHistory, ProductMoveHistoryReportRequest, ProductMoveHistoryReport, ProductMoveHistoryReportItem, ManualAdjustment
 from models.inventory import Inventory, ProductMovedHistory
 from services.services_costing import calculate_average_cost_for_adjustment
+from services.services_accounting import create_lost_goods_journal_entry
+from schemas.service_accounting import LostGoodsJournalEntry
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -103,6 +105,59 @@ def createProductMoveHistoryNew(db: Session, move_data: CreateProductMovedHistor
         db.refresh(inventory)
 
     return to_dict(new_move)
+
+def createProductMoveHistoryNewLoss(db: Session, move_data: CreateProductMovedHistory):
+    if move_data.type.lower() != 'outcome':
+        raise ValueError("Type must be 'outcome' for product loss")
+
+    inventory = db.query(Inventory).filter(Inventory.product_id == move_data.product_id).first()
+
+    now_utc = move_data.timestamp or datetime.datetime.now(datetime.timezone.utc)
+    if not inventory:
+        raise ValueError('Inventory untuk produk ini belum ada, tidak bisa outcome!')
+    if inventory.quantity < move_data.quantity:
+        raise ValueError('Stock tidak cukup untuk outcome!')
+    inventory.quantity -= move_data.quantity
+    inventory.updated_at = now_utc
+
+    # Catat ke ProductMovedHistory
+    quantityku = -move_data.quantity
+
+    new_move = ProductMovedHistory(
+        id=str(uuid.uuid4()),
+        product_id=move_data.product_id,
+        type=move_data.type,
+        quantity=quantityku,
+        performed_by=move_data.performed_by,
+        notes=move_data.notes,
+        timestamp=now_utc
+    )
+    db.add(new_move)
+    db.commit()
+    db.refresh(new_move)
+
+    # Setelah commit, update inventory.quantity = sum seluruh ProductMovedHistory.quantity untuk product_id terkait
+    inventory = db.query(Inventory).filter(Inventory.product_id == move_data.product_id).first()
+    if inventory:
+        total_quantity = db.scalar(select(func.sum(ProductMovedHistory.quantity)).where(ProductMovedHistory.product_id == move_data.product_id)) or 0
+        inventory.quantity = total_quantity
+        inventory.updated_at = datetime.datetime.now(datetime.timezone.utc)
+        db.commit()
+        db.refresh(inventory)
+
+    journal_entry = create_lost_goods_journal_entry(db, LostGoodsJournalEntry(
+        product_id=move_data.product_id,
+        quantity=move_data.quantity,
+        memo='Kehilangan Produk Gudang',
+        loss_account_code="6003",
+        inventory_account_code="2002",
+        date=now_utc,))
+
+    return {
+        'move': to_dict(new_move),
+        'journal': journal_entry
+    }
+
 
 def generate_product_move_history_report(db: Session, request: ProductMoveHistoryReportRequest) -> ProductMoveHistoryReport:
     """
