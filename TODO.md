@@ -1,9 +1,10 @@
-# TODO: Make Service 'description' field optional
+# TODO: Add dp and status_pembayaran fields to Purchase Order
 
-## Pending Tasks
-- [x] Update Service model in models/workorder.py: Change description column nullable=False to nullable=True
-- [x] Update schemas in schemas/service_product.py: Change description field to Optional[str] = None in CreateService and ServiceResponse
-- [x] Update service in services/services_product.py: Allow description to be None in createServicenya function
-- [x] Update DB schema in database_baru/service_postgres.sql: Remove NOT NULL from description column
-- [x] Create migration file database_baru/service_alter_description_optional.sql: ALTER TABLE service ALTER COLUMN description DROP NOT NULL;
-- [x] Test the changes: Run migration and verify API works with optional description
+## Steps to Complete
+- [ ] Edit models/purchase_order.py: Add 'dp' as Numeric(10,2), nullable=True, and 'status_pembayaran' as String, nullable=False, default='belum_ada_pembayaran'
+- [ ] Edit schemas/service_purchase_order.py: Add 'dp' and 'status_pembayaran' to CreatePurchaseOrder, UpdatePurchaseOrder, and PurchaseOrderResponse
+- [ ] Edit services/services_purchase_order.py: Update create_purchase_order and edit_purchase_order to handle the new fields
+- [ ] Create database_baru/purchase_order_add_dp_status_pembayaran.sql with ALTER TABLE statements to add the columns
+- [ ] Run the migration script to apply database changes
+- [ ] Test the API endpoints to ensure the new fields are handled correctly
+- [ ] Update any related tests if necessary

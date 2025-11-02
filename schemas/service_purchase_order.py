@@ -46,6 +46,8 @@ class CreatePurchaseOrder(BaseModel):
     pajak: Optional[Decimal]=None
     total: Decimal
     pembayaran: Decimal
+    dp: Optional[Decimal] = None
+    status_pembayaran: Optional[str] = 'belum_ada_pembayaran'
     status: Optional[PurchaseOrderStatus] = PurchaseOrderStatus.draft
     bukti_transfer: Optional[str] = None
     lines: List[CreatePurchaseOrderLine]
@@ -55,6 +57,8 @@ class UpdatePurchaseOrder(BaseModel):
     date: Optional[str] = None
     pajak: Optional[Decimal] = None
     pembayaran: Optional[Decimal] = None
+    dp: Optional[Decimal] = None
+    status_pembayaran: Optional[str] = None
     status: Optional[PurchaseOrderStatus] = None
     bukti_transfer: Optional[str] = None
     lines: Optional[List[UpdatePurchaseOrderLine]] = None
@@ -76,6 +80,8 @@ class PurchaseOrderResponse(BaseModel):
     total: Decimal
     pajak: Decimal
     pembayaran: Optional[Decimal]
+    dp: Optional[Decimal]
+    status_pembayaran: str
     status: PurchaseOrderStatus
     bukti_transfer: Optional[str]
     created_at: datetime

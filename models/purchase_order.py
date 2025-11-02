@@ -22,6 +22,8 @@ class PurchaseOrder(Base):
     total = Column(Numeric(10,2), nullable=False)
     pajak=Column(Numeric(10,2), nullable=True)
     pembayaran=Column(Numeric(10,2), nullable=True)
+    dp=Column(Numeric(10,2), nullable=True)
+    status_pembayaran = Column(String, nullable=True, default='belum_ada_pembayaran')
     status = Column(Enum(PurchaseOrderStatus), nullable=False, default=PurchaseOrderStatus.draft)
     bukti_transfer = Column(String, nullable=True)
     created_at = Column(DateTime, nullable=False, server_default=text('now()'))

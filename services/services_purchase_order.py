@@ -54,6 +54,8 @@ def create_purchase_order(db: Session, data: CreatePurchaseOrder):
         total=Decimal("0.00"),  # Will be calculated after lines
         pajak=data.pajak,
         pembayaran=data.pembayaran,
+        dp=data.dp,
+        status_pembayaran=data.status_pembayaran,
         status=data.status,
         bukti_transfer=data.bukti_transfer
     )
@@ -169,6 +171,10 @@ def update_purchase_order(db: Session, purchase_order_id: str, data: UpdatePurch
             po.pajak = data.pajak
         if data.pembayaran is not None:
             po.pembayaran = data.pembayaran
+        if data.dp is not None:
+            po.dp = data.dp
+        if data.status_pembayaran:
+            po.status_pembayaran = data.status_pembayaran
         if data.status:
             po.status = data.status
         if data.bukti_transfer:
@@ -272,6 +278,10 @@ def edit_purchase_order(db: Session, purchase_order_id: str, data: UpdatePurchas
             po.pajak = data.pajak
         if data.pembayaran is not None:
             po.pembayaran = data.pembayaran
+        if data.dp is not None:
+            po.dp = data.dp
+        if data.status_pembayaran:
+            po.status_pembayaran = data.status_pembayaran
         if data.status:
             po.status = data.status
         if data.bukti_transfer:
