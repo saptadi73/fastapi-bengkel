@@ -23,6 +23,7 @@ from schemas.service_accounting import (
     PaymentARCreate,
     PaymentAPCreate,
     ExpenseRecordCreate,
+    ConsignmentPaymentCreate,
     CreateAccount,
     SalesJournalEntry,
     SalesPaymentJournalEntry,
@@ -1694,3 +1695,54 @@ def generate_service_sales_report(db: Session, request: ServiceSalesReportReques
         total_sales=total_sales,
         items=items
     )
+
+
+def consignment_payment(
+    db: Session,
+    *,
+    payment_data: ConsignmentPaymentCreate
+) -> dict:
+    """
+    Pembayaran hutang konsinyasi (consignment payable):
+    Dr Hutang Konsinyasi                    amount
+       Cr Kas/Bank                         amount - discount
+       Cr Potongan Konsinyasi              discount (opsional)
+    """
+    discount = payment_data.discount or Decimal("0.00")
+    cash_out = payment_data.amount - discount
+    lines: List[JournalLineCreate] = [
+        JournalLineCreate(
+            account_code=payment_data.hutang_konsinyasi_code,
+            description="Pelunasan Hutang Konsinyasi",
+            debit=payment_data.amount,
+            credit=Decimal("0.00")
+        ),
+        JournalLineCreate(
+            account_code=payment_data.kas_bank_code,
+            description="Pembayaran Hutang Konsinyasi",
+            debit=Decimal("0.00"),
+            credit=cash_out
+        ),
+    ]
+    if discount > 0:
+        if not payment_data.potongan_konsinyasi_code:
+            raise ValueError("potongan_konsinyasi_code wajib diisi bila discount > 0")
+        lines.append(JournalLineCreate(
+            account_code=payment_data.potongan_konsinyasi_code,
+            description="Diskon Pembayaran Hutang Konsinyasi",
+            debit=Decimal("0.00"),
+            credit=discount
+        ))
+
+    payload = JournalEntryCreate(
+        entry_no=payment_data.entry_no,
+        date=payment_data.tanggal,
+        memo=payment_data.memo,
+        journal_type=JT.CONSIGNMENT,
+        supplier_id=payment_data.supplier_id,
+        customer_id=None,
+        workorder_id=None,
+        lines=lines
+    )
+    entry = _create_entry(db, payload, created_by=payment_data.created_by)
+    return _to_entry_out(db, entry)

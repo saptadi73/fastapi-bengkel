@@ -159,6 +159,19 @@ class ExpenseRecordCreate(BaseModel):
     created_by: Optional[str] = "system"
 
 
+class ConsignmentPaymentCreate(BaseModel):
+    entry_no: Optional[str] = None
+    tanggal: date
+    supplier_id: Optional[UUID] = None
+    amount: Decimal
+    kas_bank_code: str
+    hutang_konsinyasi_code: str = "3002"
+    potongan_konsinyasi_code: Optional[str] = None
+    discount: Optional[Decimal] = Decimal("0.00")
+    memo: Optional[str] = None
+    created_by: Optional[str] = "system"
+
+
 class SalesJournalEntry(BaseModel):
     date: date
     memo: Optional[str]
@@ -201,7 +214,7 @@ class PurchasePaymentJournalEntry(BaseModel):
     purchase_id: Optional[UUID] = None
     amount: Decimal
     kas_bank_code: str
-    hutang_code: str = "2100"
+    hutang_code: str = "3001"
 
 
 class ExpenseJournalEntry(BaseModel):

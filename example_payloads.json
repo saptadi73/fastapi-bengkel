@@ -256,6 +256,44 @@
     }
   },
 
+  "accounting_payloads": {
+    "description": "Valid payload examples for Accounting API",
+
+    "1_consignment_payment": {
+      "endpoint": "POST /accounting/consignment-payment",
+      "description": "Pay consignment debt using bank",
+      "payload": {
+        "entry_no": null,
+        "tanggal": "2025-01-30",
+        "supplier_id": "replace-with-valid-supplier-uuid",
+        "amount": 500000,
+        "kas_bank_code": "1001",
+        "hutang_konsinyasi_code": "3002",
+        "potongan_konsinyasi_code": null,
+        "discount": 0,
+        "memo": "Pembayaran hutang konsinyasi",
+        "created_by": "admin"
+      }
+    },
+
+    "2_consignment_payment_with_discount": {
+      "endpoint": "POST /accounting/consignment-payment",
+      "description": "Pay consignment debt with discount",
+      "payload": {
+        "entry_no": null,
+        "tanggal": "2025-01-30",
+        "supplier_id": "replace-with-valid-supplier-uuid",
+        "amount": 500000,
+        "kas_bank_code": "1001",
+        "hutang_konsinyasi_code": "3002",
+        "potongan_konsinyasi_code": "4003",
+        "discount": 50000,
+        "memo": "Pembayaran hutang konsinyasi dengan diskon",
+        "created_by": "admin"
+      }
+    }
+  },
+
   "notes": {
     "important": [
       "Replace all 'replace-with-valid-*-uuid' with actual UUIDs from your database",

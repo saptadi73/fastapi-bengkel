@@ -48,7 +48,7 @@ def test_create_purchase_payment_journal_entry():
         workorder_id=None,
         amount=Decimal("100000.00"),
         kas_bank_code="1100",
-        hutang_code="2100",
+        hutang_code="3001",
         discount=Decimal("5000.00"),
         potongan_pembelian_code="4300"
     )
@@ -86,7 +86,7 @@ def test_create_purchase_payment_journal_entry():
         workorder_id=None,
         amount=Decimal("50000.00"),
         kas_bank_code="1100",
-        hutang_code="2100",
+        hutang_code="3001",
         discount=Decimal("0.00"),
         potongan_pembelian_code=None
     )

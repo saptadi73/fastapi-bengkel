@@ -6,7 +6,7 @@ from schemas.service_accounting import (
     JournalEntryCreate, JournalEntryOut,
     PurchaseRecordCreate, SaleRecordCreate,
     SalesWithConsignments,
-    PaymentARCreate, PaymentAPCreate, ExpenseRecordCreate, SalesJournalEntry, SalesPaymentJournalEntry,PurchaseJournalEntry,PurchasePaymentJournalEntry,ExpenseJournalEntry, ExpensePaymentJournalEntry,
+    PaymentARCreate, PaymentAPCreate, ExpenseRecordCreate, ConsignmentPaymentCreate, SalesJournalEntry, SalesPaymentJournalEntry,PurchaseJournalEntry,PurchasePaymentJournalEntry,ExpenseJournalEntry, ExpensePaymentJournalEntry,
     CashInCreate, CashOutCreate,
     CashBookReportRequest, CashBookReport,
     ExpenseReportRequest, ExpenseReport,
@@ -18,7 +18,7 @@ from schemas.service_accounting import (
 )
 from services.services_accounting import (
     record_purchase, record_sale, receive_payment_ar,
-    pay_ap, record_expense, create_account, edit_account, get_account, get_all_accounts,
+    pay_ap, record_expense, consignment_payment, create_account, edit_account, get_account, get_all_accounts,
     create_sales_journal_entry, create_sales_payment_journal_entry, create_purchase_journal_entry,
     create_purchase_payment_journal_entry, create_expense_journal_entry, create_expense_payment_journal_entry,
     cash_in, cash_out,
@@ -73,6 +73,14 @@ def create_expense(data: ExpenseRecordCreate, db: Session = Depends(get_db)):
         return success_response(data=result, message="Jurnal pengeluaran biaya berhasil dibuat")
     except Exception as e:
         return error_response(message=f"Gagal membuat jurnal pengeluaran biaya: {str(e)}")
+
+@router.post("/consignment-payment", response_model=JournalEntryOut, dependencies=[Depends(jwt_required)])
+def create_consignment_payment(data: ConsignmentPaymentCreate, db: Session = Depends(get_db)):
+    try:
+        result = consignment_payment(db, payment_data=data)
+        return success_response(data=result, message="Jurnal pembayaran hutang konsinyasi berhasil dibuat")
+    except Exception as e:
+        return error_response(message=f"Gagal membuat jurnal pembayaran hutang konsinyasi: {str(e)}")
 
 @router.post("/sales-journal", response_model=SalesWithConsignments, dependencies=[Depends(jwt_required)])
 def create_sales_journal(data: SalesJournalEntry, db: Session = Depends(get_db)):
