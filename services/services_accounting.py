@@ -55,6 +55,7 @@ from schemas.service_accounting import (
     ServiceSalesReport,
     ServiceSalesReportItem
 )
+from collections import defaultdict
 
 def to_dict(obj):
     result = {}
@@ -126,7 +127,7 @@ def _validate_balance(lines: List[JournalLineCreate]) -> None:
         raise ValueError(f"Journal not balanced: debit {total_debit} != credit {total_credit}")
 
 
-def _create_entry(db: Session, payload: JournalEntryCreate, created_by: Optional[str] = "system") -> JournalEntry:
+def _create_entry(db: Session, payload: JournalEntryCreate, created_by: Optional[str] = "system", commit: bool = True) -> JournalEntry:
     """
     Create a new journal entry in the database.
 
@@ -171,7 +172,8 @@ def _create_entry(db: Session, payload: JournalEntryCreate, created_by: Optional
         db.add(jl)
 
     db.flush()  # Ensure lines are flushed to the database
-    db.commit()  # Commit the transaction
+    if commit:
+        db.commit()  # Commit the transaction
     return entry
 
 
@@ -335,18 +337,85 @@ def record_sale(
             credit=sale_data.hpp
         ))
 
-    payload = JournalEntryCreate(
-        entry_no=sale_data.entry_no,
-        date=sale_data.tanggal,
-        memo=sale_data.memo,
-        journal_type=JT.SALE,
-        supplier_id=None,
-        customer_id=sale_data.customer_id,
-        workorder_id=None,
-        lines=lines
-    )
-    entry = _create_entry(db, payload, created_by=sale_data.created_by)
-    return _to_entry_out(db, entry)
+    # Group consignment payables per supplier (if any) and create separate payable entries
+    consign_by_supplier = defaultdict(Decimal)
+    if sale_data.workorder_id:
+        workorder = db.query(Workorder).filter(Workorder.id == sale_data.workorder_id).first()
+        if workorder:
+            for po in workorder.product_ordered:
+                product = po.product
+                # For consignment products, calculate payable based on product cost (HPP)
+                if product and getattr(product, "is_consignment", False):
+                    supplier_id = getattr(product, "supplier_id", None)
+                    # Use product.cost (HPP) when available; if not present, skip or treat as zero
+                    product_cost = getattr(product, "cost", None) or Decimal("0.00")
+                    cost_amount = po.quantity * product_cost
+                    if supplier_id and cost_amount and cost_amount > 0:
+                        consign_by_supplier[supplier_id] += cost_amount
+
+    # create sale entry and consignment payable entries in one transaction
+    with db.begin():
+        sale_payload = JournalEntryCreate(
+            entry_no=sale_data.entry_no,
+            date=sale_data.tanggal,
+            memo=sale_data.memo,
+            journal_type=JT.SALE,
+            supplier_id=None,
+            customer_id=sale_data.customer_id,
+            workorder_id=sale_data.workorder_id,
+            lines=lines
+        )
+        sale_entry = _create_entry(db, sale_payload, created_by=sale_data.created_by, commit=False)
+        # For each consignor, create a separate JournalEntry for the payable
+        cons_entries = []
+        for supplier_id, amount in consign_by_supplier.items():
+            if amount and amount > 0:
+                acc_hpp = db.execute(select(Account).where(Account.code == "5001")).scalar_one_or_none()
+                acc_payable = db.execute(select(Account).where(Account.code == "3002")).scalar_one_or_none()
+                if not acc_hpp or not acc_payable:
+                    raise ValueError("Akun untuk HPP atau hutang konsinyasi (5001/3002) belum tersedia")
+
+                cons_entry = JournalEntry(
+                    id=uuid.uuid4(),
+                    entry_no=f"CONS-{uuid.uuid4().hex[:8]}",
+                    date=sale_data.tanggal,
+                    memo=f"Hutang konsinyasi untuk supplier {supplier_id} - WO {sale_data.workorder_id}",
+                    journal_type=JournalType.CONSIGNMENT,
+                    supplier_id=supplier_id,
+                    customer_id=None,
+                    workorder_id=sale_data.workorder_id,
+                    created_by=sale_data.created_by,
+                )
+                db.add(cons_entry)
+                db.flush()
+
+                jl1 = JournalLine(
+                    id=uuid.uuid4(),
+                    entry_id=cons_entry.id,
+                    account_id=acc_hpp.id,
+                    description="HPP Konsinyasi (berdasarkan cost produk)",
+                    debit=amount,
+                    credit=Decimal("0.00")
+                )
+                jl2 = JournalLine(
+                    id=uuid.uuid4(),
+                    entry_id=cons_entry.id,
+                    account_id=acc_payable.id,
+                    description="Hutang Konsinyasi (berdasarkan cost produk)",
+                    debit=Decimal("0.00"),
+                    credit=amount
+                )
+                db.add_all([jl1, jl2])
+                cons_entries.append(cons_entry)
+
+    # convert sale and consignment entries to output schema
+    sale_out = _to_entry_out(db, sale_entry)
+    consign_outs = [_to_entry_out(db, ce) for ce in (cons_entries if 'cons_entries' in locals() else [])]
+
+    return {
+        "sale": sale_out,
+        "consignments": consign_outs
+    }
 
 
 def receive_payment_ar(
@@ -671,33 +740,23 @@ def create_sales_journal_entry(db: Session, data_entry: SalesJournalEntry) -> di
         ))
 
     # Calculate and record consignment commission if workorder has consignment products
+    # Group consignment commissions per supplier (if any)
+    consign_by_supplier = defaultdict(Decimal)
     if data_entry.workorder_id:
         workorder = db.query(Workorder).filter(Workorder.id == data_entry.workorder_id).first()
         if workorder:
-            total_commission = Decimal("0.00")
             for po in workorder.product_ordered:
                 product = po.product
-                if product and product.is_consignment and product.consignment_commission:
-                    # Calculate commission: quantity * commission rate
-                    commission = po.quantity * product.consignment_commission
-                    total_commission += commission
-            
-            # Record consignment commission as expense if there's any
-            if total_commission > 0:
-                lines.append(JournalLineCreate(
-                    account_code="6003",  # Beban Komisi Konsinyasi
-                    description="Komisi Konsinyasi",
-                    debit=total_commission,
-                    credit=Decimal("0.00")
-                ))
-                lines.append(JournalLineCreate(
-                    account_code="3002",  # Hutang Komisi Konsinyasi (payable to supplier)
-                    description="Hutang Komisi Konsinyasi",
-                    debit=Decimal("0.00"),
-                    credit=total_commission
-                ))
+                # For consignment products, use product cost (HPP) as the payable base
+                if product and getattr(product, "is_consignment", False):
+                    supplier_id = getattr(product, "supplier_id", None)
+                    product_cost = getattr(product, "cost", None) or Decimal("0.00")
+                    cost_amount = po.quantity * product_cost
+                    if supplier_id and cost_amount and cost_amount > 0:
+                        consign_by_supplier[supplier_id] += cost_amount
 
-    payload = JournalEntryCreate(
+    # Create sale entry and consignment payable entries
+    sale_payload = JournalEntryCreate(
         entry_no=None,  # Auto-generate
         date=data_entry.date,
         memo=data_entry.memo,
@@ -707,8 +766,55 @@ def create_sales_journal_entry(db: Session, data_entry: SalesJournalEntry) -> di
         workorder_id=data_entry.workorder_id,
         lines=lines
     )
-    entry = _create_entry(db, payload, created_by="system")
-    return _to_entry_out(db, entry)
+    sale_entry = _create_entry(db, sale_payload, created_by="system", commit=False)
+
+    cons_entries = []
+    for supplier_id, amount in consign_by_supplier.items():
+        if amount and amount > 0:
+            # Use HPP (5001) as the debit account for consignment payable clearing
+            acc_hpp = db.execute(select(Account).where(Account.code == "5001")).scalar_one_or_none()
+            acc_payable = db.execute(select(Account).where(Account.code == "3002")).scalar_one_or_none()
+            if not acc_hpp or not acc_payable:
+                raise ValueError("Akun untuk HPP atau hutang konsinyasi (5001/3002) belum tersedia")
+
+            cons_entry = JournalEntry(
+                id=uuid.uuid4(),
+                entry_no=f"CONS-{uuid.uuid4().hex[:8]}",
+                date=data_entry.date,
+                memo=f"Hutang konsinyasi untuk supplier {supplier_id} - WO {data_entry.workorder_id}",
+                journal_type=JournalType.consignment,
+                supplier_id=supplier_id,
+                customer_id=None,
+                workorder_id=data_entry.workorder_id,
+                created_by="system",
+            )
+            db.add(cons_entry)
+            db.flush()
+
+            jl1 = JournalLine(
+                id=uuid.uuid4(),
+                entry_id=cons_entry.id,
+                account_id=acc_hpp.id,
+                description="HPP/Pembayaran Konsinyasi (berdasarkan cost produk)",
+                debit=amount,
+                credit=Decimal("0.00")
+            )
+            jl2 = JournalLine(
+                id=uuid.uuid4(),
+                entry_id=cons_entry.id,
+                account_id=acc_payable.id,
+                description="Hutang Konsinyasi (berdasarkan cost produk)",
+                debit=Decimal("0.00"),
+                credit=amount
+            )
+            db.add_all([jl1, jl2])
+            cons_entries.append(cons_entry)
+
+    db.commit()
+
+    sale_out = _to_entry_out(db, sale_entry)
+    consign_outs = [_to_entry_out(db, ce) for ce in cons_entries]
+    return {"sale": sale_out, "consignments": consign_outs}
 
 
 def cash_in(
@@ -1427,6 +1533,45 @@ def generate_receivable_payable_report(db: Session, request: ReceivablePayableRe
         net_balance=net_balance,
         items=items
     )
+
+
+def generate_consignment_payable_report(db: Session, request: ReceivablePayableReportRequest) -> dict:
+    """
+    Generate a report of consignment payables per supplier within a date range.
+    Sums JournalLine (credit - debit) for the consignment payable account (code '3002').
+    """
+    # find consignment payable account id
+    cons_acc = db.query(Account).filter(Account.code == '3002').first()
+    if not cons_acc:
+        # nothing to report if account doesn't exist
+        return {"total_payable": Decimal("0.00"), "items": []}
+
+    # aggregate by supplier
+    rows = db.query(
+        Supplier.id.label('supplier_id'),
+        Supplier.nama.label('supplier_name'),
+        func.sum((JournalLine.credit - JournalLine.debit)).label('total_payable')
+    ).join(JournalEntry, JournalLine.entry_id == JournalEntry.id)
+    rows = rows.join(Supplier, JournalEntry.supplier_id == Supplier.id)
+    rows = rows.filter(
+        JournalLine.account_id == cons_acc.id,
+        JournalEntry.date >= request.start_date,
+        JournalEntry.date <= request.end_date
+    ).group_by(Supplier.id, Supplier.nama).all()
+
+    items = []
+    total = Decimal("0.00")
+    for r in rows:
+        tp = r.total_payable or Decimal("0.00")
+        if tp != 0:
+            items.append({
+                "supplier_id": str(r.supplier_id),
+                "supplier_name": r.supplier_name,
+                "total_payable": tp
+            })
+            total += tp
+
+    return {"total_payable": total, "items": items}
 
 
 def generate_product_sales_report(db: Session, request: ProductSalesReportRequest) -> ProductSalesReport:

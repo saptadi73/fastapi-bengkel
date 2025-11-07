@@ -5,13 +5,14 @@ from models.database import get_db
 from schemas.service_accounting import (
     JournalEntryCreate, JournalEntryOut,
     PurchaseRecordCreate, SaleRecordCreate,
+    SalesWithConsignments,
     PaymentARCreate, PaymentAPCreate, ExpenseRecordCreate, SalesJournalEntry, SalesPaymentJournalEntry,PurchaseJournalEntry,PurchasePaymentJournalEntry,ExpenseJournalEntry, ExpensePaymentJournalEntry,
     CashInCreate, CashOutCreate,
     CashBookReportRequest, CashBookReport,
     ExpenseReportRequest, ExpenseReport,
     ProfitLossReportRequest, ProfitLossReport,
     CashReportRequest, CashReport,
-    ReceivablePayableReportRequest, ReceivablePayableReport,
+    ReceivablePayableReportRequest, ReceivablePayableReport, ConsignmentPayableReport,
     ProductSalesReportRequest, ProductSalesReport,
     ServiceSalesReportRequest, ServiceSalesReport,
 )
@@ -23,6 +24,7 @@ from services.services_accounting import (
     cash_in, cash_out,
     generate_cash_book_report, generate_expense_report, getBankCodes, generate_profit_loss_report, generate_cash_report, getEquityCodes, getTarikCodes, generate_receivable_payable_report, generate_product_sales_report, generate_service_sales_report
 )
+from services.services_accounting import generate_consignment_payable_report
 
 from models.accounting import JournalEntry
 from schemas.service_accounting import JournalEntryOut, CreateAccount
@@ -40,7 +42,7 @@ def create_purchase(data: PurchaseRecordCreate, db: Session = Depends(get_db)):
     except Exception as e:
         return error_response(message=f"Gagal membuat jurnal pembelian: {str(e)}")
 
-@router.post("/sale", response_model=JournalEntryOut, dependencies=[Depends(jwt_required)])
+@router.post("/sale", response_model=SalesWithConsignments, dependencies=[Depends(jwt_required)])
 def create_sale(data: SaleRecordCreate, db: Session = Depends(get_db)):
     try:
         result = record_sale(db, sale_data=data)
@@ -72,7 +74,7 @@ def create_expense(data: ExpenseRecordCreate, db: Session = Depends(get_db)):
     except Exception as e:
         return error_response(message=f"Gagal membuat jurnal pengeluaran biaya: {str(e)}")
 
-@router.post("/sales-journal", response_model=JournalEntryOut, dependencies=[Depends(jwt_required)])
+@router.post("/sales-journal", response_model=SalesWithConsignments, dependencies=[Depends(jwt_required)])
 def create_sales_journal(data: SalesJournalEntry, db: Session = Depends(get_db)):
     try:
         result = create_sales_journal_entry(db, data_entry=data)
@@ -254,6 +256,16 @@ def generate_receivable_payable_report_route(request: ReceivablePayableReportReq
         return success_response(data=data, message="Laporan piutang hutang berhasil dihasilkan")
     except Exception as e:
         return error_response(message=f"Gagal menghasilkan laporan piutang hutang: {str(e)}")
+
+
+@router.post("/consignment-payable-report", response_model=ConsignmentPayableReport, dependencies=[Depends(jwt_required)])
+def generate_consignment_payable_report_route(request: ReceivablePayableReportRequest, db: Session = Depends(get_db)):
+    try:
+        result = generate_consignment_payable_report(db, request)
+        # result is dict-like; if you prefer Pydantic conversion, do it here
+        return success_response(data=result, message="Laporan hutang konsinyasi berhasil dihasilkan")
+    except Exception as e:
+        return error_response(message=f"Gagal menghasilkan laporan hutang konsinyasi: {str(e)}")
 
 @router.post("/product-sales-report", response_model=ProductSalesReport, dependencies=[Depends(jwt_required)])
 def generate_product_sales_report_route(request: ProductSalesReportRequest, db: Session = Depends(get_db)):

@@ -3,7 +3,7 @@
 # schemas_accounting.py
 from typing import List, Optional
 from decimal import Decimal
-from pydantic import BaseModel, Field, condecimal
+from pydantic import BaseModel, Field, condecimal, ConfigDict, field_serializer
 from datetime import date
 from enum import Enum
 from uuid import UUID
@@ -16,9 +16,21 @@ class JournalType(str, Enum):
     SALE = "sale"
     AR_RECEIPT = "ar_receipt"
     AP_PAYMENT = "ap_payment"
+    CONSIGNMENT = "consignment"
     EXPENSE = "expense"
     GENERAL = "general"
 
+
+# Reusable model for serializing Decimal fields to floats when dumping models.
+# Placed early so other models can inherit from it.
+class DecimalModel(BaseModel):
+    model_config = ConfigDict()
+
+    @field_serializer("*")
+    def _serialize_decimal(self, v, info):
+        if isinstance(v, Decimal):
+            return float(v)
+        return v
 
 class JournalLineCreate(BaseModel):
     account_code: str = Field(..., description="Kode COA, contoh: 1100")
@@ -42,12 +54,14 @@ class JournalEntryCreate(JournalEntryBase):
     lines: List[JournalLineCreate]
 
 
-class JournalLineOut(BaseModel):
+class JournalLineOut(DecimalModel):
     account_code: str
     account_name: str
     description: Optional[str]
     debit: Decimal
     credit: Decimal
+
+
 
 class CreateAccount(BaseModel):
     code: str
@@ -56,7 +70,7 @@ class CreateAccount(BaseModel):
     account_type: str  # e.g., 'asset', 'liability', 'equity', 'revenue', 'expense'
     is_active: Optional[bool] = True
 
-class JournalEntryOut(BaseModel):
+class JournalEntryOut(DecimalModel):
     id: str
     entry_no: str
     date: date
@@ -64,8 +78,14 @@ class JournalEntryOut(BaseModel):
     journal_type: JournalType
     lines: List[JournalLineOut]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SalesWithConsignments(DecimalModel):
+    sale: JournalEntryOut
+    consignments: List[JournalEntryOut]
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PurchaseRecordCreate(BaseModel):
@@ -240,7 +260,7 @@ class CashBookReportRequest(BaseModel):
     end_date: date
 
 
-class CashBookEntry(BaseModel):
+class CashBookEntry(DecimalModel):
     date: date
     memo: Optional[str]
     debit: Decimal = Decimal("0.00")
@@ -248,14 +268,11 @@ class CashBookEntry(BaseModel):
     balance: Decimal = Decimal("0.00")
 
 
-class CashBookReport(BaseModel):
+class CashBookReport(DecimalModel):
     opening_balance: Decimal
     entries: List[CashBookEntry]
 
-    class Config:
-        json_encoders = {
-            Decimal: lambda v: float(v)
-        }
+    model_config = ConfigDict()
 
 
 class ExpenseReportRequest(BaseModel):
@@ -265,21 +282,18 @@ class ExpenseReportRequest(BaseModel):
     status: Optional[str] = None  # Filter by status, e.g., "dibayarkan"
 
 
-class ExpenseReportItem(BaseModel):
+class ExpenseReportItem(DecimalModel):
     expense_type: str
     total_amount: Decimal
     count: int
 
 
-class ExpenseReport(BaseModel):
+class ExpenseReport(DecimalModel):
     total_expenses: Decimal
     total_count: int
     items: List[ExpenseReportItem]
 
-    class Config:
-        json_encoders = {
-            Decimal: lambda v: float(v)
-        }
+    model_config = ConfigDict()
 
 
 class ProfitLossReportRequest(BaseModel):
@@ -287,23 +301,20 @@ class ProfitLossReportRequest(BaseModel):
     end_date: date
 
 
-class ProfitLossReportItem(BaseModel):
+class ProfitLossReportItem(DecimalModel):
     account_code: str
     account_name: str
     amount: Decimal
 
 
-class ProfitLossReport(BaseModel):
+class ProfitLossReport(DecimalModel):
     total_revenue: Decimal
     total_expenses: Decimal
     net_profit: Decimal
     revenues: List[ProfitLossReportItem]
     expenses: List[ProfitLossReportItem]
 
-    class Config:
-        json_encoders = {
-            Decimal: lambda v: float(v)
-        }
+    model_config = ConfigDict()
 
 
 class CashReportRequest(BaseModel):
@@ -313,7 +324,7 @@ class CashReportRequest(BaseModel):
     transaction_type: Optional[str] = None  # "cash_in", "cash_out", or None for both
 
 
-class CashReportEntry(BaseModel):
+class CashReportEntry(DecimalModel):
     date: date
     memo: Optional[str]
     account_code: str
@@ -322,16 +333,13 @@ class CashReportEntry(BaseModel):
     transaction_type: str  # "cash_in" or "cash_out"
 
 
-class CashReport(BaseModel):
+class CashReport(DecimalModel):
     total_cash_in: Decimal
     total_cash_out: Decimal
     net_cash_flow: Decimal
     entries: List[CashReportEntry]
 
-    class Config:
-        json_encoders = {
-            Decimal: lambda v: float(v)
-        }
+    model_config = ConfigDict()
 
 
 class ReceivablePayableReportRequest(BaseModel):
@@ -339,7 +347,7 @@ class ReceivablePayableReportRequest(BaseModel):
     end_date: date
 
 
-class ReceivablePayableItem(BaseModel):
+class ReceivablePayableItem(DecimalModel):
     entity_id: str  # customer_id or supplier_id
     entity_name: str  # customer.nama or supplier.nama
     entity_type: str  # "customer" or "supplier"
@@ -350,16 +358,26 @@ class ReceivablePayableItem(BaseModel):
     balance: Decimal  # receivable - payable (positive = receivable, negative = payable)
 
 
-class ReceivablePayableReport(BaseModel):
+class ReceivablePayableReport(DecimalModel):
     total_receivable: Decimal
     total_payable: Decimal
     net_balance: Decimal
     items: List[ReceivablePayableItem]
 
-    class Config:
-        json_encoders = {
-            Decimal: lambda v: float(v)
-        }
+    model_config = ConfigDict()
+
+
+class ConsignmentPayableItem(DecimalModel):
+    supplier_id: str
+    supplier_name: str
+    total_payable: Decimal
+
+
+class ConsignmentPayableReport(DecimalModel):
+    total_payable: Decimal
+    items: List[ConsignmentPayableItem]
+
+    model_config = ConfigDict()
 
 
 class ProductSalesReportRequest(BaseModel):
@@ -369,7 +387,7 @@ class ProductSalesReportRequest(BaseModel):
     customer_id: Optional[UUID] = None
 
 
-class ProductSalesReportItem(BaseModel):
+class ProductSalesReportItem(DecimalModel):
     workorder_no: str
     workorder_date: date
     customer_name: str
@@ -380,15 +398,12 @@ class ProductSalesReportItem(BaseModel):
     discount: Decimal
 
 
-class ProductSalesReport(BaseModel):
+class ProductSalesReport(DecimalModel):
     total_quantity: Decimal
     total_sales: Decimal
     items: List[ProductSalesReportItem]
 
-    class Config:
-        json_encoders = {
-            Decimal: lambda v: float(v)
-        }
+    model_config = ConfigDict()
 
 
 class ServiceSalesReportRequest(BaseModel):
@@ -398,7 +413,7 @@ class ServiceSalesReportRequest(BaseModel):
     customer_id: Optional[UUID] = None
 
 
-class ServiceSalesReportItem(BaseModel):
+class ServiceSalesReportItem(DecimalModel):
     workorder_no: str
     workorder_date: date
     customer_name: str
@@ -409,15 +424,12 @@ class ServiceSalesReportItem(BaseModel):
     discount: Decimal
 
 
-class ServiceSalesReport(BaseModel):
+class ServiceSalesReport(DecimalModel):
     total_quantity: Decimal
     total_sales: Decimal
     items: List[ServiceSalesReportItem]
 
-    class Config:
-        json_encoders = {
-            Decimal: lambda v: float(v)
-        }
+    model_config = ConfigDict()
 
 
 

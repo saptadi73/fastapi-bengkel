@@ -234,6 +234,7 @@ def updateStatusWorkorder(db: Session, data_entry: SalesPaymentJournalEntry):
     if not wo:
         return None
     wo.status = 'dibayar'
+    wo.status_pembayaran='lunas'
     db.add(wo)
     db.commit()
     db.refresh(wo)

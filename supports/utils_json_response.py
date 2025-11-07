@@ -26,21 +26,98 @@ def to_dict(obj):
     return result
 
 def success_response(data=None, message="Success", status_code=200):
+    # Normalize data (convert Decimal, UUID, datetime, Enum, SQLAlchemy models, etc.)
+    def _normalize(value):
+        # import here to avoid top-level heavy imports
+        import uuid as _uuid
+        import decimal as _decimal
+        import datetime as _datetime
+        from enum import Enum as _Enum
+
+        # SQLAlchemy model instance -> convert via to_dict
+        try:
+            # detect SQLAlchemy declarative model by presence of __table__
+            if hasattr(value, '__table__'):
+                return to_dict(value)
+        except Exception:
+            pass
+
+        if isinstance(value, _decimal.Decimal):
+            return float(value)
+        if isinstance(value, _uuid.UUID):
+            return str(value)
+        if isinstance(value, (_datetime.datetime, _datetime.date, _datetime.time)):
+            return value.isoformat()
+        if isinstance(value, bytes):
+            try:
+                return value.decode('utf-8')
+            except Exception:
+                return str(value)
+        # Enum -> return underlying value
+        if isinstance(value, _Enum):
+            return value.value
+        # recurse for dicts and lists
+        if isinstance(value, dict):
+            return {k: _normalize(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [_normalize(v) for v in value]
+        if isinstance(value, tuple):
+            return tuple(_normalize(v) for v in value)
+
+        return value
+
+    normalized = _normalize(data)
     return JSONResponse(
         status_code=status_code,
         content={
             "status": "success",
             "message": message,
-            "data": data
+            "data": normalized
         }
     )
 
 def error_response(message="Error", status_code=400, data=None):
+    # Normalize data similar to success_response to avoid JSON serialization issues
+    def _normalize(value):
+        import uuid as _uuid
+        import decimal as _decimal
+        import datetime as _datetime
+        from enum import Enum as _Enum
+
+        try:
+            if hasattr(value, '__table__'):
+                return to_dict(value)
+        except Exception:
+            pass
+
+        if isinstance(value, _decimal.Decimal):
+            return float(value)
+        if isinstance(value, _uuid.UUID):
+            return str(value)
+        if isinstance(value, (_datetime.datetime, _datetime.date, _datetime.time)):
+            return value.isoformat()
+        if isinstance(value, bytes):
+            try:
+                return value.decode('utf-8')
+            except Exception:
+                return str(value)
+        if isinstance(value, _Enum):
+            return value.value
+        if isinstance(value, dict):
+            return {k: _normalize(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [_normalize(v) for v in value]
+        if isinstance(value, tuple):
+            return tuple(_normalize(v) for v in value)
+
+        return value
+
+    normalized = _normalize(data)
     return JSONResponse(
         status_code=status_code,
         content={
             "status": "error",
             "message": message,
-            "data": data
+            "data": normalized
         }
     )

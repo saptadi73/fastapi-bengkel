@@ -459,6 +459,7 @@ def update_only_status_purchase_order(db: Session, purchase_id: str):
             return {"message": "PurchaseOrder not found"}
 
         po.status = 'dibayarkan'
+        po.status_pembayaran = 'lunas'
         po.updated_at = datetime.datetime.now()
 
         db.commit()

@@ -25,6 +25,7 @@ class JournalType(str, enum.Enum):
     sale = "sale"                        # jurnal penjualan
     ar_receipt = "ar_receipt"            # pembayaran piutang
     ap_payment = "ap_payment"            # pembayaran hutang
+    consignment = "consignment"          # hutang/komisi konsinyasi (per supplier)
     expense = "expense"                  # pengeluaran biaya-biaya
     general = "general"                  # umum (fallback)
 

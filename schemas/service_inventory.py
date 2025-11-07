@@ -1,4 +1,15 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, field_serializer
+from decimal import Decimal
+
+
+class DecimalModel(BaseModel):
+    model_config = ConfigDict()
+
+    @field_serializer("*")
+    def _serialize_decimal(self, v, info):
+        if isinstance(v, Decimal):
+            return float(v)
+        return v
 from uuid import UUID
 from decimal import Decimal
 from typing import Optional, List
@@ -28,14 +39,11 @@ class ProductMoveHistoryReportItem(BaseModel):
     customer_name: Optional[str] = None
     supplier_name: Optional[str] = None
 
-class ProductMoveHistoryReport(BaseModel):
+class ProductMoveHistoryReport(DecimalModel):
     total_entries: int
     items: List[ProductMoveHistoryReportItem]
 
-    class Config:
-        json_encoders = {
-            Decimal: lambda v: float(v)
-        }
+    model_config = ConfigDict()
 
 class ManualAdjustment(BaseModel):
     product_id: UUID
