@@ -140,7 +140,7 @@ def ProductMovedCausedProductOrdered(db: Session, product_ordered, performed_by:
 
 
 def getAllWorkorders(db: Session):
-    workorders = db.query(Workorder).all()
+    workorders = db.query(Workorder).order_by(Workorder.tanggal_masuk.desc()).all()
     result = []
     for wo in workorders:
         wo_dict = to_dict(wo)
