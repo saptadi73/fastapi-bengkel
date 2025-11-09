@@ -4,7 +4,7 @@ from uuid import UUID
 from models.database import SessionLocal
 from services.services_customer import create_customer_with_vehicles,getListCustomersWithvehicles, getListCustomersWithVehiclesCustomersID
 from services.services_product import CreateProductNew, get_all_products, get_product_by_id, createServicenya,get_all_services, createBrandnya, createCategorynya, createSatuannya, getAllBrands, getAllCategories, getAllSatuans, getAllInventoryProducts, getInventoryByProductID, createProductMoveHistoryNew
-from services.services_workorder import createNewWorkorder,getAllWorkorders, getWorkorderByID, updateServiceorderedOnlynya,updateWorkOrdeKeluhannya,UpdateDateWorkordernya,UpdateWorkorderOrdersnya,updateProductOrderedOnlynya,updateStatusWorkorder,update_only_productordered, update_only_serviceordered,update_only_workorder,update_workorder_lengkap, addProductOrder, updateProductOrder, deleteProductOrder, addServiceOrder, updateServiceOrder, deleteServiceOrder, getWorkordersByCustomerID
+from services.services_workorder import createNewWorkorder,getAllWorkorders, getWorkorderByID, updateServiceorderedOnlynya,updateWorkOrdeKeluhannya,UpdateDateWorkordernya,UpdateWorkorderOrdersnya,updateProductOrderedOnlynya,updateStatusWorkorder,update_only_productordered, update_only_serviceordered,update_only_workorder,update_workorder_lengkap, addProductOrder, updateProductOrder, deleteProductOrder, addServiceOrder, updateServiceOrder, deleteServiceOrder, deleteWorkorder, getWorkordersByCustomerID
 from schemas.service_inventory import CreateProductMovedHistory
 from schemas.service_product import CreateProduct, ProductResponse, CreateService, ServiceResponse
 from schemas.service_accounting import SalesPaymentJournalEntry
@@ -259,6 +259,21 @@ def deleteServiceOrderRouter(
         if not result:
             return error_response(message="Failed to delete service order")
         return success_response(data=result, message="Service order deleted successfully")
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()
+
+@router.delete("/{workorder_id}", dependencies=[Depends(jwt_required)])
+def deleteWorkorderRouter(
+    workorder_id: UUID,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = deleteWorkorder(db, str(workorder_id))
+        if not result:
+            return error_response(message="Failed to delete workorder")
+        return success_response(data=result, message="Workorder deleted successfully")
     except Exception as e:
         return error_response(message=str(e))
     finally:

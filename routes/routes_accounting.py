@@ -15,6 +15,7 @@ from schemas.service_accounting import (
     ReceivablePayableReportRequest, ReceivablePayableReport, ConsignmentPayableReport,
     ProductSalesReportRequest, ProductSalesReport,
     ServiceSalesReportRequest, ServiceSalesReport,
+    DailyReportRequest, DailyReport,
 )
 from services.services_accounting import (
     record_purchase, record_sale, receive_payment_ar,
@@ -22,7 +23,7 @@ from services.services_accounting import (
     create_sales_journal_entry, create_sales_payment_journal_entry, create_purchase_journal_entry,
     create_purchase_payment_journal_entry, create_expense_journal_entry, create_expense_payment_journal_entry,
     cash_in, cash_out,
-    generate_cash_book_report, generate_expense_report, getBankCodes, generate_profit_loss_report, generate_cash_report, getEquityCodes, getTarikCodes, generate_receivable_payable_report, generate_product_sales_report, generate_service_sales_report
+    generate_cash_book_report, generate_expense_report, getBankCodes, generate_profit_loss_report, generate_cash_report, getEquityCodes, getTarikCodes, generate_receivable_payable_report, generate_product_sales_report, generate_service_sales_report, generate_daily_report
 )
 from services.services_accounting import generate_consignment_payable_report
 
@@ -195,8 +196,7 @@ def get_all_accounts_route(db: Session = Depends(get_db)):
 def generate_cash_book_report_route(request: CashBookReportRequest, db: Session = Depends(get_db)):
     try:
         result = generate_cash_book_report(db, request)
-        import json
-        data = json.loads(result.json())
+        data = result.model_dump()
         return success_response(data=data, message="Laporan buku kas berhasil dihasilkan")
     except Exception as e:
         return error_response(message=f"Gagal menghasilkan laporan buku kas: {str(e)}")
@@ -205,8 +205,7 @@ def generate_cash_book_report_route(request: CashBookReportRequest, db: Session 
 def generate_expense_report_route(request: ExpenseReportRequest, db: Session = Depends(get_db)):
     try:
         result = generate_expense_report(db, request)
-        import json
-        data = json.loads(result.json())
+        data = result.model_dump()
         return success_response(data=data, message="Laporan biaya berhasil dihasilkan")
     except Exception as e:
         return error_response(message=f"Gagal menghasilkan laporan biaya: {str(e)}")
@@ -239,8 +238,7 @@ def getAllTarikCodes(db: Session = Depends(get_db)):
 def generate_profit_loss_report_route(request: ProfitLossReportRequest, db: Session = Depends(get_db)):
     try:
         result = generate_profit_loss_report(db, request)
-        import json
-        data = json.loads(result.json())
+        data = result.model_dump()
         return success_response(data=data, message="Laporan laba rugi berhasil dihasilkan")
     except Exception as e:
         return error_response(message=f"Gagal menghasilkan laporan laba rugi: {str(e)}")
@@ -249,8 +247,7 @@ def generate_profit_loss_report_route(request: ProfitLossReportRequest, db: Sess
 def generate_cash_report_route(request: CashReportRequest, db: Session = Depends(get_db)):
     try:
         result = generate_cash_report(db, request)
-        import json
-        data = json.loads(result.json())
+        data = result.model_dump()
         return success_response(data=data, message="Laporan kas berhasil dihasilkan")
     except Exception as e:
         return error_response(message=f"Gagal menghasilkan laporan kas: {str(e)}")
@@ -259,8 +256,7 @@ def generate_cash_report_route(request: CashReportRequest, db: Session = Depends
 def generate_receivable_payable_report_route(request: ReceivablePayableReportRequest, db: Session = Depends(get_db)):
     try:
         result = generate_receivable_payable_report(db, request)
-        import json
-        data = json.loads(result.json())
+        data = result.model_dump()
         return success_response(data=data, message="Laporan piutang hutang berhasil dihasilkan")
     except Exception as e:
         return error_response(message=f"Gagal menghasilkan laporan piutang hutang: {str(e)}")
@@ -279,8 +275,7 @@ def generate_consignment_payable_report_route(request: ReceivablePayableReportRe
 def generate_product_sales_report_route(request: ProductSalesReportRequest, db: Session = Depends(get_db)):
     try:
         result = generate_product_sales_report(db, request)
-        import json
-        data = json.loads(result.json())
+        data = result.model_dump()
         return success_response(data=data, message="Laporan penjualan produk berhasil dihasilkan")
     except Exception as e:
         return error_response(message=f"Gagal menghasilkan laporan penjualan produk: {str(e)}")
@@ -289,9 +284,17 @@ def generate_product_sales_report_route(request: ProductSalesReportRequest, db: 
 def generate_service_sales_report_route(request: ServiceSalesReportRequest, db: Session = Depends(get_db)):
     try:
         result = generate_service_sales_report(db, request)
-        import json
-        data = json.loads(result.json())
+        data = result.model_dump()
         return success_response(data=data, message="Laporan penjualan jasa berhasil dihasilkan")
     except Exception as e:
         return error_response(message=f"Gagal menghasilkan laporan penjualan jasa: {str(e)}")
+
+@router.post("/daily-report", response_model=DailyReport, dependencies=[Depends(jwt_required)])
+def generate_daily_report_route(request: DailyReportRequest, db: Session = Depends(get_db)):
+    try:
+        result = generate_daily_report(db, request)
+        data = result.model_dump()
+        return success_response(data=data, message="Laporan harian berhasil dihasilkan")
+    except Exception as e:
+        return error_response(message=f"Gagal menghasilkan laporan harian: {str(e)}")
 

@@ -291,6 +291,14 @@
         "memo": "Pembayaran hutang konsinyasi dengan diskon",
         "created_by": "admin"
       }
+    },
+
+    "3_daily_report": {
+      "endpoint": "POST /accounting/daily-report",
+      "description": "Generate comprehensive daily report for a specific date",
+      "payload": {
+        "date": "2025-01-30"
+      }
     }
   },
 

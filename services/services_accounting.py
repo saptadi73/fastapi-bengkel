@@ -54,7 +54,11 @@ from schemas.service_accounting import (
     ProductSalesReportItem,
     ServiceSalesReportRequest,
     ServiceSalesReport,
-    ServiceSalesReportItem
+    ServiceSalesReportItem,
+    DailyReportRequest,
+    DailyReport,
+    WorkOrderSummary,
+    WorkOrderSummaryItem
 )
 from collections import defaultdict
 
@@ -1746,3 +1750,96 @@ def consignment_payment(
     )
     entry = _create_entry(db, payload, created_by=payment_data.created_by)
     return _to_entry_out(db, entry)
+
+
+def generate_daily_report(db: Session, request: DailyReportRequest) -> DailyReport:
+    """
+    Generate a comprehensive daily report combining multiple reports for a specific date.
+    Includes cash book, product sales, service sales, profit/loss, and work order summary.
+    """
+    # Use the date as both start and end for single day
+    start_date = request.date
+    end_date = request.date
+
+    # Generate individual reports
+    # For cash book, we need an account_id. Let's assume a default cash account (e.g., '1001')
+    # In a real scenario, you might want to aggregate all cash accounts or specify one
+    cash_account = db.query(Account).filter(Account.code == '1001').first()
+    if not cash_account:
+        raise ValueError("Cash account '1001' not found")
+
+    cash_book_request = CashBookReportRequest(
+        account_id=cash_account.id,
+        start_date=start_date,
+        end_date=end_date
+    )
+    cash_book = generate_cash_book_report(db, cash_book_request)
+
+    product_sales_request = ProductSalesReportRequest(
+        start_date=start_date,
+        end_date=end_date
+    )
+    product_sales = generate_product_sales_report(db, product_sales_request)
+
+    service_sales_request = ServiceSalesReportRequest(
+        start_date=start_date,
+        end_date=end_date
+    )
+    service_sales = generate_service_sales_report(db, service_sales_request)
+
+    profit_loss_request = ProfitLossReportRequest(
+        start_date=start_date,
+        end_date=end_date
+    )
+    profit_loss = generate_profit_loss_report(db, profit_loss_request)
+
+    # Generate work order summary
+    work_orders = generate_work_order_summary(db, start_date, end_date)
+
+    return DailyReport(
+        date=request.date,
+        cash_book=cash_book,
+        product_sales=product_sales,
+        service_sales=service_sales,
+        profit_loss=profit_loss,
+        work_orders=work_orders
+    )
+
+
+def generate_work_order_summary(db: Session, start_date: date, end_date: date) -> WorkOrderSummary:
+    """
+    Generate a summary of work orders within a date range.
+    """
+    # Query workorders with customer info
+    query = db.query(
+        Workorder.no_wo,
+        Customer.nama.label('customer_name'),
+        Workorder.total_biaya,
+        Workorder.status
+    ).join(Customer, Workorder.customer_id == Customer.id)\
+     .filter(func.date(Workorder.tanggal_masuk) >= start_date)\
+     .filter(func.date(Workorder.tanggal_masuk) <= end_date)\
+     .order_by(Workorder.tanggal_masuk, Workorder.no_wo)
+
+    results = query.all()
+
+    items = []
+    total_workorders = 0
+    total_revenue = Decimal("0.00")
+
+    for row in results:
+        item = WorkOrderSummaryItem(
+            workorder_no=row.no_wo,
+            customer_name=row.customer_name,
+            total_biaya=row.total_biaya,
+            status=row.status
+        )
+        items.append(item)
+        total_workorders += 1
+        total_revenue += row.total_biaya
+
+    return WorkOrderSummary(
+        total_workorders=total_workorders,
+        total_revenue=total_revenue,
+        items=items
+    )

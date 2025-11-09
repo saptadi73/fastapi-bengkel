@@ -445,6 +445,36 @@ class ServiceSalesReport(DecimalModel):
     model_config = ConfigDict()
 
 
+class DailyReportRequest(BaseModel):
+    date: date
+
+
+class WorkOrderSummaryItem(DecimalModel):
+    workorder_no: str
+    customer_name: str
+    total_biaya: Decimal
+    status: str
+
+
+class WorkOrderSummary(DecimalModel):
+    total_workorders: int
+    total_revenue: Decimal
+    items: List[WorkOrderSummaryItem]
+
+    model_config = ConfigDict()
+
+
+class DailyReport(DecimalModel):
+    date: date
+    cash_book: CashBookReport
+    product_sales: ProductSalesReport
+    service_sales: ServiceSalesReport
+    profit_loss: ProfitLossReport
+    work_orders: WorkOrderSummary
+
+    model_config = ConfigDict()
+
+
 
 
 
