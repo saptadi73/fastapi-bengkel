@@ -1,7 +1,18 @@
-# TODO: Set dp default=0 in purchase_order and workorder
+# TODO: Implement Roles with Many-to-Many Relationship to Users
 
-- [x] Edit models/purchase_order.py: Add default=0 to the dp column in PurchaseOrder class
-- [x] Edit models/workorder.py: Add default=0 to the dp column in Workorder class
-- [x] Create database_baru/set_dp_default_zero.sql: Migration script to set default=0 and update existing NULL values to 0 for both tables
-- [x] Run the migration script on the database (manual execution required - psql not available in environment)
-- [x] Verify that new records have dp=0 by default
+## Steps to Complete
+
+- [x] Create models/role.py: Role model with id, name
+- [x] Create models/role_user.py: Pivot model for many-to-many relationship
+- [x] Update models/user.py: Add roles relationship
+- [x] Create database_baru/roles_postgres.sql: Migration for roles table with initial inserts (admin, pegawai, user)
+- [x] Create schemas/service_role.py: Pydantic schemas for Role
+- [x] Create services/services_role.py: CRUD operations for roles
+- [x] Create routes/routes_role.py: API endpoints for roles
+- [x] Create schemas/service_role_user.py: Schemas for assigning roles to users
+- [x] Create services/services_role_user.py: Operations for role-user associations
+- [x] Create routes/routes_role_user.py: Endpoints for managing user roles
+
+## Followup Steps
+- [ ] Run the roles migration
+- [ ] Test the new endpoints

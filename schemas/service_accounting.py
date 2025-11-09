@@ -282,6 +282,8 @@ class CashBookEntry(DecimalModel):
 
 
 class CashBookReport(DecimalModel):
+    account_code: Optional[str] = None
+    account_name: Optional[str] = None
     opening_balance: Decimal
     entries: List[CashBookEntry]
 
@@ -466,7 +468,7 @@ class WorkOrderSummary(DecimalModel):
 
 class DailyReport(DecimalModel):
     date: date
-    cash_book: CashBookReport
+    cash_books: List[CashBookReport]
     product_sales: ProductSalesReport
     service_sales: ServiceSalesReport
     profit_loss: ProfitLossReport

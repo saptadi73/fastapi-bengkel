@@ -10,3 +10,6 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     hashed_password = Column(String, nullable=False)
     is_active = Column(String, default=True)
+
+    # Many-to-many relationship with roles
+    roles = relationship("Role", secondary="role_user", back_populates="users")

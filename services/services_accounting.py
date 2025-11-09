@@ -1600,8 +1600,8 @@ def generate_product_sales_report(db: Session, request: ProductSalesReportReques
     ).join(ProductOrdered, Workorder.id == ProductOrdered.workorder_id)\
      .join(Product, ProductOrdered.product_id == Product.id)\
      .join(Customer, Workorder.customer_id == Customer.id)\
-     .filter(Workorder.tanggal_masuk >= request.start_date)\
-     .filter(Workorder.tanggal_masuk <= request.end_date)
+     .filter(func.date(Workorder.tanggal_masuk) >= request.start_date)\
+     .filter(func.date(Workorder.tanggal_masuk) <= request.end_date)
 
     if request.product_id:
         query = query.filter(ProductOrdered.product_id == request.product_id)
@@ -1755,25 +1755,26 @@ def consignment_payment(
 def generate_daily_report(db: Session, request: DailyReportRequest) -> DailyReport:
     """
     Generate a comprehensive daily report combining multiple reports for a specific date.
-    Includes cash book, product sales, service sales, profit/loss, and work order summary.
+    Includes cash books for all cash/bank accounts (1001-1002), product sales, service sales, profit/loss, and work order summary.
     """
     # Use the date as both start and end for single day
     start_date = request.date
     end_date = request.date
 
-    # Generate individual reports
-    # For cash book, we need an account_id. Let's assume a default cash account (e.g., '1001')
-    # In a real scenario, you might want to aggregate all cash accounts or specify one
-    cash_account = db.query(Account).filter(Account.code == '1001').first()
-    if not cash_account:
-        raise ValueError("Cash account '1001' not found")
-
-    cash_book_request = CashBookReportRequest(
-        account_id=cash_account.id,
-        start_date=start_date,
-        end_date=end_date
-    )
-    cash_book = generate_cash_book_report(db, cash_book_request)
+    # Generate cash books for all cash/bank accounts (assuming codes starting with '10')
+    cash_accounts = db.query(Account).filter(Account.code.like('10%'), Account.is_active == True).all()
+    cash_books = []
+    for acc in cash_accounts:
+        cash_book_request = CashBookReportRequest(
+            account_id=acc.id,
+            start_date=start_date,
+            end_date=end_date
+        )
+        cash_book = generate_cash_book_report(db, cash_book_request)
+        # Add account info to the report
+        cash_book.account_code = acc.code
+        cash_book.account_name = acc.name
+        cash_books.append(cash_book)
 
     product_sales_request = ProductSalesReportRequest(
         start_date=start_date,
@@ -1798,7 +1799,7 @@ def generate_daily_report(db: Session, request: DailyReportRequest) -> DailyRepo
 
     return DailyReport(
         date=request.date,
-        cash_book=cash_book,
+        cash_books=cash_books,
         product_sales=product_sales,
         service_sales=service_sales,
         profit_loss=profit_loss,

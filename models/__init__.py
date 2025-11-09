@@ -8,6 +8,8 @@ from .karyawan import *
 from .attendance import *
 from .packet_order import *
 from .purchase_order import *
+from .role import *
+from .role_user import *
 from .supplier import *
 from .user import *
 from .workorder import *

@@ -28,7 +28,8 @@ def create_expenses(db: Session, data: CreateExpenses):
 
 
 def get_all_expenses(db: Session):
-    expenses = db.query(Expenses).all()
+    # Return expenses ordered by date descending (newest first)
+    expenses = db.query(Expenses).order_by(Expenses.date.desc()).all()
     result = []
     for exp in expenses:
         result.append(to_dict(exp))
