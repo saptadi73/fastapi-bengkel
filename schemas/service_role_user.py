@@ -28,3 +28,6 @@ class UserWithRolesResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
+
+class UpdateRolesForUser(BaseModel):
+    role_ids: List[UUID]

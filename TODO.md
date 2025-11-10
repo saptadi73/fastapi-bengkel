@@ -1,18 +1,14 @@
-# TODO: Implement Roles with Many-to-Many Relationship to Users
+# TODO
 
-## Steps to Complete
+## Completed
+- [x] Add UpdateRolesForUser schema to schemas/service_role_user.py
+- [x] Add update_roles_for_user function to services/services_role_user.py
+- [x] Add PUT /user/{user_id}/roles route to routes/routes_role_user.py
+- [x] Add get_all_roles_list function to services/services_role_user.py
+- [x] Add GET /roles route to routes/routes_role_user.py
+- [x] Test syntax of all modified files (no compilation errors)
 
-- [x] Create models/role.py: Role model with id, name
-- [x] Create models/role_user.py: Pivot model for many-to-many relationship
-- [x] Update models/user.py: Add roles relationship
-- [x] Create database_baru/roles_postgres.sql: Migration for roles table with initial inserts (admin, pegawai, user)
-- [x] Create schemas/service_role.py: Pydantic schemas for Role
-- [x] Create services/services_role.py: CRUD operations for roles
-- [x] Create routes/routes_role.py: API endpoints for roles
-- [x] Create schemas/service_role_user.py: Schemas for assigning roles to users
-- [x] Create services/services_role_user.py: Operations for role-user associations
-- [x] Create routes/routes_role_user.py: Endpoints for managing user roles
-
-## Followup Steps
-- [ ] Run the roles migration
-- [ ] Test the new endpoints
+## Pending
+- [ ] Test the new update role user functionality
+- [ ] Ensure all imports are correct and no syntax errors
+- [ ] Verify database transactions work properly

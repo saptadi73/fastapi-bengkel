@@ -1027,6 +1027,14 @@ def create_purchase_payment_journal_entry(db: Session, data_entry: PurchasePayme
     Cr Kas/Bank                     amount - discount
     Cr Potongan Pembelian           discount (optional)
     """
+    # Check if payment journal already exists for this purchase
+    existing_payment = db.query(JournalEntry).filter(
+        JournalEntry.journal_type == JT.AP_PAYMENT,
+        JournalEntry.purchase_id == data_entry.purchase_id
+    ).first()
+    if existing_payment:
+        raise ValueError(f"Payment journal already exists for purchase {data_entry.purchase_id}")
+
     cash_out = data_entry.amount
     lines: List[JournalLineCreate] = [
         JournalLineCreate(
@@ -1042,7 +1050,7 @@ def create_purchase_payment_journal_entry(db: Session, data_entry: PurchasePayme
             credit=cash_out
         ),
     ]
-    
+
 
     payload = JournalEntryCreate(
         entry_no=None,  # Auto-generate
