@@ -675,6 +675,14 @@ def create_sales_journal_entry(db: Session, data_entry: SalesJournalEntry) -> di
     Assumes piutang (receivable) for sales, with HPP for costs.
     Also handles consignment commission for consignment products.
     """
+    # Check if sale journal already exists for this workorder
+    existing_sale = db.query(JournalEntry).filter(
+        JournalEntry.journal_type == JT.SALE,
+        JournalEntry.workorder_id == data_entry.workorder_id
+    ).first()
+    if existing_sale:
+        raise ValueError(f"Sale journal already exists for workorder {data_entry.workorder_id}")
+
     lines: List[JournalLineCreate] = []
 
     # Calculate totals
@@ -912,6 +920,14 @@ def create_sales_payment_journal_entry(db: Session, data_entry: SalesPaymentJour
     Dr Potongan Penjualan (optional)   discount
        Cr Piutang Usaha                amount
     """
+    # Check if payment journal already exists for this workorder
+    existing_payment = db.query(JournalEntry).filter(
+        JournalEntry.journal_type == JT.AR_RECEIPT,
+        JournalEntry.workorder_id == data_entry.workorder_id
+    ).first()
+    if existing_payment:
+        raise ValueError(f"Payment journal already exists for workorder {data_entry.workorder_id}")
+
     cash_in = data_entry.amount
     lines: List[JournalLineCreate] = [
         JournalLineCreate(
