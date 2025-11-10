@@ -14,9 +14,8 @@ try:
     report = generate_daily_report(db, request)
     print('Report generated successfully')
     print(f'Date: {report.date}')
-    print(f'Number of Cash Books: {len(report.cash_books)}')
-    for i, cb in enumerate(report.cash_books):
-        print(f'Cash Book {i+1}: {cb.account_code} - {cb.account_name} - Opening Balance: {cb.opening_balance} - Entries: {len(cb.entries)}')
+    print(f'Cash Book Opening Balance: {report.cash_book.opening_balance}')
+    print(f'Cash Book Entries: {len(report.cash_book.entries)}')
     print(f'Product Sales Total: {report.product_sales.total_sales}')
     print(f'Service Sales Total: {report.service_sales.total_sales}')
     print(f'Profit Loss Net Profit: {report.profit_loss.net_profit}')

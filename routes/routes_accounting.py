@@ -15,6 +15,7 @@ from schemas.service_accounting import (
     ReceivablePayableReportRequest, ReceivablePayableReport, ConsignmentPayableReport,
     ProductSalesReportRequest, ProductSalesReport,
     ServiceSalesReportRequest, ServiceSalesReport,
+    MechanicSalesReportRequest, MechanicSalesReport,
     DailyReportRequest, DailyReport,
 )
 from services.services_accounting import (
@@ -23,7 +24,7 @@ from services.services_accounting import (
     create_sales_journal_entry, create_sales_payment_journal_entry, create_purchase_journal_entry,
     create_purchase_payment_journal_entry, create_expense_journal_entry, create_expense_payment_journal_entry,
     cash_in, cash_out,
-    generate_cash_book_report, generate_expense_report, getBankCodes, generate_profit_loss_report, generate_cash_report, getEquityCodes, getTarikCodes, generate_receivable_payable_report, generate_product_sales_report, generate_service_sales_report, generate_daily_report
+    generate_cash_book_report, generate_expense_report, getBankCodes, generate_profit_loss_report, generate_cash_report, getEquityCodes, getTarikCodes, generate_receivable_payable_report, generate_product_sales_report, generate_service_sales_report, generate_mechanic_sales_report, generate_daily_report
 )
 from services.services_accounting import generate_consignment_payable_report
 
@@ -288,6 +289,15 @@ def generate_service_sales_report_route(request: ServiceSalesReportRequest, db: 
         return success_response(data=data, message="Laporan penjualan jasa berhasil dihasilkan")
     except Exception as e:
         return error_response(message=f"Gagal menghasilkan laporan penjualan jasa: {str(e)}")
+
+@router.post("/mechanic-sales-report", response_model=MechanicSalesReport, dependencies=[Depends(jwt_required)])
+def generate_mechanic_sales_report_route(request: MechanicSalesReportRequest, db: Session = Depends(get_db)):
+    try:
+        result = generate_mechanic_sales_report(db, request)
+        data = result.model_dump()
+        return success_response(data=data, message="Laporan penjualan mekanik berhasil dihasilkan")
+    except Exception as e:
+        return error_response(message=f"Gagal menghasilkan laporan penjualan mekanik: {str(e)}")
 
 @router.post("/daily-report", response_model=DailyReport, dependencies=[Depends(jwt_required)])
 def generate_daily_report_route(request: DailyReportRequest, db: Session = Depends(get_db)):

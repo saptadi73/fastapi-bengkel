@@ -447,6 +447,53 @@ class ServiceSalesReport(DecimalModel):
     model_config = ConfigDict()
 
 
+class MechanicSalesReportRequest(BaseModel):
+    start_date: date
+    end_date: date
+
+
+class MechanicProductSalesItem(DecimalModel):
+    workorder_no: str
+    workorder_date: date
+    customer_name: str
+    product_name: str
+    quantity: Decimal
+    price: Decimal
+    subtotal: Decimal
+    discount: Decimal
+
+
+class MechanicServiceSalesItem(DecimalModel):
+    workorder_no: str
+    workorder_date: date
+    customer_name: str
+    service_name: str
+    quantity: Decimal
+    price: Decimal
+    subtotal: Decimal
+    discount: Decimal
+
+
+class MechanicSalesReportItem(DecimalModel):
+    mechanic_id: str
+    mechanic_name: str
+    date: date
+    total_product_sales: Decimal
+    total_service_sales: Decimal
+    total_sales: Decimal
+    product_details: List[MechanicProductSalesItem]
+    service_details: List[MechanicServiceSalesItem]
+
+
+class MechanicSalesReport(DecimalModel):
+    total_product_sales: Decimal
+    total_service_sales: Decimal
+    total_sales: Decimal
+    items: List[MechanicSalesReportItem]
+
+    model_config = ConfigDict()
+
+
 class DailyReportRequest(BaseModel):
     date: date
 

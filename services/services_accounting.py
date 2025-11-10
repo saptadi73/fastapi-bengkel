@@ -55,6 +55,11 @@ from schemas.service_accounting import (
     ServiceSalesReportRequest,
     ServiceSalesReport,
     ServiceSalesReportItem,
+    MechanicSalesReportRequest,
+    MechanicSalesReport,
+    MechanicSalesReportItem,
+    MechanicProductSalesItem,
+    MechanicServiceSalesItem,
     DailyReportRequest,
     DailyReport,
     WorkOrderSummary,
@@ -1181,9 +1186,13 @@ def generate_cash_book_report(db: Session, request: CashBookReportRequest) -> Ca
         raise ValueError(f"Account with id '{request.account_id}' not found")
 
     # Calculate opening balance (sum of all transactions before start_date)
-    opening_balance_query = db.query(
-        (JournalLine.debit - JournalLine.credit).label('net_change')
-    ).join(JournalEntry).filter(
+    # Adjust based on normal_balance
+    if account.normal_balance == "debit":
+        net_change_expr = (JournalLine.debit - JournalLine.credit).label('net_change')
+    else:
+        net_change_expr = (JournalLine.credit - JournalLine.debit).label('net_change')
+
+    opening_balance_query = db.query(net_change_expr).join(JournalEntry).filter(
         JournalLine.account_id == request.account_id,
         JournalEntry.date < request.start_date
     )
@@ -1755,25 +1764,70 @@ def consignment_payment(
 def generate_daily_report(db: Session, request: DailyReportRequest) -> DailyReport:
     """
     Generate a comprehensive daily report combining multiple reports for a specific date.
-    Includes cash books for all cash/bank accounts (1001-1002), product sales, service sales, profit/loss, and work order summary.
+    Includes cash book for all cash/bank accounts combined, product sales, service sales, profit/loss, and work order summary.
     """
     # Use the date as both start and end for single day
     start_date = request.date
     end_date = request.date
 
-    # Generate cash books for all cash/bank accounts (assuming codes starting with '10')
-    cash_accounts = db.query(Account).filter(Account.code.like('10%'), Account.is_active == True).all()
+    # Generate cash book reports for each account 1001-1004
+    # Get the accounts 1001 to 1004
+    cash_accounts = db.query(Account).filter(
+        Account.code.in_(['1001', '1002', '1003', '1004']),
+        Account.is_active == True
+    ).all()
+
     cash_books = []
-    for acc in cash_accounts:
-        cash_book_request = CashBookReportRequest(
-            account_id=acc.id,
-            start_date=start_date,
-            end_date=end_date
+    for account in cash_accounts:
+        # Calculate opening balance for this account
+        if account.normal_balance == "debit":
+            net_change_expr = (JournalLine.debit - JournalLine.credit).label('net_change')
+        else:
+            net_change_expr = (JournalLine.credit - JournalLine.debit).label('net_change')
+
+        opening_balance_query = db.query(net_change_expr).join(JournalEntry).filter(
+            JournalLine.account_id == account.id,
+            JournalEntry.date < start_date
         )
-        cash_book = generate_cash_book_report(db, cash_book_request)
-        # Add account info to the report
-        cash_book.account_code = acc.code
-        cash_book.account_name = acc.name
+        opening_balance = sum(row.net_change for row in db.execute(opening_balance_query).all())
+
+        # Get entries for this account within the date range
+        lines_query = db.query(JournalLine, JournalEntry).join(JournalEntry).filter(
+            JournalLine.account_id == account.id,
+            JournalEntry.date >= start_date,
+            JournalEntry.date <= end_date
+        ).order_by(JournalEntry.date, JournalEntry.created_at)
+
+        entries = []
+        running_balance = opening_balance
+
+        for line, entry in lines_query:
+            # Determine debit and credit based on normal balance
+            if account.normal_balance == "debit":
+                debit = line.debit
+                credit = line.credit
+            else:
+                # For credit normal accounts, reverse the signs for cash book
+                debit = line.credit
+                credit = line.debit
+
+            # Update running balance
+            running_balance += debit - credit
+
+            entries.append(CashBookEntry(
+                date=entry.date,
+                memo=entry.memo,
+                debit=debit,
+                credit=credit,
+                balance=running_balance
+            ))
+
+        cash_book = CashBookReport(
+            account_code=account.code,
+            account_name=account.name,
+            opening_balance=opening_balance,
+            entries=entries
+        )
         cash_books.append(cash_book)
 
     product_sales_request = ProductSalesReportRequest(
@@ -1842,5 +1896,143 @@ def generate_work_order_summary(db: Session, start_date: date, end_date: date) -
     return WorkOrderSummary(
         total_workorders=total_workorders,
         total_revenue=total_revenue,
+        items=items
+    )
+
+
+def generate_mechanic_sales_report(db: Session, request: MechanicSalesReportRequest) -> MechanicSalesReport:
+    """
+    Generate a sales report grouped by mechanic (karyawan) and date.
+    Includes product and service sales for each mechanic per day with detailed breakdowns.
+    """
+    from models.karyawan import Karyawan
+
+    # Query detailed product sales by mechanic and date
+    product_detail_query = db.query(
+        Karyawan.id.label('mechanic_id'),
+        Karyawan.nama.label('mechanic_name'),
+        func.date(Workorder.tanggal_masuk).label('date'),
+        Workorder.no_wo,
+        Workorder.tanggal_masuk,
+        Customer.nama.label('customer_name'),
+        Product.name.label('product_name'),
+        ProductOrdered.quantity,
+        ProductOrdered.price,
+        ProductOrdered.subtotal,
+        ProductOrdered.discount
+    ).join(Workorder, Karyawan.id == Workorder.karyawan_id)\
+     .join(ProductOrdered, Workorder.id == ProductOrdered.workorder_id)\
+     .join(Product, ProductOrdered.product_id == Product.id)\
+     .join(Customer, Workorder.customer_id == Customer.id)\
+     .filter(func.date(Workorder.tanggal_masuk) >= request.start_date)\
+     .filter(func.date(Workorder.tanggal_masuk) <= request.end_date)\
+     .order_by(Karyawan.nama, func.date(Workorder.tanggal_masuk), Workorder.no_wo)
+
+    product_details = product_detail_query.all()
+
+    # Query detailed service sales by mechanic and date
+    service_detail_query = db.query(
+        Karyawan.id.label('mechanic_id'),
+        Karyawan.nama.label('mechanic_name'),
+        func.date(Workorder.tanggal_masuk).label('date'),
+        Workorder.no_wo,
+        Workorder.tanggal_masuk,
+        Customer.nama.label('customer_name'),
+        Service.name.label('service_name'),
+        ServiceOrdered.quantity,
+        ServiceOrdered.price,
+        ServiceOrdered.subtotal,
+        ServiceOrdered.discount
+    ).join(Workorder, Karyawan.id == Workorder.karyawan_id)\
+     .join(ServiceOrdered, Workorder.id == ServiceOrdered.workorder_id)\
+     .join(Service, ServiceOrdered.service_id == Service.id)\
+     .join(Customer, Workorder.customer_id == Customer.id)\
+     .filter(func.date(Workorder.tanggal_masuk) >= request.start_date)\
+     .filter(func.date(Workorder.tanggal_masuk) <= request.end_date)\
+     .order_by(Karyawan.nama, func.date(Workorder.tanggal_masuk), Workorder.no_wo)
+
+    service_details = service_detail_query.all()
+
+    # Group by mechanic and date
+    mechanic_data = {}
+
+    # Process product details
+    for row in product_details:
+        key = (row.mechanic_id, row.date)
+        if key not in mechanic_data:
+            mechanic_data[key] = {
+                'mechanic_name': row.mechanic_name,
+                'product_sales': Decimal("0.00"),
+                'service_sales': Decimal("0.00"),
+                'product_details': [],
+                'service_details': []
+            }
+        mechanic_data[key]['product_sales'] += row.subtotal
+        mechanic_data[key]['product_details'].append(MechanicProductSalesItem(
+            workorder_no=row.no_wo,
+            workorder_date=row.tanggal_masuk.date() if isinstance(row.tanggal_masuk, datetime.datetime) else row.tanggal_masuk,
+            customer_name=row.customer_name,
+            product_name=row.product_name,
+            quantity=row.quantity,
+            price=row.price,
+            subtotal=row.subtotal,
+            discount=row.discount
+        ))
+
+    # Process service details
+    for row in service_details:
+        key = (row.mechanic_id, row.date)
+        if key not in mechanic_data:
+            mechanic_data[key] = {
+                'mechanic_name': row.mechanic_name,
+                'product_sales': Decimal("0.00"),
+                'service_sales': Decimal("0.00"),
+                'product_details': [],
+                'service_details': []
+            }
+        mechanic_data[key]['service_sales'] += row.subtotal
+        mechanic_data[key]['service_details'].append(MechanicServiceSalesItem(
+            workorder_no=row.no_wo,
+            workorder_date=row.tanggal_masuk.date() if isinstance(row.tanggal_masuk, datetime.datetime) else row.tanggal_masuk,
+            customer_name=row.customer_name,
+            service_name=row.service_name,
+            quantity=row.quantity,
+            price=row.price,
+            subtotal=row.subtotal,
+            discount=row.discount
+        ))
+
+    items = []
+    total_product_sales = Decimal("0.00")
+    total_service_sales = Decimal("0.00")
+
+    for (mechanic_id, date_key), data in mechanic_data.items():
+        product_sales = data['product_sales']
+        service_sales = data['service_sales']
+        total_sales = product_sales + service_sales
+
+        # Get mechanic name
+        mechanic_name = data['mechanic_name']
+
+        item = MechanicSalesReportItem(
+            mechanic_id=str(mechanic_id),
+            mechanic_name=mechanic_name,
+            date=date_key,
+            total_product_sales=product_sales,
+            total_service_sales=service_sales,
+            total_sales=total_sales,
+            product_details=data['product_details'],
+            service_details=data['service_details']
+        )
+        items.append(item)
+        total_product_sales += product_sales
+        total_service_sales += service_sales
+
+    total_sales = total_product_sales + total_service_sales
+
+    return MechanicSalesReport(
+        total_product_sales=total_product_sales,
+        total_service_sales=total_service_sales,
+        total_sales=total_sales,
         items=items
     )
