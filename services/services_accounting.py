@@ -3,7 +3,7 @@ import uuid
 from decimal import Decimal
 from typing import Iterable, List, Optional
 from sqlalchemy.orm import Session
-from sqlalchemy import func, select
+from sqlalchemy import func, select, Date
 from datetime import date
 import decimal
 import datetime
@@ -920,13 +920,12 @@ def create_sales_payment_journal_entry(db: Session, data_entry: SalesPaymentJour
     Dr Potongan Penjualan (optional)   discount
        Cr Piutang Usaha                amount
     """
-    # Check if payment journal already exists for this workorder
+    # Check if payment journal already exists for this payment_no to prevent double payment
     existing_payment = db.query(JournalEntry).filter(
-        JournalEntry.journal_type == JT.AR_RECEIPT,
-        JournalEntry.workorder_id == data_entry.workorder_id
+        JournalEntry.entry_no == data_entry.payment_no
     ).first()
     if existing_payment:
-        raise ValueError(f"Payment journal already exists for workorder {data_entry.workorder_id}")
+        raise ValueError(f"Payment journal already exists for payment_no {data_entry.payment_no}")
 
     cash_in = data_entry.amount
     lines: List[JournalLineCreate] = [
@@ -945,7 +944,7 @@ def create_sales_payment_journal_entry(db: Session, data_entry: SalesPaymentJour
     ]
 
     payload = JournalEntryCreate(
-        entry_no=None,  # Auto-generate
+        entry_no=data_entry.payment_no,  # Use payment_no as entry_no
         date=data_entry.date,
         memo=data_entry.memo,
         journal_type=JT.AR_RECEIPT,
@@ -1027,13 +1026,12 @@ def create_purchase_payment_journal_entry(db: Session, data_entry: PurchasePayme
     Cr Kas/Bank                     amount - discount
     Cr Potongan Pembelian           discount (optional)
     """
-    # Check if payment journal already exists for this purchase
+    # Check if payment journal already exists for this payment_no to prevent double payment
     existing_payment = db.query(JournalEntry).filter(
-        JournalEntry.journal_type == JT.AP_PAYMENT,
-        JournalEntry.purchase_id == data_entry.purchase_id
+        JournalEntry.entry_no == data_entry.payment_no
     ).first()
     if existing_payment:
-        raise ValueError(f"Payment journal already exists for purchase {data_entry.purchase_id}")
+        raise ValueError(f"Payment journal already exists for payment_no {data_entry.payment_no}")
 
     cash_out = data_entry.amount
     lines: List[JournalLineCreate] = [
@@ -1053,7 +1051,7 @@ def create_purchase_payment_journal_entry(db: Session, data_entry: PurchasePayme
 
 
     payload = JournalEntryCreate(
-        entry_no=None,  # Auto-generate
+        entry_no=data_entry.payment_no,  # Use payment_no as entry_no
         date=data_entry.date,
         memo=data_entry.memo,
         journal_type=JT.AP_PAYMENT,
@@ -1120,6 +1118,13 @@ def create_expense_payment_journal_entry(db: Session, data_entry: ExpensePayment
     Dr Expense Account             amount
        Cr Kas/Bank                 amount
     """
+    # Check if payment journal already exists for this payment_no to prevent double payment
+    existing_payment = db.query(JournalEntry).filter(
+        JournalEntry.entry_no == data_entry.payment_no
+    ).first()
+    if existing_payment:
+        raise ValueError(f"Payment journal already exists for payment_no {data_entry.payment_no}")
+
     lines: List[JournalLineCreate] = [
         JournalLineCreate(
             account_code=data_entry.expense_code,
@@ -1136,7 +1141,7 @@ def create_expense_payment_journal_entry(db: Session, data_entry: ExpensePayment
     ]
 
     payload = JournalEntryCreate(
-        entry_no=None,  # Auto-generate
+        entry_no=data_entry.payment_no,  # Use payment_no as entry_no
         date=data_entry.date,
         memo=data_entry.memo,
         journal_type=JT.EXPENSE,
@@ -1633,8 +1638,8 @@ def generate_product_sales_report(db: Session, request: ProductSalesReportReques
     ).join(ProductOrdered, Workorder.id == ProductOrdered.workorder_id)\
      .join(Product, ProductOrdered.product_id == Product.id)\
      .join(Customer, Workorder.customer_id == Customer.id)\
-     .filter(func.date(Workorder.tanggal_masuk) >= request.start_date)\
-     .filter(func.date(Workorder.tanggal_masuk) <= request.end_date)
+     .filter(Workorder.tanggal_masuk >= request.start_date)\
+     .filter(Workorder.tanggal_masuk < request.end_date + datetime.timedelta(days=1))
 
     if request.product_id:
         query = query.filter(ProductOrdered.product_id == request.product_id)
@@ -1713,6 +1718,8 @@ def generate_service_sales_report(db: Session, request: ServiceSalesReportReques
     total_sales = Decimal("0.00")
 
     for row in results:
+        # Calculate subtotal as quantity * price - discount
+        calculated_subtotal = row.quantity * row.price - row.discount
         item = ServiceSalesReportItem(
             workorder_no=row.no_wo,
             workorder_date=row.tanggal_masuk.date() if isinstance(row.tanggal_masuk, datetime.datetime) else row.tanggal_masuk,
@@ -1720,12 +1727,12 @@ def generate_service_sales_report(db: Session, request: ServiceSalesReportReques
             service_name=row.service_name,
             quantity=row.quantity,
             price=row.price,
-            subtotal=row.subtotal,
+            subtotal=calculated_subtotal,
             discount=row.discount
         )
         items.append(item)
         total_quantity += row.quantity
-        total_sales += row.subtotal
+        total_sales += calculated_subtotal
 
     return ServiceSalesReport(
         total_quantity=total_quantity,

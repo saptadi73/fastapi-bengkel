@@ -192,6 +192,7 @@ class SalesPaymentJournalEntry(BaseModel):
     amount: Decimal
     kas_bank_code: str
     piutang_code: str = "2001"
+    payment_no: str  # Nomor payment dari front-end untuk pencegahan double payment
 
 
 class PurchaseJournalEntry(BaseModel):
@@ -215,6 +216,7 @@ class PurchasePaymentJournalEntry(BaseModel):
     amount: Decimal
     kas_bank_code: str
     hutang_code: str = "3001"
+    payment_no: str  # Nomor payment dari front-end untuk pencegahan double payment
 
 
 class ExpenseJournalEntry(BaseModel):
@@ -235,6 +237,7 @@ class ExpensePaymentJournalEntry(BaseModel):
     amount: Decimal
     kas_bank_code: str
     expense_code: str = "6000"
+    payment_no: str  # Nomor payment dari front-end untuk pencegahan double payment
 
 
 class LostGoodsJournalEntry(BaseModel):

@@ -90,7 +90,7 @@ def test_generate_service_sales_report():
         print(f"Total Sales: {report.total_sales}")
         print(f"Number of Items: {len(report.items)}")
         assert report.total_quantity == Decimal("2.00"), f"Expected quantity 2.00, got {report.total_quantity}"
-        assert report.total_sales == Decimal("100000.00"), f"Expected sales 100000.00, got {report.total_sales}"
+        assert report.total_sales == Decimal("95000.00"), f"Expected sales 95000.00, got {report.total_sales}"
         assert len(report.items) == 1, f"Expected 1 item, got {len(report.items)}"
         item = report.items[0]
         assert item.workorder_no == "WO001", f"Expected WO001, got {item.workorder_no}"
@@ -98,7 +98,7 @@ def test_generate_service_sales_report():
         assert item.service_name == "Test Service", f"Expected Test Service, got {item.service_name}"
         assert item.quantity == Decimal("2.00"), f"Expected 2.00, got {item.quantity}"
         assert item.price == Decimal("50000.00"), f"Expected 50000.00, got {item.price}"
-        assert item.subtotal == Decimal("100000.00"), f"Expected 100000.00, got {item.subtotal}"
+        assert item.subtotal == Decimal("95000.00"), f"Expected 95000.00, got {item.subtotal}"
         assert item.discount == Decimal("5000.00"), f"Expected 5000.00, got {item.discount}"
         print("All assertions passed")
     except Exception as e:

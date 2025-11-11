@@ -100,7 +100,7 @@ def create_purchase_order(db: Session, data: CreatePurchaseOrder):
     return to_dict(purchase_order)
 
 def get_all_purchase_orders(db: Session):
-    purchase_orders = db.query(PurchaseOrder).all()
+    purchase_orders = db.query(PurchaseOrder).order_by(PurchaseOrder.date.desc()).all()
     result = []
     for po in purchase_orders:
         po_dict = to_dict(po)
@@ -474,7 +474,7 @@ def update_only_status_purchase_order(db: Session, purchase_id: str):
         return {"message": f"Unexpected error: {str(e)}"}
 
 def getPurchaseOrdersBySupplierID(db: Session, supplier_id: str):
-    purchase_orders = db.query(PurchaseOrder).filter(PurchaseOrder.supplier_id == supplier_id).all()
+    purchase_orders = db.query(PurchaseOrder).filter(PurchaseOrder.supplier_id == supplier_id).order_by(PurchaseOrder.date.desc()).all()
     result = []
     for po in purchase_orders:
         po_dict = to_dict(po)

@@ -14,8 +14,10 @@ try:
     report = generate_daily_report(db, request)
     print('Report generated successfully')
     print(f'Date: {report.date}')
-    print(f'Cash Book Opening Balance: {report.cash_book.opening_balance}')
-    print(f'Cash Book Entries: {len(report.cash_book.entries)}')
+    print(f'Cash Books Count: {len(report.cash_books)}')
+    if report.cash_books:
+        print(f'First Cash Book Opening Balance: {report.cash_books[0].opening_balance}')
+        print(f'First Cash Book Entries: {len(report.cash_books[0].entries)}')
     print(f'Product Sales Total: {report.product_sales.total_sales}')
     print(f'Service Sales Total: {report.service_sales.total_sales}')
     print(f'Profit Loss Net Profit: {report.profit_loss.net_profit}')
