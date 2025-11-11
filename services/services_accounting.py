@@ -1783,7 +1783,7 @@ def consignment_payment(
         ))
 
     payload = JournalEntryCreate(
-        entry_no=payment_data.entry_no,
+        entry_no=payment_data.payment_no,
         date=payment_data.tanggal,
         memo=payment_data.memo,
         journal_type=JT.CONSIGNMENT,

@@ -160,7 +160,7 @@ class ExpenseRecordCreate(BaseModel):
 
 
 class ConsignmentPaymentCreate(BaseModel):
-    entry_no: Optional[str] = None
+    payment_no: str
     tanggal: date
     supplier_id: Optional[UUID] = None
     amount: Decimal
