@@ -11,6 +11,7 @@ from models.expenses import Expenses
 from models.workorder import Workorder, ProductOrdered, Product, ServiceOrdered, Service
 from models.customer import Customer
 from models.supplier import Supplier
+from models.purchase_order import PurchaseOrder, PurchaseOrderLine
 
 from models.accounting import Account, JournalEntry, JournalLine, JournalType
 from schemas.service_accounting import (
@@ -60,6 +61,9 @@ from schemas.service_accounting import (
     MechanicSalesReportItem,
     MechanicProductSalesItem,
     MechanicServiceSalesItem,
+    PurchaseOrderReportRequest,
+    PurchaseOrderReport,
+    PurchaseOrderReportItem,
     DailyReportRequest,
     DailyReport,
     WorkOrderSummary,
@@ -1882,13 +1886,78 @@ def generate_daily_report(db: Session, request: DailyReportRequest) -> DailyRepo
     # Generate work order summary
     work_orders = generate_work_order_summary(db, start_date, end_date)
 
+    purchase_order_request = PurchaseOrderReportRequest(
+        start_date=start_date,
+        end_date=end_date
+    )
+    purchase_orders = generate_purchase_order_report(db, purchase_order_request)
+
     return DailyReport(
         date=request.date,
         cash_books=cash_books,
         product_sales=product_sales,
         service_sales=service_sales,
+        purchase_orders=purchase_orders,
         profit_loss=profit_loss,
         work_orders=work_orders
+    )
+
+
+def generate_purchase_order_report(db: Session, request: PurchaseOrderReportRequest) -> PurchaseOrderReport:
+    """
+    Generate a purchase order report within a date range.
+    Lists each product line purchased in purchase orders, with totals for quantity and purchases.
+    Optionally filters by supplier_id and product_id.
+    """
+    # Query purchase_order_line joined with purchase_order, product, supplier
+    query = db.query(
+        PurchaseOrder.po_no,
+        PurchaseOrder.date,
+        Supplier.nama.label('supplier_name'),
+        Product.name.label('product_name'),
+        PurchaseOrderLine.quantity,
+        PurchaseOrderLine.price,
+        PurchaseOrderLine.subtotal,
+        PurchaseOrderLine.discount
+    ).join(PurchaseOrderLine, PurchaseOrder.id == PurchaseOrderLine.purchase_order_id)\
+     .join(Product, PurchaseOrderLine.product_id == Product.id)\
+     .join(Supplier, PurchaseOrder.supplier_id == Supplier.id)\
+     .filter(PurchaseOrder.date >= request.start_date)\
+     .filter(PurchaseOrder.date <= request.end_date)
+
+    if request.supplier_id:
+        query = query.filter(PurchaseOrder.supplier_id == request.supplier_id)
+
+    if request.product_id:
+        query = query.filter(PurchaseOrderLine.product_id == request.product_id)
+
+    query = query.order_by(PurchaseOrder.date, PurchaseOrder.po_no)
+
+    results = query.all()
+
+    items = []
+    total_quantity = Decimal("0.00")
+    total_purchases = Decimal("0.00")
+
+    for row in results:
+        item = PurchaseOrderReportItem(
+            po_no=row.po_no,
+            po_date=row.date,
+            supplier_name=row.supplier_name,
+            product_name=row.product_name,
+            quantity=row.quantity,
+            price=row.price,
+            subtotal=row.subtotal,
+            discount=row.discount
+        )
+        items.append(item)
+        total_quantity += row.quantity
+        total_purchases += row.subtotal
+
+    return PurchaseOrderReport(
+        total_quantity=total_quantity,
+        total_purchases=total_purchases,
+        items=items
     )
 
 

@@ -450,6 +450,32 @@ class ServiceSalesReport(DecimalModel):
     model_config = ConfigDict()
 
 
+class PurchaseOrderReportRequest(BaseModel):
+    start_date: date
+    end_date: date
+    supplier_id: Optional[UUID] = None
+    product_id: Optional[UUID] = None
+
+
+class PurchaseOrderReportItem(DecimalModel):
+    po_no: str
+    po_date: date
+    supplier_name: str
+    product_name: str
+    quantity: Decimal
+    price: Decimal
+    subtotal: Decimal
+    discount: Decimal
+
+
+class PurchaseOrderReport(DecimalModel):
+    total_quantity: Decimal
+    total_purchases: Decimal
+    items: List[PurchaseOrderReportItem]
+
+    model_config = ConfigDict()
+
+
 class MechanicSalesReportRequest(BaseModel):
     start_date: date
     end_date: date
@@ -521,6 +547,7 @@ class DailyReport(DecimalModel):
     cash_books: List[CashBookReport]
     product_sales: ProductSalesReport
     service_sales: ServiceSalesReport
+    purchase_orders: PurchaseOrderReport
     profit_loss: ProfitLossReport
     work_orders: WorkOrderSummary
 

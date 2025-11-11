@@ -16,6 +16,7 @@ from schemas.service_accounting import (
     ProductSalesReportRequest, ProductSalesReport,
     ServiceSalesReportRequest, ServiceSalesReport,
     MechanicSalesReportRequest, MechanicSalesReport,
+    PurchaseOrderReportRequest, PurchaseOrderReport,
     DailyReportRequest, DailyReport,
 )
 from services.services_accounting import (
