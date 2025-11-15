@@ -59,7 +59,7 @@ class JournalEntry(Base):
     __tablename__ = "journal_entries"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    entry_no: Mapped[str] = mapped_column(String(40), index=True, nullable=False)  # nomor bukti/entry
+    entry_no: Mapped[str] = mapped_column(String(100), index=True, nullable=False)  # nomor bukti/entry
     date: Mapped[datetime.date] = mapped_column(Date, nullable=False)
     memo: Mapped[str] = mapped_column(String(255), nullable=True)
     journal_type: Mapped[JournalType] = mapped_column(Enum(JournalType), nullable=False, default=JournalType.general)

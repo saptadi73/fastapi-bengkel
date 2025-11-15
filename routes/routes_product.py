@@ -5,7 +5,7 @@ from services.services_customer import create_customer_with_vehicles,getListCust
 from services.services_product import CreateProductNew, get_all_products, get_product_by_id, createServicenya,get_all_services, createBrandnya, createCategorynya, createSatuannya, getAllBrands, getAllCategories, getAllSatuans, getAllInventoryProducts, getInventoryByProductID, createProductMoveHistoryNew, get_service_by_id, update_product_cost, getAllInventoryProductsConsignment,getAllInventoryProductsExcConsignment
 from services.services_inventory import manual_adjustment_inventory
 from services.services_costing import get_product_cost_history, get_product_cost_summary
-from schemas.service_inventory import CreateProductMovedHistory, ManualAdjustment
+from schemas.service_inventory import CreateProductMovedHistory, ManualAdjustment, CreateProductMovedHistories
 from schemas.service_product import CreateProduct, ProductResponse, CreateService, ServiceResponse, CreateBrand, CreateCategory, CreateSatuan, UpdateProductCost, ProductCostHistoryRequest, ProductCostHistoryResponse
 from typing import Optional
 from datetime import datetime
@@ -249,11 +249,35 @@ def createProductMoveHistoryRouter(
         result = createProductMoveHistoryNew(db, move_data)
         if not result:
             return error_response(message="Failed to create product move history")
+        db.commit()
         return success_response(data=result)
     except Exception as e:
+        db.rollback()
         return error_response(message=str(e))
     finally:
         db.close()
+
+@router.post("/inventory/move/new/multi", dependencies=[Depends(jwt_required)])
+def createProductMoveHistoryMultiRouter(
+    move_data: CreateProductMovedHistories,
+    db: Session = Depends(get_db)
+):
+    try:
+        results = []
+        for item in move_data.items:
+            result = createProductMoveHistoryNew(db, item)
+            if not result:
+                return error_response(message=f"Failed to create product move history for product {item.product_id}")
+            results.append(result)
+        db.commit()  # Commit all changes after processing all items
+        return success_response(data=results)
+    except Exception as e:
+        db.rollback()  # Rollback on error
+        return error_response(message=str(e))
+    finally:
+        db.close()
+
+
 
 @router.put("/cost", dependencies=[Depends(jwt_required)])
 def update_product_cost_router(

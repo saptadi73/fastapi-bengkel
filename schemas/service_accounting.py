@@ -236,7 +236,7 @@ class ExpensePaymentJournalEntry(BaseModel):
     expense_id: Optional[UUID] = None
     amount: Decimal
     kas_bank_code: str
-    expense_code: str = "6000"
+    expense_code: str = "6010"
     payment_no: str  # Nomor payment dari front-end untuk pencegahan double payment
 
 

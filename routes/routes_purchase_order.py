@@ -6,7 +6,7 @@ import json
 from typing import Optional
 from models.database import SessionLocal
 from schemas.service_purchase_order import CreatePurchaseOrder, UpdatePurchaseOrder, UpdatePurchaseOrderLineSingle, CreatePurchaseOrderLineSingle
-from services.services_purchase_order import create_purchase_order, get_all_purchase_orders, get_purchase_order_by_id, update_purchase_order, delete_purchase_order, update_purchase_order_status, edit_purchase_order, update_purchase_order_line, add_purchase_order_line, delete_purchase_order_line, update_only_status_purchase_order, getPurchaseOrdersBySupplierID
+from services.services_purchase_order import create_purchase_order, get_all_purchase_orders, get_purchase_order_by_id, update_purchase_order, delete_purchase_order, update_purchase_order_status, edit_purchase_order, update_purchase_order_line, add_purchase_order_line, delete_purchase_order_line, update_only_status_purchase_order, getPurchaseOrdersBySupplierID, get_purchase_order_status_pembayaran
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
 from models.purchase_order import PurchaseOrder
@@ -309,5 +309,18 @@ def getPurchaseOrdersBySupplierRouter(
         return error_response(message=str(e))
     finally:
         db.close()
+
+@router.get("/{purchase_order_id}/status-pembayaran")
+def get_purchase_order_status_pembayaran_router(
+    purchase_order_id: str,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = get_purchase_order_status_pembayaran(db, purchase_order_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="Purchase Order not found")
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
     
     

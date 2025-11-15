@@ -488,5 +488,11 @@ def getPurchaseOrdersBySupplierID(db: Session, supplier_id: str):
         result.append(po_dict)
     return result
 
+def get_purchase_order_status_pembayaran(db: Session, purchase_order_id: str):
+    po = db.query(PurchaseOrder).filter(PurchaseOrder.id == purchase_order_id).first()
+    if not po:
+        return None
+    return {"status_pembayaran": po.status_pembayaran}
+
 
 

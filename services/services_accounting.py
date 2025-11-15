@@ -948,7 +948,7 @@ def create_sales_payment_journal_entry(db: Session, data_entry: SalesPaymentJour
     ]
 
     payload = JournalEntryCreate(
-        entry_no=data_entry.payment_no,  # Use payment_no as entry_no
+        entry_no=data_entry.payment_no,  # Use full payment_no as entry_no
         date=data_entry.date,
         memo=data_entry.memo,
         journal_type=JT.AR_RECEIPT,
@@ -1055,7 +1055,7 @@ def create_purchase_payment_journal_entry(db: Session, data_entry: PurchasePayme
 
 
     payload = JournalEntryCreate(
-        entry_no=data_entry.payment_no,  # Use payment_no as entry_no
+        entry_no=data_entry.payment_no,  # Use full payment_no as entry_no
         date=data_entry.date,
         memo=data_entry.memo,
         journal_type=JT.AP_PAYMENT,
@@ -1145,7 +1145,7 @@ def create_expense_payment_journal_entry(db: Session, data_entry: ExpensePayment
     ]
 
     payload = JournalEntryCreate(
-        entry_no=data_entry.payment_no,  # Use payment_no as entry_no
+        entry_no=data_entry.payment_no,  # Use full payment_no as entry_no
         date=data_entry.date,
         memo=data_entry.memo,
         journal_type=JT.EXPENSE,

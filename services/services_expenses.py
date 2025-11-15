@@ -128,3 +128,9 @@ def edit_expense_status(db: Session, expense_id: str):
     db.commit()
     return to_dict(expenseku)
 
+def get_expense_status(db: Session, expense_id: str):
+    exp = db.query(Expenses).filter(Expenses.id == expense_id).first()
+    if not exp:
+        return None
+    return {"status": exp.status}
+

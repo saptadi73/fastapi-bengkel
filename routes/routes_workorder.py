@@ -4,7 +4,7 @@ from uuid import UUID
 from models.database import SessionLocal
 from services.services_customer import create_customer_with_vehicles,getListCustomersWithvehicles, getListCustomersWithVehiclesCustomersID
 from services.services_product import CreateProductNew, get_all_products, get_product_by_id, createServicenya,get_all_services, createBrandnya, createCategorynya, createSatuannya, getAllBrands, getAllCategories, getAllSatuans, getAllInventoryProducts, getInventoryByProductID, createProductMoveHistoryNew
-from services.services_workorder import createNewWorkorder,getAllWorkorders, getWorkorderByID, updateServiceorderedOnlynya,updateWorkOrdeKeluhannya,UpdateDateWorkordernya,UpdateWorkorderOrdersnya,updateProductOrderedOnlynya,updateStatusWorkorder,update_only_productordered, update_only_serviceordered,update_only_workorder,update_workorder_lengkap, addProductOrder, updateProductOrder, deleteProductOrder, addServiceOrder, updateServiceOrder, deleteServiceOrder, deleteWorkorder, getWorkordersByCustomerID
+from services.services_workorder import createNewWorkorder,getAllWorkorders, getWorkorderByID, updateServiceorderedOnlynya,updateWorkOrdeKeluhannya,UpdateDateWorkordernya,UpdateWorkorderOrdersnya,updateProductOrderedOnlynya,updateStatusWorkorder,update_only_productordered, update_only_serviceordered,update_only_workorder,update_workorder_lengkap, addProductOrder, updateProductOrder, deleteProductOrder, addServiceOrder, updateServiceOrder, deleteServiceOrder, deleteWorkorder, getWorkordersByCustomerID, get_workorder_status_pembayaran, get_workorder_status
 from schemas.service_inventory import CreateProductMovedHistory
 from schemas.service_product import CreateProduct, ProductResponse, CreateService, ServiceResponse
 from schemas.service_accounting import SalesPaymentJournalEntry
@@ -291,3 +291,29 @@ def getWorkordersByCustomerRouter(
         return error_response(message=str(e))
     finally:
         db.close()
+
+@router.get("/{workorder_id}/status-pembayaran")
+def get_workorder_status_pembayaran_router(
+    workorder_id: UUID,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = get_workorder_status_pembayaran(db, str(workorder_id))
+        if not result:
+            raise HTTPException(status_code=404, detail="Workorder not found")
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+
+@router.get("/{workorder_id}/status")
+def get_workorder_status_router(
+    workorder_id: UUID,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = get_workorder_status(db, str(workorder_id))
+        if not result:
+            raise HTTPException(status_code=404, detail="Workorder not found")
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))

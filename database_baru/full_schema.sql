@@ -405,7 +405,7 @@ CREATE TABLE workorder (
 
 CREATE TABLE journal_entries (
 	id UUID NOT NULL, 
-	entry_no VARCHAR(40) NOT NULL, 
+	entry_no VARCHAR(100) NOT NULL, 
 	date DATE NOT NULL, 
 	memo VARCHAR(255), 
 	journal_type journaltype NOT NULL, 
@@ -460,31 +460,18 @@ CREATE TABLE service_ordered (
 
 
 CREATE TABLE journal_lines (
-	id UUID NOT NULL,
-	entry_id UUID NOT NULL,
-	account_id UUID NOT NULL,
-	description VARCHAR(255),
-	debit NUMERIC(18, 2) NOT NULL,
-	credit NUMERIC(18, 2) NOT NULL,
-	PRIMARY KEY (id),
-	CONSTRAINT chk_journal_lines_debit_nonneg CHECK (debit >= 0),
-	CONSTRAINT chk_journal_lines_credit_nonneg CHECK (credit >= 0),
-	CONSTRAINT chk_one_side_positive CHECK ((debit = 0 AND credit > 0) OR (credit = 0 AND debit > 0)),
-	FOREIGN KEY(entry_id) REFERENCES journal_entries (id) ON DELETE CASCADE,
+	id UUID NOT NULL, 
+	entry_id UUID NOT NULL, 
+	account_id UUID NOT NULL, 
+	description VARCHAR(255), 
+	debit NUMERIC(18, 2) NOT NULL, 
+	credit NUMERIC(18, 2) NOT NULL, 
+	PRIMARY KEY (id), 
+	CONSTRAINT chk_journal_lines_debit_nonneg CHECK (debit >= 0), 
+	CONSTRAINT chk_journal_lines_credit_nonneg CHECK (credit >= 0), 
+	CONSTRAINT chk_one_side_positive CHECK ((debit = 0 AND credit > 0) OR (credit = 0 AND debit > 0)), 
+	FOREIGN KEY(entry_id) REFERENCES journal_entries (id) ON DELETE CASCADE, 
 	FOREIGN KEY(account_id) REFERENCES accounts (id)
-)
-
-;
-
-
-CREATE TABLE workorder_activity_log (
-	id UUID DEFAULT gen_random_uuid() NOT NULL,
-	workorder_id UUID,
-	action VARCHAR NOT NULL,
-	timestamp TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-	performed_by VARCHAR NOT NULL,
-	PRIMARY KEY (id),
-	FOREIGN KEY(workorder_id) REFERENCES workorder (id)
 )
 
 ;

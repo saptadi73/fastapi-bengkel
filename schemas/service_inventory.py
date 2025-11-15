@@ -57,4 +57,7 @@ class PurchaseOrderUpdateCost(BaseModel):
     quantity: Decimal
     price: Decimal
 
+class CreateProductMovedHistories(BaseModel):
+    items: List[CreateProductMovedHistory]
+
 

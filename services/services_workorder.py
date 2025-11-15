@@ -848,3 +848,15 @@ def getWorkordersByCustomerID(db: Session, customer_id: str):
         result.append(wo_dict)
     return result
 
+def get_workorder_status_pembayaran(db: Session, workorder_id: str):
+    wo = db.query(Workorder).filter(Workorder.id == workorder_id).first()
+    if not wo:
+        return None
+    return {"status_pembayaran": wo.status_pembayaran}
+
+def get_workorder_status(db: Session, workorder_id: str):
+    wo = db.query(Workorder).filter(Workorder.id == workorder_id).first()
+    if not wo:
+        return None
+    return {"status": wo.status}
+

@@ -4,7 +4,7 @@ import shutil
 import os
 from models.database import SessionLocal
 from schemas.service_expenses import CreateExpenses, UpdateExpenses, ExpenseStatus, ExpenseType
-from services.services_expenses import create_expenses, get_all_expenses, get_expenses_by_id, update_expenses, delete_expenses
+from services.services_expenses import create_expenses, get_all_expenses, get_expenses_by_id, update_expenses, delete_expenses, get_expense_status
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
 from datetime import datetime
@@ -178,5 +178,18 @@ def upload_bukti_transfer(
         update_expenses(db, expenses_id, update_data)
 
         return success_response(data={"file_path": file_path})
+    except Exception as e:
+        return error_response(message=str(e))
+
+@router.get("/{expenses_id}/status")
+def get_expense_status_router(
+    expenses_id: str,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = get_expense_status(db, expenses_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="Expenses not found")
+        return success_response(data=result)
     except Exception as e:
         return error_response(message=str(e))
