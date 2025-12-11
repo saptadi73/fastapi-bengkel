@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from uuid import UUID
 from typing import Optional
-from datetime import date, datetime
+import datetime
 from decimal import Decimal
 from enum import Enum
 
@@ -27,7 +27,7 @@ class CreateExpenses(BaseModel):
     expense_type: ExpenseType
     status: ExpenseStatus
     amount: Decimal
-    date: date
+    date: datetime.date
     bukti_transfer: Optional[str] = None
 
 
@@ -37,7 +37,7 @@ class UpdateExpenses(BaseModel):
     expense_type: Optional[ExpenseType] = None
     status: Optional[ExpenseStatus] = None
     amount: Optional[Decimal] = None
-    date: Optional[date] = None
+    date: Optional[datetime.date] = None
     bukti_transfer: Optional[str] = None
 
 
@@ -48,10 +48,10 @@ class ExpensesResponse(BaseModel):
     expense_type: ExpenseType
     status: ExpenseStatus
     amount: Decimal
-    date: date
+    date: datetime.date
     bukti_transfer: Optional[str]
-    created_at: datetime
-    updated_at: datetime
+    created_at: datetime.datetime
+    updated_at: datetime.datetime
 
     model_config = {
         "from_attributes": True

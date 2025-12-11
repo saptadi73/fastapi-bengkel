@@ -36,8 +36,5 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
 @router.post("/register", response_model=UserResponse)
 def register(payload: UserRegister, db: Session = Depends(get_db)):
     user = create_user(db, payload.username, payload.email, payload.password)
-    return success_response(data=UserResponse(
-        id=str(user.id),
-        username=user.username,
-        email=user.email,
-    ).dict(), message="User registered successfully")
+    user_response = UserResponse.model_validate(user)
+    return success_response(data=user_response.model_dump(), message="User registered successfully")

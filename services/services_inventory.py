@@ -1,7 +1,9 @@
+# type: ignore
 from schemas.service_inventory import CreateProductMovedHistory, ProductMoveHistoryReportRequest, ProductMoveHistoryReport, ProductMoveHistoryReportItem, ManualAdjustment, PurchaseOrderUpdateCost
+from schemas.service_accounting import InternalConsumptionCreate
 from models.inventory import Inventory, ProductMovedHistory
 from services.services_costing import calculate_average_cost_for_adjustment
-from services.services_accounting import create_lost_goods_journal_entry
+from services.services_accounting import create_lost_goods_journal_entry, create_internal_consumption_journal_entry
 from schemas.service_accounting import LostGoodsJournalEntry
 from services.services_product import getInventoryByProductID
 from sqlalchemy.exc import IntegrityError
@@ -106,6 +108,32 @@ def createProductMoveHistoryNew(db: Session, move_data: CreateProductMovedHistor
         db.refresh(inventory)
 
     return to_dict(new_move)
+
+
+def consume_internal_product(db: Session, consumption_data: InternalConsumptionCreate):
+    """Konsumsi internal: keluarkan stok dan catat jurnal pengeluaran barang."""
+    try:
+        # Step 1: keluarkan stok (outcome)
+        move_data = CreateProductMovedHistory(
+            product_id=consumption_data.product_id,
+            type='outcome',
+            quantity=consumption_data.quantity,
+            performed_by=consumption_data.created_by or 'system',
+            notes=consumption_data.memo,
+            timestamp=datetime.datetime.now(datetime.timezone.utc)
+        )
+        movement = createProductMoveHistoryNew(db, move_data)
+
+        # Step 2: catat jurnal pengeluaran barang internal
+        journal = create_internal_consumption_journal_entry(db, consumption_data=consumption_data)
+
+        return {
+            "movement": movement,
+            "journal": journal
+        }
+    except Exception:
+        db.rollback()
+        raise
 
 def createProductMoveHistoryNewLoss(db: Session, move_data: CreateProductMovedHistory):
     if move_data.type.lower() != 'outcome':

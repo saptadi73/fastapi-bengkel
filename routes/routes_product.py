@@ -190,7 +190,7 @@ def listCategories(
         db.close()
 
 @router.get("/inventory/all")
-def getAllInventoryProduct(
+def getInventoryAllProduct(
     db: Session = Depends(get_db)
 ):
     try:
@@ -202,7 +202,7 @@ def getAllInventoryProduct(
         db.close()
 
 @router.get("/inventory/all/consignment")
-def getAllInventoryProduct(
+def getAllInventoryProductConsignment(
     db: Session = Depends(get_db)
 ):
     try:

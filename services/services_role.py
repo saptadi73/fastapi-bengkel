@@ -21,7 +21,7 @@ def create_role(db: Session, role: RoleCreate):
 def update_role(db: Session, role_id: str, role_update: RoleUpdate):
     db_role = db.query(Role).filter(Role.id == role_id).first()
     if db_role:
-        db_role.name = role_update.name
+        db_role.name = role_update.name # type: ignore
         db.commit()
         db.refresh(db_role)
     return db_role

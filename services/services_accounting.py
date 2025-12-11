@@ -33,6 +33,7 @@ from schemas.service_accounting import (
     ExpenseJournalEntry,
     ExpensePaymentJournalEntry,
     LostGoodsJournalEntry,
+    InternalConsumptionCreate,
     CashInCreate,
     CashOutCreate,
     CashBookReportRequest,
@@ -122,7 +123,7 @@ def _sum(lines: Iterable[JournalLineCreate], key: str) -> Decimal:
     Returns:
         Decimal: The total sum.
     """
-    return sum(getattr(line, key) for line in lines)
+    return sum(getattr(line, key) for line in lines)  # type: ignore
 
 
 def _validate_balance(lines: List[JournalLineCreate]) -> None:
@@ -353,8 +354,8 @@ def record_sale(
 
     # Group consignment payables per supplier (if any) and create separate payable entries
     consign_by_supplier = defaultdict(Decimal)
-    if sale_data.workorder_id:
-        workorder = db.query(Workorder).filter(Workorder.id == sale_data.workorder_id).first()
+    if sale_data.workorder_id:  # type: ignore
+        workorder = db.query(Workorder).filter(Workorder.id == sale_data.workorder_id).first()  # type: ignore
         if workorder:
             for po in workorder.product_ordered:
                 product = po.product
@@ -376,7 +377,7 @@ def record_sale(
             journal_type=JT.SALE,
             supplier_id=None,
             customer_id=sale_data.customer_id,
-            workorder_id=sale_data.workorder_id,
+            workorder_id=sale_data.workorder_id,  # type: ignore
             lines=lines
         )
         sale_entry = _create_entry(db, sale_payload, created_by=sale_data.created_by, commit=False)
@@ -393,11 +394,11 @@ def record_sale(
                     id=uuid.uuid4(),
                     entry_no=f"CONS-{uuid.uuid4().hex[:8]}",
                     date=sale_data.tanggal,
-                    memo=f"Hutang konsinyasi untuk supplier {supplier_id} - WO {sale_data.workorder_id}",
-                    journal_type=JournalType.CONSIGNMENT,
+                    memo=f"Hutang konsinyasi untuk supplier {supplier_id} - WO {sale_data.workorder_id}",  # type: ignore
+                    journal_type=JournalType.CONSIGNMENT,  # type: ignore
                     supplier_id=supplier_id,
                     customer_id=None,
-                    workorder_id=sale_data.workorder_id,
+                    workorder_id=sale_data.workorder_id,  # type: ignore
                     created_by=sale_data.created_by,
                 )
                 db.add(cons_entry)
@@ -607,9 +608,9 @@ def edit_account(db: Session, account_id: str, account_data: CreateAccount):
 
     account.code = account_data.code
     account.name = account_data.name
-    account.normal_balance = account_data.normal_balance
-    account.account_type = account_data.account_type
-    account.is_active = account_data.is_active
+    account.normal_balance = account_data.normal_balance  # type: ignore
+    account.account_type = account_data.account_type  # type: ignore
+    account.is_active = account_data.is_active  # type: ignore
 
     db.commit()
     db.refresh(account)
@@ -960,6 +961,54 @@ def create_sales_payment_journal_entry(db: Session, data_entry: SalesPaymentJour
     entry = _create_entry(db, payload, created_by="system")
     return _to_entry_out(db, entry)
 
+def create_internal_consumption_journal_entry(
+    db: Session,
+    *,
+    consumption_data: InternalConsumptionCreate
+) -> dict:
+    """
+    Jurnal pengeluaran produk untuk konsumsi internal:
+    Dr Biaya Operational / Cost Center Bengkel    total_cost
+       Cr Persediaan                              total_cost
+    
+    Args:
+        db: Database session
+        consumption_data: Internal consumption data with product and cost details
+    
+    Returns:
+        dict: Created journal entry
+    """
+    total_cost = consumption_data.quantity * consumption_data.cost_per_unit
+    
+    lines: List[JournalLineCreate] = [
+        JournalLineCreate(
+            account_code=consumption_data.operational_expense_code,
+            description="Biaya Konsumsi Internal Produk",
+            debit=total_cost,
+            credit=Decimal("0.00")
+        ),
+        JournalLineCreate(
+            account_code=consumption_data.persediaan_code,
+            description="Pengurangan Persediaan untuk Konsumsi Internal",
+            debit=Decimal("0.00"),
+            credit=total_cost
+        ),
+    ]
+    
+    payload = JournalEntryCreate(
+        entry_no=consumption_data.entry_no,
+        date=consumption_data.tanggal,
+        memo=consumption_data.memo or f"Konsumsi internal produk - qty: {consumption_data.quantity}",
+        journal_type=JT.EXPENSE,
+        supplier_id=None,
+        customer_id=None,
+        workorder_id=None,
+        lines=lines
+    )
+    entry = _create_entry(db, payload, created_by=consumption_data.created_by)
+    return _to_entry_out(db, entry)
+
+
 def create_purchase_journal_entry(db: Session, data_entry: PurchaseJournalEntry) -> dict:
     """
     Create a purchase journal entry for product and service purchases (perpetual inventory).
@@ -1156,7 +1205,7 @@ def create_expense_payment_journal_entry(db: Session, data_entry: ExpensePayment
     )
     entry = _create_entry(db, payload, created_by="system")
     from services.services_expenses import edit_expense_status
-    edit_expense_status(db, data_entry.expense_id)
+    edit_expense_status(db, str(data_entry.expense_id))  # type: ignore
     return _to_entry_out(db, entry)
 
 
@@ -1174,23 +1223,23 @@ def create_lost_goods_journal_entry(db: Session, data_entry: LostGoodsJournalEnt
     product = db.query(Product).filter(Product.id == data_entry.product_id).first()
     if not product:
         raise ValueError(f"Product with id '{data_entry.product_id}' not found")
-    if not product.cost:
+    if not product.cost:  # type: ignore
         raise ValueError(f"Product '{product.name}' does not have a cost defined")
 
-    amount = product.cost * data_entry.quantity
+    amount = product.cost * data_entry.quantity  # type: ignore
 
     lines: List[JournalLineCreate] = [
         JournalLineCreate(
             account_code=data_entry.loss_account_code,
             description="Kerugian Barang",
-            debit=amount,
+            debit=amount,  # type: ignore
             credit=Decimal("0.00")
         ),
         JournalLineCreate(
             account_code=data_entry.inventory_account_code,
             description="Pengurangan Persediaan Barang",
             debit=Decimal("0.00"),
-            credit=amount
+            credit=amount  # type: ignore
         ),
     ]
 
@@ -1264,7 +1313,7 @@ def generate_cash_book_report(db: Session, request: CashBookReportRequest) -> Ca
         ))
 
     return CashBookReport(
-        opening_balance=opening_balance,
+        opening_balance=opening_balance,  # type: ignore
         entries=entries
     )
 
@@ -1299,23 +1348,23 @@ def generate_expense_report(db: Session, request: ExpenseReportRequest) -> Expen
 
     for exp in expenses:
         exp_type = exp.expense_type.value
-        summary[exp_type]["total_amount"] += exp.amount
+        summary[exp_type]["total_amount"] += exp.amount  # type: ignore
         summary[exp_type]["count"] += 1
-        total_expenses += exp.amount
+        total_expenses += exp.amount  # type: ignore
         total_count += 1
 
     # Convert to list of ExpenseReportItem
     items = [
         ExpenseReportItem(
             expense_type=exp_type,
-            total_amount=data["total_amount"],
-            count=data["count"]
+            total_amount=data["total_amount"],  # type: ignore
+            count=data["count"]  # type: ignore
         )
         for exp_type, data in summary.items()
     ]
 
     return ExpenseReport(
-        total_expenses=total_expenses,
+        total_expenses=total_expenses,  # type: ignore
         total_count=total_count,
         items=items
     )
@@ -1398,7 +1447,7 @@ def generate_profit_loss_report(db: Session, request: ProfitLossReportRequest) -
             revenues.append(ProfitLossReportItem(
                 account_code=acc.code,
                 account_name=acc.name,
-                amount=rev_amount
+                amount=rev_amount  # type: ignore
             ))
 
     # Build expense items
@@ -1416,13 +1465,13 @@ def generate_profit_loss_report(db: Session, request: ProfitLossReportRequest) -
             expenses.append(ProfitLossReportItem(
                 account_code=acc.code,
                 account_name=acc.name,
-                amount=exp_amount
+                amount=exp_amount  # type: ignore
             ))
 
     return ProfitLossReport(
-        total_revenue=total_revenue,
-        total_expenses=total_expenses,
-        net_profit=net_profit,
+        total_revenue=total_revenue,  # type: ignore
+        total_expenses=total_expenses,  # type: ignore
+        net_profit=net_profit,  # type: ignore
         revenues=revenues,
         expenses=expenses
     )
@@ -1860,7 +1909,7 @@ def generate_daily_report(db: Session, request: DailyReportRequest) -> DailyRepo
         cash_book = CashBookReport(
             account_code=account.code,
             account_name=account.name,
-            opening_balance=opening_balance,
+            opening_balance=opening_balance,  # type: ignore
             entries=entries
         )
         cash_books.append(cash_book)

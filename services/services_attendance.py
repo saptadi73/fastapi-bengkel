@@ -95,18 +95,18 @@ def update_attendance(db: Session, attendance_id: str, data: UpdateAttendance):
             return {"message": "Attendance not found"}
 
         if data.check_in_time is not None:
-            attendance.check_in_time = data.check_in_time
+            attendance.check_in_time = data.check_in_time #type: ignore
         if data.check_out_time is not None:
-            attendance.check_out_time = data.check_out_time
+            attendance.check_out_time = data.check_out_time #type: ignore
         if data.status is not None:
-            attendance.status = data.status
+            attendance.status = data.status #type: ignore
         if data.notes is not None:
-            attendance.notes = data.notes
+            attendance.notes = data.notes #type: ignore
 
-        attendance.updated_at = datetime.datetime.now()
+        attendance.updated_at = datetime.datetime.now() #type: ignore
 
         db.commit()
-        db.refresh(attendance)
+        db.refresh(attendance) #type: ignore
         return to_dict(attendance)
     except IntegrityError as e:
         db.rollback()
@@ -135,12 +135,12 @@ def delete_attendance(db: Session, attendance_id: str):
         logger.error(f"Unexpected error in delete_attendance: {str(e)}")
         return {"message": f"Unexpected error: {str(e)}"}
 
-def check_in(db: Session, karyawan_id: str, date: str = None):
+def check_in(db: Session, karyawan_id: str, date: str = None): #type: ignore
     try:
         if date is None:
             date = datetime.date.today()
         else:
-            date = datetime.datetime.fromisoformat(date).date()
+            date = datetime.datetime.fromisoformat(date).date() #type: ignore
 
         # Check if attendance already exists for today
         existing = db.query(Attendance).filter(
@@ -149,12 +149,12 @@ def check_in(db: Session, karyawan_id: str, date: str = None):
         ).first()
 
         if existing:
-            if existing.check_in_time:
+            if existing.check_in_time: #type: ignore
                 return {"message": "Already checked in today"}
             # Update check_in_time
-            existing.check_in_time = datetime.datetime.now().time()
-            existing.status = 'present'
-            existing.updated_at = datetime.datetime.now()
+            existing.check_in_time = datetime.datetime.now().time() #type: ignore
+            existing.status = 'present' #type: ignore
+            existing.updated_at = datetime.datetime.now() #type: ignore
             db.commit()
             db.refresh(existing)
             return to_dict(existing)
@@ -179,12 +179,12 @@ def check_in(db: Session, karyawan_id: str, date: str = None):
         logger.error(f"Unexpected error in check_in: {str(e)}")
         return {"message": f"Unexpected error: {str(e)}"}
 
-def check_out(db: Session, karyawan_id: str, date: str = None):
+def check_out(db: Session, karyawan_id: str, date: str = None): #type: ignore
     try:
         if date is None:
             date = datetime.date.today()
         else:
-            date = datetime.datetime.fromisoformat(date).date()
+            date = datetime.datetime.fromisoformat(date).date() #type: ignore
 
         attendance = db.query(Attendance).filter(
             Attendance.karyawan_id == karyawan_id,
@@ -194,11 +194,11 @@ def check_out(db: Session, karyawan_id: str, date: str = None):
         if not attendance:
             return {"message": "No attendance record found for today"}
 
-        if attendance.check_out_time:
+        if attendance.check_out_time: #type: ignore
             return {"message": "Already checked out today"}
 
-        attendance.check_out_time = datetime.datetime.now().time()
-        attendance.updated_at = datetime.datetime.now()
+        attendance.check_out_time = datetime.datetime.now().time() #type: ignore
+        attendance.updated_at = datetime.datetime.now() #type: ignore
 
         db.commit()
         db.refresh(attendance)
@@ -212,12 +212,12 @@ def check_out(db: Session, karyawan_id: str, date: str = None):
         logger.error(f"Unexpected error in check_out: {str(e)}")
         return {"message": f"Unexpected error: {str(e)}"}
 
-def is_attendance_completed_today(db: Session, karyawan_id: str, date: str = None):
+def is_attendance_completed_today(db: Session, karyawan_id: str, date: str = None): #type: ignore
     try:
         if date is None:
             date = datetime.date.today()
         else:
-            date = datetime.datetime.fromisoformat(date).date()
+            date = datetime.datetime.fromisoformat(date).date() # type: ignore
 
         attendance = db.query(Attendance).filter(
             Attendance.karyawan_id == karyawan_id,
@@ -230,8 +230,8 @@ def is_attendance_completed_today(db: Session, karyawan_id: str, date: str = Non
         completed = attendance.check_in_time is not None and attendance.check_out_time is not None
         return {
             "completed": completed,
-            "check_in_time": attendance.check_in_time.isoformat() if attendance.check_in_time else None,
-            "check_out_time": attendance.check_out_time.isoformat() if attendance.check_out_time else None,
+            "check_in_time": attendance.check_in_time.isoformat() if attendance.check_in_time else None, #type: ignore
+            "check_out_time": attendance.check_out_time.isoformat() if attendance.check_out_time else None, #type: ignore
             "status": attendance.status
         }
     except Exception as e:

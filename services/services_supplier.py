@@ -47,7 +47,7 @@ def update_supplier(db: Session, supplier_id: str, supplier_data: UpdateSupplier
     for field, value in supplier_data.model_dump(exclude_unset=True).items():
         setattr(supplier, field, value)
 
-    supplier.updated_at = datetime.datetime.now()
+    supplier.updated_at = datetime.datetime.now()  # type: ignore
     db.commit()
     db.refresh(supplier)
     return to_dict(supplier)

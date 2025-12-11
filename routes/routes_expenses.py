@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Body
 from sqlalchemy.orm import Session
 import shutil
 import os
@@ -96,12 +96,12 @@ def get_expenses_by_id_router(
 @router.put("/{expenses_id}", dependencies=[Depends(jwt_required)])
 def update_expenses_router(
     expenses_id: str,
-    name: str = Form(...),
-    description: str = Form(...),
-    expense_type: str = Form(...),
-    status: str = Form('open'),
-    amount: float = Form(...),
-    date: str = Form(...),
+    name: str = Form(None),
+    description: str = Form(None),
+    expense_type: str = Form(None),
+    status: str = Form(None),
+    amount: float = Form(None),
+    date: str = Form(None),
     bukti_transfer: UploadFile = File(None),
     db: Session = Depends(get_db)
 ):
@@ -134,10 +134,10 @@ def update_expenses_router(
         update_data = UpdateExpenses(
             name=name,
             description=description,
-            expense_type=ExpenseType(expense_type),
-            status=ExpenseStatus(status),
-            amount=Decimal(amount),
-            date=datetime.fromisoformat(date).date(),
+            expense_type=ExpenseType(expense_type) if expense_type else None,
+            status=ExpenseStatus(status) if status else None,
+            amount=Decimal(amount) if amount else None,
+            date=datetime.fromisoformat(date).date() if date else None,
             bukti_transfer=bukti_transfer_path
         )
         result = update_expenses(db, expenses_id, update_data)

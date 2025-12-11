@@ -41,6 +41,7 @@ class Product(Base):
     supplier_id = Column(UUID(as_uuid=True), ForeignKey('supplier.id'), nullable=True)
     is_consignment = Column(Boolean, nullable=False, default=False)
     consignment_commission = Column(Numeric(10,2), nullable=True)
+    is_internal_consumption = Column(Boolean, nullable=True, default=False)
 
     brand_id = Column(UUID(as_uuid=True),ForeignKey('brand.id'))
     brand = relationship('Brand', back_populates='products')

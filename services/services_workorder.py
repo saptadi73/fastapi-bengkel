@@ -47,8 +47,8 @@ def createNewWorkorder(db: Session, workorder_data: CreateWorkOrder):
     prefix = f"WO-{today.year}{today.month:02d}-"
     # Ambil nomor terbesar bulan ini
     last_wo = db.query(Workorder).filter(Workorder.no_wo.like(f"{prefix}%")).order_by(Workorder.no_wo.desc()).first()
-    if last_wo and last_wo.no_wo[-4:].isdigit():
-        last_num = int(last_wo.no_wo[-4:])
+    if last_wo and last_wo.no_wo[-4:].isdigit():  # type: ignore
+        last_num = int(last_wo.no_wo[-4:])  # type: ignore
         next_num = last_num + 1
     else:
         next_num = 1
@@ -62,7 +62,7 @@ def createNewWorkorder(db: Session, workorder_data: CreateWorkOrder):
         keluhan=workorder_data.keluhan,
         kilometer=workorder_data.kilometer,
         saran=workorder_data.saran,
-        keterangan=workorder_data.keterangan if hasattr(workorder_data, 'keterangan') else None,
+        keterangan=workorder_data.keterangan if hasattr(workorder_data, 'keterangan') else None,  # type: ignore
         status=workorder_data.status,
         status_pembayaran=workorder_data.status_pembayaran,
         dp=workorder_data.dp,
@@ -118,22 +118,22 @@ def ProductMovedCausedProductOrdered(db: Session, product_ordered, performed_by:
     if isinstance(product_ordered, Iterable) and not isinstance(product_ordered, (str, bytes)):
         for po in product_ordered:
             move_data = CreateProductMovedHistory(
-                product_id=po.product_id,
+                product_id=po.product_id,  # type: ignore
                 type='outcome',
-                quantity=po.quantity,
+                quantity=po.quantity,  # type: ignore
                 performed_by=performed_by,
-                notes=f"Product ordered in Workorder {po.workorder_id}",
+                notes=f"Product ordered in Workorder {po.workorder_id}",  # type: ignore
                 timestamp=datetime.datetime.now(datetime.timezone.utc)
             )
             createProductMoveHistoryNew(db, move_data)
     else:
         po = product_ordered
         move_data = CreateProductMovedHistory(
-            product_id=po.product_id,
+            product_id=po.product_id,  # type: ignore
             type='outcome',
-            quantity=po.quantity,
+            quantity=po.quantity,  # type: ignore
             performed_by=performed_by,
-            notes=f"Product ordered in Workorder {po.workorder_id}",
+            notes=f"Product ordered in Workorder {po.workorder_id}",  # type: ignore
             timestamp=datetime.datetime.now(datetime.timezone.utc)
         )
         createProductMoveHistoryNew(db, move_data)
@@ -233,8 +233,8 @@ def updateStatusWorkorder(db: Session, data_entry: SalesPaymentJournalEntry):
     wo = db.query(Workorder).filter(Workorder.id == data_entry.workorder_id).first()
     if not wo:
         return None
-    wo.status = 'dibayar'
-    wo.status_pembayaran='lunas'
+    wo.status = 'dibayar'  # type: ignore
+    wo.status_pembayaran='lunas'  # type: ignore
     db.add(wo)
     db.commit()
     db.refresh(wo)
@@ -256,7 +256,7 @@ def UpdateDateWorkordernya(db: Session, workorder_id: str, new_tanggal_keluar: d
         return None
 
     old_tanggal_keluar = wo.tanggal_keluar
-    wo.tanggal_keluar = new_tanggal_keluar
+    wo.tanggal_keluar = new_tanggal_keluar  # type: ignore
     db.add(wo)
 
     
@@ -295,7 +295,7 @@ def updateWorkOrdeKeluhannya(db: Session, workorder_id: str, data: UpdateWorkord
         return None
 
     old_keluhan = wo.keluhan
-    wo.keluhan = data['keluhan']
+    wo.keluhan = data.keluhan  # type: ignore
     db.add(wo)
 
     # Log perubahan keluhan
@@ -348,22 +348,22 @@ def UpdateWorkorderOrdersnya(db: Session, workorder_id: str, update_data: Create
                 # Update berdasarkan id
                 po = db.query(ProductOrdered).filter(ProductOrdered.id == prod.id, ProductOrdered.workorder_id == workorder_id).first()
                 if po:
-                    po.product_id = prod.product_id
-                    po.quantity = prod.quantity
-                    po.price = prod.price
-                    po.subtotal = prod.subtotal
-                    po.discount = prod.discount
-                    po.satuan_id = getattr(prod, 'satuan_id', None)
+                    po.product_id = prod.product_id  # type: ignore
+                    po.quantity = prod.quantity  # type: ignore
+                    po.price = prod.price  # type: ignore
+                    po.subtotal = prod.subtotal  # type: ignore
+                    po.discount = prod.discount  # type: ignore
+                    po.satuan_id = getattr(prod, 'satuan_id', None)  # type: ignore
                     db.add(po)
             else:
                 # Cari berdasarkan product_id, jika ada update, jika tidak add
                 po = db.query(ProductOrdered).filter(ProductOrdered.workorder_id == workorder_id, ProductOrdered.product_id == prod.product_id).first()
                 if po:
-                    po.quantity = prod.quantity
-                    po.price = prod.price
-                    po.subtotal = prod.subtotal
-                    po.discount = prod.discount
-                    po.satuan_id = getattr(prod, 'satuan_id', None)
+                    po.quantity = prod.quantity  # type: ignore
+                    po.price = prod.price  # type: ignore
+                    po.subtotal = prod.subtotal  # type: ignore
+                    po.discount = prod.discount  # type: ignore
+                    po.satuan_id = getattr(prod, 'satuan_id', None)  # type: ignore
                     db.add(po)
                 else:
                     new_po = ProductOrdered(
@@ -397,21 +397,21 @@ def UpdateWorkorderOrdersnya(db: Session, workorder_id: str, update_data: Create
                 # Update berdasarkan id
                 so = db.query(ServiceOrdered).filter(ServiceOrdered.id == srv.id, ServiceOrdered.workorder_id == workorder_id).first()
                 if so:
-                    so.service_id = srv.service_id
-                    so.quantity = srv.quantity
-                    so.price = srv.price
-                    so.subtotal = srv.subtotal
-                    so.discount = srv.discount
+                    so.service_id = srv.service_id  # type: ignore
+                    so.quantity = srv.quantity  # type: ignore
+                    so.price = srv.price  # type: ignore
+                    so.subtotal = srv.subtotal  # type: ignore
+                    so.discount = srv.discount  # type: ignore
                     db.add(so)
             else:
                 # Cari berdasarkan service_id, jika ada update, jika tidak add
                 so = db.query(ServiceOrdered).filter(ServiceOrdered.workorder_id == workorder_id, ServiceOrdered.service_id == srv.service_id).first()
                 if so:
-                    so.quantity = srv.quantity
-                    so.price = srv.price
-                    so.subtotal = srv.subtotal
-                    so.discount = srv.discount
-                    so.satuan = getattr(srv, 'satuan', None)
+                    so.quantity = srv.quantity  # type: ignore
+                    so.price = srv.price  # type: ignore
+                    so.subtotal = srv.subtotal  # type: ignore
+                    so.discount = srv.discount  # type: ignore
+                    so.satuan = getattr(srv, 'satuan', None)  # type: ignore
                     db.add(so)
                 else:
                     new_so = ServiceOrdered(
@@ -496,23 +496,23 @@ def update_only_workorder(db: Session, workorder_id: str, data: CreateWorkorderO
     if not wo:
         return None
 
-    wo.tanggal_masuk = data.tanggal_masuk
-    wo.tanggal_keluar = data.tanggal_keluar
-    wo.keluhan = data.keluhan
-    wo.kilometer = data.kilometer
-    wo.saran = data.saran
-    wo.keterangan = data.keterangan if hasattr(data, 'keterangan') else None
-    wo.status = data.status
-    wo.status_pembayaran = data.status_pembayaran
-    wo.dp = data.dp
-    wo.next_service_date = data.next_service_date
-    wo.next_service_km = data.next_service_km
-    wo.total_discount = data.total_discount
-    wo.total_biaya = data.total_biaya
-    wo.customer_id = data.customer_id
-    wo.karyawan_id = data.karyawan_id
-    wo.vehicle_id = data.vehicle_id
-    wo.pajak = data.pajak
+    wo.tanggal_masuk = data.tanggal_masuk  # type: ignore
+    wo.tanggal_keluar = data.tanggal_keluar  # type: ignore
+    wo.keluhan = data.keluhan  # type: ignore
+    wo.kilometer = data.kilometer  # type: ignore
+    wo.saran = data.saran  # type: ignore
+    wo.keterangan = data.keterangan if hasattr(data, 'keterangan') else None  # type: ignore
+    wo.status = data.status  # type: ignore
+    wo.status_pembayaran = data.status_pembayaran  # type: ignore
+    wo.dp = data.dp  # type: ignore
+    wo.next_service_date = data.next_service_date  # type: ignore
+    wo.next_service_km = data.next_service_km  # type: ignore
+    wo.total_discount = data.total_discount  # type: ignore
+    wo.total_biaya = data.total_biaya  # type: ignore
+    wo.customer_id = data.customer_id  # type: ignore
+    wo.karyawan_id = data.karyawan_id  # type: ignore
+    wo.vehicle_id = data.vehicle_id  # type: ignore
+    wo.pajak = data.pajak  # type: ignore
 
     db.add(wo)
     db.commit()
@@ -525,10 +525,10 @@ def update_only_productordered(db: Session, product_ordered_id: str, data: Creat
     if not po:
         return None
 
-    po.product_id = data.product_id
-    po.quantity = data.quantity
-    po.subtotal = data.subtotal
-    po.discount = data.discount
+    po.product_id = data.product_id  # type: ignore
+    po.quantity = data.quantity  # type: ignore
+    po.subtotal = data.subtotal  # type: ignore
+    po.discount = data.discount  # type: ignore
 
     db.add(po)
     db.commit()
@@ -546,10 +546,10 @@ def update_only_serviceordered(db: Session, service_ordered_id: str, data: Creat
     if not so:
         return None
 
-    so.service_id = data.service_id
-    so.quantity = data.quantity
-    so.subtotal = data.subtotal
-    so.discount = data.discount
+    so.service_id = data.service_id  # type: ignore
+    so.quantity = data.quantity  # type: ignore
+    so.subtotal = data.subtotal  # type: ignore
+    so.discount = data.discount  # type: ignore
 
     db.add(so)
     db.commit()
@@ -591,29 +591,29 @@ def update_workorder_lengkap(db: Session, workorder_id: str, data: CreateWorkOrd
     old_status = wo.status
 
     # Update field utama
-    wo.tanggal_masuk = data.tanggal_masuk
+    wo.tanggal_masuk = data.tanggal_masuk  # type: ignore
     if data.status == 'selesai':
-        wo.tanggal_keluar = today
+        wo.tanggal_keluar = today  # type: ignore
     elif data.tanggal_keluar is not None:
-        wo.tanggal_keluar = data.tanggal_keluar
+        wo.tanggal_keluar = data.tanggal_keluar  # type: ignore
     else:
-        wo.tanggal_keluar = None  # or some default
+        wo.tanggal_keluar = None  # type: ignore
 
-    wo.keluhan = data.keluhan
-    wo.kilometer = data.kilometer
-    wo.saran = data.saran
-    wo.status = data.status
-    wo.status_pembayaran = data.status_pembayaran
-    wo.dp = data.dp
-    wo.total_discount = data.total_discount
-    wo.total_biaya = data.total_biaya
-    wo.dp = data.dp
-    wo.next_service_date = data.next_service_date
-    wo.next_service_km = data.next_service_km
-    wo.customer_id = data.customer_id
-    wo.karyawan_id = data.karyawan_id
-    wo.vehicle_id = data.vehicle_id
-    wo.pajak = data.pajak
+    wo.keluhan = data.keluhan  # type: ignore
+    wo.kilometer = data.kilometer  # type: ignore
+    wo.saran = data.saran  # type: ignore
+    wo.status = data.status  # type: ignore
+    wo.status_pembayaran = data.status_pembayaran  # type: ignore
+    wo.dp = data.dp  # type: ignore
+    wo.total_discount = data.total_discount  # type: ignore
+    wo.total_biaya = data.total_biaya  # type: ignore
+    wo.dp = data.dp  # type: ignore
+    wo.next_service_date = data.next_service_date  # type: ignore
+    wo.next_service_km = data.next_service_km  # type: ignore
+    wo.customer_id = data.customer_id  # type: ignore
+    wo.karyawan_id = data.karyawan_id  # type: ignore
+    wo.vehicle_id = data.vehicle_id  # type: ignore
+    wo.pajak = data.pajak  # type: ignore
     db.add(wo)
     db.commit()
     db.refresh(wo)
@@ -622,20 +622,20 @@ def update_workorder_lengkap(db: Session, workorder_id: str, data: CreateWorkOrd
     wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None
 
     print(f"Debug: old_status = {old_status}, data.status = {data.status}")
-    if old_status != 'selesai' and data.status == 'selesai':
+    if old_status != 'selesai' and data.status == 'selesai':  # type: ignore
         print("Debug: Condition met, creating sales journal and moving stock")
         harga_product = sum(po.subtotal for po in wo.product_ordered) if wo.product_ordered else decimal.Decimal("0.00")
         harga_service = sum(so.subtotal for so in wo.service_ordered) if wo.service_ordered else decimal.Decimal("0.00")
         sales_entry = SalesJournalEntry(
-            date=wo.tanggal_keluar.date() if wo.tanggal_keluar else datetime.date.today(),
+            date=wo.tanggal_keluar.date() if wo.tanggal_keluar else datetime.date.today(),  # type: ignore
             memo=f"Penjualan dari Workorder {wo.no_wo}",
             customer_id=data.customer_id,
-            workorder_id=wo.id,
-            harga_product=data.totalProductHarga - data.totalProductDiscount,
-            harga_service=data.totalServiceHarga - data.totalServiceDiscount,
-            hpp_product=data.totalProductCost,
-            hpp_service=data.totalServiceCost,
-            pajak=data.pajak
+            workorder_id=wo.id,  # type: ignore
+            harga_product=data.totalProductHarga - data.totalProductDiscount,  # type: ignore
+            harga_service=data.totalServiceHarga - data.totalServiceDiscount,  # type: ignore
+            hpp_product=data.totalProductCost,  # type: ignore
+            hpp_service=data.totalServiceCost,  # type: ignore
+            pajak=data.pajak  # type: ignore
         )
         print(f"Debug: sales masuk gak {sales_entry}")
         total_create_sales = create_sales_journal_entry(db, sales_entry)
@@ -692,17 +692,17 @@ def updateProductOrder(db: Session, product_ordered_id: str, data: UpdateProduct
 
     # Update only provided fields
     if data.product_id is not None:
-        po.product_id = data.product_id
+        po.product_id = data.product_id  # type: ignore
     if data.quantity is not None:
-        po.quantity = data.quantity
+        po.quantity = data.quantity  # type: ignore
     if data.subtotal is not None:
-        po.subtotal = data.subtotal
+        po.subtotal = data.subtotal  # type: ignore
     if data.discount is not None:
-        po.discount = data.discount
+        po.discount = data.discount  # type: ignore
     if data.satuan_id is not None:
-        po.satuan_id = data.satuan_id
+        po.satuan_id = data.satuan_id  # type: ignore
     if data.price is not None:
-        po.price = data.price
+        po.price = data.price  # type: ignore
 
     db.add(po)
     db.commit()
@@ -769,15 +769,15 @@ def updateServiceOrder(db: Session, service_ordered_id: str, data: UpdateService
 
     # Update only provided fields
     if data.service_id is not None:
-        so.service_id = data.service_id
+        so.service_id = data.service_id  # type: ignore
     if data.quantity is not None:
-        so.quantity = data.quantity
+        so.quantity = data.quantity  # type: ignore
     if data.subtotal is not None:
-        so.subtotal = data.subtotal
+        so.subtotal = data.subtotal  # type: ignore
     if data.discount is not None:
-        so.discount = data.discount
+        so.discount = data.discount  # type: ignore
     if data.price is not None:
-        so.price = data.price
+        so.price = data.price  # type: ignore
 
     db.add(so)
     db.commit()

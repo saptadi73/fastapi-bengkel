@@ -67,27 +67,27 @@ def update_expenses(db: Session, expenses_id: str, data: UpdateExpenses):
         status_changed_to_paid = data.status and data.status == ExpenseStatus.dibayarkan and exp.status != ExpenseStatus.dibayarkan
 
         # Update fields
-        if data.name:
-            exp.name = data.name
-        if data.description:
-            exp.description = data.description
-        if data.expense_type:
-            exp.expense_type = data.expense_type
-        if data.status:
-            exp.status = data.status
-        if data.amount:
-            exp.amount = data.amount
-        if data.date:
-            exp.date = data.date
-        if data.bukti_transfer:
-            exp.bukti_transfer = data.bukti_transfer
-        exp.updated_at = datetime.datetime.now()
+        if data.name is not None:
+            exp.name = data.name  # type: ignore
+        if data.description is not None:
+            exp.description = data.description  # type: ignore
+        if data.expense_type is not None:
+            exp.expense_type = data.expense_type  # type: ignore
+        if data.status is not None:
+            exp.status = data.status  # type: ignore
+        if data.amount is not None:
+            exp.amount = data.amount  # type: ignore
+        if data.date is not None:
+            exp.date = data.date  # type: ignore
+        if data.bukti_transfer is not None:
+            exp.bukti_transfer = data.bukti_transfer  # type: ignore
+        exp.updated_at = datetime.now()  # type: ignore
 
         db.commit()
         db.refresh(exp)
 
         # If status changed to 'dibayarkan', create journal entry
-        if status_changed_to_paid:
+        if status_changed_to_paid:  # type: ignore
             # Import here to avoid circular import
             from services.services_accounting import create_expense_journal_entry
 
@@ -107,10 +107,10 @@ def update_expenses(db: Session, expenses_id: str, data: UpdateExpenses):
             expense_code = expense_account_map.get(exp.expense_type.value, "6009")  # Default to umum
 
             journal_data = ExpenseJournalEntry(
-                date=exp.date,
+                date=exp.date,  # type: ignore
                 memo=f"Pembayaran biaya {exp.name}",
-                expense_id=exp.id,
-                amount=exp.amount,
+                expense_id=exp.id,  # type: ignore
+                amount=exp.amount,  # type: ignore
                 kas_bank_code="1100",  # Assume kas
                 expense_code=expense_code,
                 pajak=Decimal("0.00")  # No tax for now
@@ -124,7 +124,7 @@ def update_expenses(db: Session, expenses_id: str, data: UpdateExpenses):
 
 def edit_expense_status(db: Session, expense_id: str):
     expenseku = db.query(Expenses).filter(Expenses.id == expense_id).first()
-    expenseku.status = 'dibayarkan'
+    expenseku.status = 'dibayarkan'  # type: ignore
     db.commit()
     return to_dict(expenseku)
 

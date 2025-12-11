@@ -7,6 +7,7 @@ from schemas.service_accounting import (
     PurchaseRecordCreate, SaleRecordCreate,
     SalesWithConsignments,
     PaymentARCreate, PaymentAPCreate, ExpenseRecordCreate, ConsignmentPaymentCreate, SalesJournalEntry, SalesPaymentJournalEntry,PurchaseJournalEntry,PurchasePaymentJournalEntry,ExpenseJournalEntry, ExpensePaymentJournalEntry,
+    InternalConsumptionCreate,
     CashInCreate, CashOutCreate,
     CashBookReportRequest, CashBookReport,
     ExpenseReportRequest, ExpenseReport,
@@ -27,6 +28,7 @@ from services.services_accounting import (
     cash_in, cash_out,
     generate_cash_book_report, generate_expense_report, getBankCodes, generate_profit_loss_report, generate_cash_report, getEquityCodes, getTarikCodes, generate_receivable_payable_report, generate_product_sales_report, generate_service_sales_report, generate_mechanic_sales_report, generate_daily_report
 )
+from services.services_inventory import consume_internal_product
 from services.services_accounting import generate_consignment_payable_report
 
 from models.accounting import JournalEntry
@@ -132,6 +134,14 @@ def create_expense_payment_journal(data: ExpensePaymentJournalEntry, db: Session
         return success_response(data=result, message="Jurnal pembayaran biaya berhasil dibuat")
     except Exception as e:
         return error_response(message=f"Gagal membuat jurnal pembayaran biaya: {str(e)}")
+
+@router.post("/internal-consumption", response_model=JournalEntryOut, dependencies=[Depends(jwt_required)])
+def create_internal_consumption(data: InternalConsumptionCreate, db: Session = Depends(get_db)):
+    try:
+        result = consume_internal_product(db, consumption_data=data)
+        return success_response(data=result.get("journal"), message="Konsumsi internal berhasil: stok berkurang dan jurnal dibuat")
+    except Exception as e:
+        return error_response(message=f"Gagal membuat konsumsi internal: {str(e)}")
 
 @router.post("/cash-in", response_model=JournalEntryOut, dependencies=[Depends(jwt_required)])
 def create_cash_in(data: CashInCreate, db: Session = Depends(get_db)):

@@ -17,6 +17,7 @@ class CreateProduct(BaseModel):
     supplier_id: Optional[UUID] = None
     is_consignment: bool = False
     consignment_commission: Optional[Decimal] = None
+    is_internal_consumption: Optional[bool] = False
 class UpdateProductCost(BaseModel):
     product_id: UUID
     cost: Decimal
@@ -35,6 +36,7 @@ class ProductResponse(BaseModel):
     supplier_id: Optional[UUID] = None
     is_consignment: bool = False
     consignment_commission: Optional[Decimal] = None
+    is_internal_consumption: Optional[bool] = False
 
     model_config = {
         "from_attributes": True

@@ -47,7 +47,8 @@ def CreateProductNew(db:Session, product_data: CreateProduct):
         category_id=product_data.category_id,
         supplier_id=product_data.supplier_id,
         is_consignment=product_data.is_consignment,
-        consignment_commission=product_data.consignment_commission
+        consignment_commission=product_data.consignment_commission,
+        is_internal_consumption=product_data.is_internal_consumption
     )
     db.add(new_product)
     db.commit()
@@ -105,7 +106,7 @@ def update_product_cost(db: Session, product_id: str, cost: Decimal):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise ValueError('Product tidak ditemukan!')
-    product.cost = cost
+    product.cost = cost  # type: ignore
     db.commit()
     db.refresh(product)
     return to_dict(product)
@@ -122,7 +123,7 @@ def getAllInventoryProducts(db: Session):
         # Hitung total stock dari inventory
         total_stock = sum(inv.quantity for inv in product.inventory) if product.inventory else 0
         p_dict['total_stock'] = float(total_stock)  # Konversi Decimal ke float
-        p_dict['cost'] = float(product.cost) if product.cost is not None else None
+        p_dict['cost'] = float(product.cost) if product.cost is not None else None  # type: ignore
         result.append(p_dict)
     return result
 
@@ -138,7 +139,7 @@ def getAllInventoryProductsExcConsignment(db: Session):
         # Hitung total stock dari inventory
         total_stock = sum(inv.quantity for inv in product.inventory) if product.inventory else 0
         p_dict['total_stock'] = float(total_stock)  # Konversi Decimal ke float
-        p_dict['cost'] = float(product.cost) if product.cost is not None else None
+        p_dict['cost'] = float(product.cost) if product.cost is not None else None  # type: ignore
         result.append(p_dict)
     return result
 
@@ -154,7 +155,7 @@ def getAllInventoryProductsConsignment(db: Session):
         # Hitung total stock dari inventory
         total_stock = sum(inv.quantity for inv in product.inventory) if product.inventory else 0
         p_dict['total_stock'] = float(total_stock)  # Konversi Decimal ke float
-        p_dict['cost'] = float(product.cost) if product.cost is not None else None
+        p_dict['cost'] = float(product.cost) if product.cost is not None else None  # type: ignore
         result.append(p_dict)
     return result
 
@@ -188,16 +189,16 @@ def createProductMoveHistoryNew(db: Session, move_data: CreateProductMovedHistor
             db.add(inventory)
         else:
             # Update quantity lama + quantity baru
-            inventory.quantity += move_data.quantity
-            inventory.updated_at = now_utc
+            inventory.quantity += move_data.quantity  # type: ignore
+            inventory.updated_at = now_utc  # type: ignore
     elif move_data.type.lower() == 'outcome':
         now_utc = move_data.timestamp or datetime.datetime.now(datetime.timezone.utc)
         if not inventory:
             raise ValueError('Inventory untuk produk ini belum ada, tidak bisa outcome!')
-        if inventory.quantity < move_data.quantity:
+        if inventory.quantity < move_data.quantity:  # type: ignore
             raise ValueError('Stock tidak cukup untuk outcome!')
-        inventory.quantity -= move_data.quantity
-        inventory.updated_at = now_utc
+        inventory.quantity -= move_data.quantity  # type: ignore
+        inventory.updated_at = now_utc  # type: ignore
     # Catat ke ProductMovedHistory
     now_utc = move_data.timestamp or datetime.datetime.now(datetime.timezone.utc)
     if move_data.type.lower() == 'income':
@@ -222,8 +223,8 @@ def createProductMoveHistoryNew(db: Session, move_data: CreateProductMovedHistor
     inventory = db.query(Inventory).filter(Inventory.product_id == move_data.product_id).first()
     if inventory:
         total_quantity = db.scalar(select(func.sum(ProductMovedHistory.quantity)).where(ProductMovedHistory.product_id == move_data.product_id)) or 0
-        inventory.quantity = total_quantity
-        inventory.updated_at = datetime.datetime.now(datetime.timezone.utc)
+        inventory.quantity = total_quantity  # type: ignore
+        inventory.updated_at = datetime.datetime.now(datetime.timezone.utc)  # type: ignore
         db.flush()
         db.refresh(inventory)
 
@@ -239,12 +240,12 @@ def EditProductMovedHistory(db: Session, move_id: str, move_data: CreateProductM
     old_quantity = move_record.quantity
 
     # Update record dengan data baru
-    move_record.product_id = move_data.product_id
-    move_record.type = move_data.type
-    move_record.quantity = move_data.quantity if move_data.type.lower() == 'income' else -move_data.quantity
-    move_record.performed_by = move_data.performed_by
-    move_record.notes = move_data.notes
-    move_record.timestamp = move_data.timestamp or datetime.datetime.now(datetime.timezone.utc)
+    move_record.product_id = move_data.product_id  # type: ignore
+    move_record.type = move_data.type  # type: ignore
+    move_record.quantity = move_data.quantity if move_data.type.lower() == 'income' else -move_data.quantity  # type: ignore
+    move_record.performed_by = move_data.performed_by  # type: ignore
+    move_record.notes = move_data.notes  # type: ignore
+    move_record.timestamp = move_data.timestamp or datetime.datetime.now(datetime.timezone.utc)  # type: ignore
 
     # Sesuaikan inventory berdasarkan perubahan
     inventory = db.query(Inventory).filter(Inventory.product_id == move_data.product_id).first()
@@ -253,8 +254,8 @@ def EditProductMovedHistory(db: Session, move_id: str, move_data: CreateProductM
 
     # Setelah update, set inventory.quantity = sum seluruh ProductMovedHistory.quantity untuk product_id terkait
     total_quantity = db.scalar(select(func.sum(ProductMovedHistory.quantity)).where(ProductMovedHistory.product_id == move_data.product_id)) or 0
-    inventory.quantity = total_quantity
-    inventory.updated_at = datetime.datetime.now(datetime.timezone.utc)
+    inventory.quantity = total_quantity  # type: ignore
+    inventory.updated_at = datetime.datetime.now(datetime.timezone.utc)  # type: ignore
 
     db.commit()
     db.refresh(move_record)
@@ -271,8 +272,8 @@ def deleteProductMovedHistory(db: Session, move_id: str):
     inventory = db.query(Inventory).filter(Inventory.product_id == product_id).first()
     if inventory:
         total_quantity = db.scalar(select(func.sum(ProductMovedHistory.quantity)).where(ProductMovedHistory.product_id == product_id)) or 0
-        inventory.quantity = total_quantity
-        inventory.updated_at = datetime.datetime.now(datetime.timezone.utc)
+        inventory.quantity = total_quantity  # type: ignore
+        inventory.updated_at = datetime.datetime.now(datetime.timezone.utc)  # type: ignore
         db.commit()
     return True
 

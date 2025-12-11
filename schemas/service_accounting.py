@@ -195,6 +195,18 @@ class SalesPaymentJournalEntry(BaseModel):
     payment_no: str  # Nomor payment dari front-end untuk pencegahan double payment
 
 
+class InternalConsumptionCreate(BaseModel):
+    entry_no: Optional[str] = None
+    tanggal: date
+    product_id: Optional[UUID] = None
+    quantity: Decimal
+    cost_per_unit: Decimal
+    operational_expense_code: str = "6001"  # Biaya Operational
+    persediaan_code: str = "2002"  # Persediaan
+    memo: Optional[str] = None
+    created_by: Optional[str] = "system"
+
+
 class PurchaseJournalEntry(BaseModel):
     date: date
     memo: Optional[str]
