@@ -110,3 +110,26 @@ def createVehicletoCustomerRouter(
         return success_response(data=result)
     except Exception as e:
         return error_response(message=str(e))
+
+
+@router.post("/send-maintenance-reminder", dependencies=[Depends(jwt_required)])
+def send_maintenance_reminder_router(
+    db: Session = Depends(get_db)
+):
+    """
+    Endpoint untuk mengirim reminder WhatsApp maintenance ke customer
+    yang jadwal maintenance-nya kurang dari 3 hari.
+    
+    Returns:
+        {
+            "total_customers": int (jumlah total customer dengan vehicle),
+            "reminder_sent": int (jumlah reminder yang berhasil dikirim),
+            "details": list (detail setiap customer/vehicle)
+        }
+    """
+    try:
+        from services.services_customer import send_maintenance_reminder_whatsapp
+        result = send_maintenance_reminder_whatsapp(db)
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))

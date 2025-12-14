@@ -1,12 +1,33 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from contextlib import asynccontextmanager
 import os
 
 # Auto-import all routers from routes directory
 from routes import all_routers
 
-app = FastAPI()
+
+# Startup dan shutdown events
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    print("🚀 FastAPI Aplikasi sedang startup...")
+    # Uncomment untuk auto-start scheduler saat app startup
+    # from services.scheduler_maintenance_reminder import start_scheduler
+    # start_scheduler(hour=7, minute=0)
+    print("✓ Aplikasi siap digunakan")
+    
+    yield
+    
+    # Shutdown
+    print("🛑 FastAPI Aplikasi sedang shutdown...")
+    from services.scheduler_maintenance_reminder import stop_scheduler
+    stop_scheduler()
+    print("✓ Scheduler dihentikan")
+
+
+app = FastAPI(lifespan=lifespan)
 
 # CORS middleware
 app.add_middleware(

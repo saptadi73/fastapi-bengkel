@@ -296,3 +296,122 @@ def createVehicletoCustomer(db: Session, CreateVehicle):
     db.commit()
     db.refresh(new_vehicle)
     return to_dict(new_vehicle)
+
+
+def send_maintenance_reminder_whatsapp(db: Session):
+    """
+    Fungsi untuk mengirim reminder WhatsApp ke customer yang jadwal maintenance-nya
+    kurang dari 3 hari.
+    
+    Logic:
+    - Ambil daftar customer dengan vehicle dari getListCustomersWithvehicles
+    - Cek setiap vehicle apakah next_visit_date kurang dari 3 hari dari hari ini
+    - Jika ya, kirim pesan WhatsApp dengan format yang ditentukan
+    
+    Returns:
+        Dict berisi:
+        {
+            "total_customers": int,
+            "reminder_sent": int,
+            "details": list of dicts with vehicle info dan status pengiriman
+        }
+    """
+    from datetime import datetime, timedelta
+    from services.services_whatsapp import send_whatsapp_message_sync
+    
+    try:
+        # Ambil daftar customer dengan vehicle
+        customers_vehicles = getListCustomersWithvehicles(db)
+        
+        if not customers_vehicles:
+            return {
+                "total_customers": 0,
+                "reminder_sent": 0,
+                "details": []
+            }
+        
+        today = datetime.now().date()
+        reminder_sent = 0
+        details = []
+        
+        for vehicle_data in customers_vehicles:
+            customer_nama = vehicle_data.get('customer_nama')
+            customer_hp = vehicle_data.get('customer_hp')
+            no_pol = vehicle_data.get('no_pol')
+            next_visit_date_str = vehicle_data.get('next_visit_date')
+            
+            # Skip jika data tidak lengkap
+            if not all([customer_nama, customer_hp, no_pol, next_visit_date_str]):
+                details.append({
+                    "no_pol": no_pol,
+                    "customer_nama": customer_nama,
+                    "status": "skipped",
+                    "reason": "Data tidak lengkap"
+                })
+                continue
+            
+            # Parse next_visit_date (format ISO string: YYYY-MM-DD)
+            try:
+                next_visit_date = datetime.fromisoformat(next_visit_date_str).date()
+            except (ValueError, TypeError):
+                details.append({
+                    "no_pol": no_pol,
+                    "customer_nama": customer_nama,
+                    "status": "skipped",
+                    "reason": "Format next_visit_date tidak valid"
+                })
+                continue
+            
+            # Hitung selisih hari antara hari ini dan next_visit_date
+            days_until_visit = (next_visit_date - today).days
+            
+            # Jika kurang dari 3 hari (0, 1, 2 hari sebelumnya), kirim reminder
+            if 0 <= days_until_visit < 3:
+                try:
+                    # Format nomor HP jika perlu (pastikan format 62)
+                    phone = customer_hp.strip()
+                    if phone.startswith('0'):
+                        phone = '62' + phone[1:]
+                    elif not phone.startswith('62'):
+                        phone = '62' + phone
+                    
+                    # Format pesan
+                    message = f"Bapak {customer_nama} untuk nomor kendaraan {no_pol} sebentar lagi tiba saat pemeliharaan rutin pada tanggal {next_visit_date.strftime('%d-%m-%Y')}, daftarkan segera melalui nomor pelayanan kami 08551000727"
+                    
+                    # Kirim WhatsApp
+                    from schemas.service_whatsapp import WhatsAppMessageCreate
+                    msg_data = WhatsAppMessageCreate(
+                        message_type="text",
+                        to=phone,
+                        body=message
+                    )
+                    result = send_whatsapp_message_sync(msg_data)
+                    
+                    reminder_sent += 1
+                    details.append({
+                        "no_pol": no_pol,
+                        "customer_nama": customer_nama,
+                        "customer_hp": customer_hp,
+                        "next_visit_date": next_visit_date.isoformat(),
+                        "days_until_visit": days_until_visit,
+                        "status": "sent",
+                        "message": message,
+                        "api_response": result.get("message") if isinstance(result, dict) else str(result)
+                    })
+                
+                except Exception as e:
+                    details.append({
+                        "no_pol": no_pol,
+                        "customer_nama": customer_nama,
+                        "status": "failed",
+                        "reason": str(e)
+                    })
+        
+        return {
+            "total_customers": len(customers_vehicles),
+            "reminder_sent": reminder_sent,
+            "details": details
+        }
+    
+    except Exception as e:
+        raise Exception(f"Error dalam send_maintenance_reminder_whatsapp: {str(e)}")
