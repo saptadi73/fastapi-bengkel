@@ -9,6 +9,20 @@ import decimal
 import datetime
 from dateutil.relativedelta import relativedelta
 from contextlib import suppress
+from typing import DefaultDict, List, Optional, Tuple, TypedDict
+
+
+class AggregatedOrder(TypedDict):
+    """Typed structure for grouped work order data."""
+
+    tanggal: Optional[str]
+    keluhan: Optional[str]
+    no_wo: Optional[str]
+    product_names: List[str]
+    service_names: List[str]
+
+
+AggregatedKey = Tuple[Optional[str], Optional[str], Optional[str]]
 
 def to_dict(obj):
     result = {}
@@ -199,13 +213,15 @@ def getServiceOrderedAndProductOrderedByVehicleID(db: Session, vehicle_id: str):
     vehicle_dict = to_dict(vehicle)
     workorders = []
     from collections import defaultdict
-    all_orders_dict = defaultdict(lambda: {
-        'tanggal': None,
-        'keluhan': None,
-        'no_wo': None,
-        'product_names': [],
-        'service_names': []
-    })
+    all_orders_dict: DefaultDict[AggregatedKey, AggregatedOrder] = defaultdict(
+        lambda: {
+            'tanggal': None,
+            'keluhan': None,
+            'no_wo': None,
+            'product_names': [],
+            'service_names': []
+        }
+    )
     for wo in sorted(vehicle.workorders, key=lambda w: w.tanggal_masuk or w.tanggal_keluar or '', reverse=False):
         wo_dict = to_dict(wo)
         service_orders = []
@@ -383,7 +399,10 @@ def send_maintenance_reminder_whatsapp(db: Session):
                     msg_data = WhatsAppMessageCreate(
                         message_type="text",
                         to=phone,
-                        body=message
+                        body=message,
+                        file=None,
+                        delay=None,
+                        schedule=None
                     )
                     result = send_whatsapp_message_sync(msg_data)
                     

@@ -150,7 +150,10 @@ def send_simple_message(phone: str, message: str) -> Dict[str, Any]:
     msg_data = WhatsAppMessageCreate(
         message_type="text",
         to=phone,
-        body=message
+        body=message,
+        file=None,
+        delay=None,
+        schedule=None
     )
     return send_whatsapp_message_sync(msg_data)
 
@@ -171,7 +174,9 @@ def send_message_with_file(phone: str, message: str, file_url: str) -> Dict[str,
         message_type="text",
         to=phone,
         body=message,
-        file=file_url
+        file=file_url,
+        delay=None,
+        schedule=None
     )
     return send_whatsapp_message_sync(msg_data)
 
@@ -192,6 +197,8 @@ def send_scheduled_message(phone: str, message: str, schedule_timestamp_ms: int)
         message_type="text",
         to=phone,
         body=message,
+        file=None,
+        delay=None,
         schedule=schedule_timestamp_ms
     )
     return send_whatsapp_message_sync(msg_data)

@@ -1,6 +1,9 @@
 import requests
 import json
 import uuid
+import pytest
+
+pytestmark = pytest.mark.integration
 
 # Assuming the server is running on localhost:8000
 base_url = 'http://localhost:8000'
