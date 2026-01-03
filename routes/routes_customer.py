@@ -37,7 +37,7 @@ def list_customers_with_vehicles(
         return error_response(message=str(e))
 
 @router.get("/with-vehicles/{vehicle_id}")
-def list_customers_with_vehicles(
+def get_customer_vehicle_by_id(
     vehicle_id: str,
     db: Session = Depends(get_db)
 ):
