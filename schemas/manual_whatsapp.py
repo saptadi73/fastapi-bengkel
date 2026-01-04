@@ -111,3 +111,38 @@ class SendReminderResponse(BaseModel):
                 ]
             }
         }
+
+
+class SendCustomMessageRequest(BaseModel):
+    """Schema untuk request send custom message"""
+    no_hp: str = Field(..., description="Nomor HP tujuan (format: 62xxx atau 08xxx)", min_length=10, max_length=20)
+    message: str = Field(..., description="Isi pesan WhatsApp", min_length=1, max_length=2000)
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "no_hp": "08123456789",
+                "message": "Halo Bapak John, kami ingin mengingatkan bahwa kendaraan Anda perlu service rutin."
+            }
+        }
+
+
+class SendCustomMessageResponse(BaseModel):
+    """Schema untuk response send custom message"""
+    status: str
+    no_hp: str
+    message: str
+    api_response: dict
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "status": "sent",
+                "no_hp": "628123456789",
+                "message": "Halo Bapak John...",
+                "api_response": {
+                    "success": True,
+                    "message": "Success sent message"
+                }
+            }
+        }

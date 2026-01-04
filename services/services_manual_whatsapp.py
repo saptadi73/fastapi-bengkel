@@ -8,6 +8,7 @@ from schemas.manual_whatsapp import ManualWhatsAppCreate, ManualWhatsAppUpdate
 from datetime import datetime, date, timedelta
 from typing import List, Dict, Any, Optional
 from sqlalchemy import update as sqlalchemy_update
+from supports.utils_json_response import success_response, error_response
 import logging
 
 logger = logging.getLogger(__name__)
@@ -21,21 +22,18 @@ def normalize_phone_number(phone: str) -> str:
         phone: Nomor HP (format: 08xxx atau 62xxx)
     
     Returns:
-        Nomor HP dengan format 62xxx
+        Nomor HP yang sudah dibersihkan tanpa memaksa konversi 62xxx
     """
     phone = phone.strip()
-    
-    # Remove common separators
+
+    # Remove common separators but biarkan prefix apa adanya (08xx atau 62xx)
     phone = phone.replace(" ", "").replace("-", "")
-    
-    # Konversi 08xxx ke 62xxx
-    if phone.startswith("08"):
-        phone = "62" + phone[1:]
-    elif phone.startswith("0"):
-        phone = "62" + phone[1:]
-    elif not phone.startswith("62"):
-        phone = "62" + phone
-    
+
+    # Jika user menaruh "+62", hilangkan plus saja agar tetap 62xxx
+    if phone.startswith("+62"):
+        phone = phone[1:]
+
+    # Kembalikan apa adanya (boleh 08xxx atau 62xxx sesuai permintaan user)
     return phone
 
 
@@ -433,3 +431,158 @@ def to_dict(record: Optional[ManualWhatsApp]) -> Dict[str, Any]:
         "created_at": record.created_at.isoformat(),
         "updated_at": record.updated_at.isoformat()
     }
+
+
+# ============= JSON RESPONSE WRAPPERS =============
+
+def create_manual_whatsapp_json(db: Session, data: ManualWhatsAppCreate):
+    try:
+        record = create_manual_whatsapp(db, data)
+        return success_response(
+            data=record,
+            message="Manual WhatsApp berhasil dibuat",
+            status_code=201
+        )
+    except ValueError as e:
+        return error_response(message=str(e), status_code=400)
+    except Exception as e:
+        logger.error(f"Error creating manual WhatsApp: {str(e)}")
+        return error_response(message="Gagal membuat manual WhatsApp", status_code=500, data={"error": str(e)})
+
+
+def get_manual_whatsapp_by_id_json(db: Session, record_id: str):
+    try:
+        record = get_manual_whatsapp_by_id(db, record_id)
+        if not record:
+            return error_response(message="Record tidak ditemukan", status_code=404)
+        return success_response(data=record, message="Record ditemukan")
+    except Exception as e:
+        logger.error(f"Error fetching manual WhatsApp by id: {str(e)}")
+        return error_response(message="Gagal mengambil record", status_code=500, data={"error": str(e)})
+
+
+def get_manual_whatsapp_by_nopol_json(db: Session, nopol: str):
+    try:
+        record = get_manual_whatsapp_by_nopol(db, nopol)
+        if not record:
+            return error_response(message=f"Nopol {nopol} tidak ditemukan", status_code=404)
+        return success_response(data=record, message="Record ditemukan")
+    except Exception as e:
+        logger.error(f"Error fetching manual WhatsApp by nopol: {str(e)}")
+        return error_response(message="Gagal mengambil record", status_code=500, data={"error": str(e)})
+
+
+def get_all_manual_whatsapp_json(db: Session, active_only: bool = False):
+    try:
+        result = get_all_manual_whatsapp(db, active_only)
+        return success_response(data=result, message="Berhasil mengambil data manual WhatsApp")
+    except Exception as e:
+        logger.error(f"Error fetching all manual WhatsApp: {str(e)}")
+        return error_response(message="Gagal mengambil data manual WhatsApp", status_code=500, data={"error": str(e)})
+
+
+def update_manual_whatsapp_json(db: Session, record_id: str, data: ManualWhatsAppUpdate):
+    try:
+        record = update_manual_whatsapp(db, record_id, data)
+        if not record:
+            return error_response(message="Record tidak ditemukan", status_code=404)
+        return success_response(data=record, message="Record berhasil diupdate")
+    except ValueError as e:
+        return error_response(message=str(e), status_code=400)
+    except Exception as e:
+        logger.error(f"Error updating manual WhatsApp: {str(e)}")
+        return error_response(message="Gagal mengupdate record", status_code=500, data={"error": str(e)})
+
+
+def delete_manual_whatsapp_json(db: Session, record_id: str):
+    try:
+        success = delete_manual_whatsapp(db, record_id)
+        if not success:
+            return error_response(message="Record tidak ditemukan", status_code=404)
+        return success_response(data=None, message="Record berhasil dihapus", status_code=204)
+    except Exception as e:
+        logger.error(f"Error deleting manual WhatsApp: {str(e)}")
+        return error_response(message="Gagal menghapus record", status_code=500, data={"error": str(e)})
+
+
+def bulk_import_manual_whatsapp_json(db: Session, records_data: List[ManualWhatsAppCreate]):
+    try:
+        if not records_data:
+            return error_response(message="Records tidak boleh kosong", status_code=400)
+        result = bulk_import_manual_whatsapp(db, records_data)
+        return success_response(
+            data=result,
+            message=f"Import selesai. {result['imported']} berhasil, {result['failed']} gagal",
+            status_code=201
+        )
+    except Exception as e:
+        logger.error(f"Error bulk import manual WhatsApp: {str(e)}")
+        return error_response(message="Gagal import data", status_code=500, data={"error": str(e)})
+
+
+def send_reminder_to_manual_customers_json(
+    db: Session,
+    days_threshold: int = 3,
+    only_active: bool = True
+):
+    try:
+        result = send_reminder_to_manual_customers(db, days_threshold=days_threshold, only_active=only_active)
+        return success_response(data=result, message="Pengiriman reminder selesai")
+    except Exception as e:
+        logger.error(f"Error sending reminders: {str(e)}")
+        return error_response(message="Gagal mengirim reminder", status_code=500, data={"error": str(e)})
+
+
+def send_custom_whatsapp_message(no_hp: str, message: str) -> Dict[str, Any]:
+    """
+    Kirim custom WhatsApp message ke nomor yang ditentukan
+    
+    Args:
+        no_hp: Nomor HP tujuan (format: 62xxx atau 08xxx)
+        message: Isi pesan WhatsApp custom dari front-end
+    
+    Returns:
+        Dict dengan status pengiriman dan response dari API
+    """
+    from services.services_whatsapp import send_whatsapp_message_sync
+    from schemas.service_whatsapp import WhatsAppMessageCreate
+    
+    try:
+        # Normalize phone number
+        normalized_phone = normalize_phone_number(no_hp)
+        
+        # Convert 08xxx to 62xxx for WhatsApp API
+        if normalized_phone.startswith("08"):
+            normalized_phone = "62" + normalized_phone[1:]
+        
+        # Validate
+        if not normalized_phone or len(normalized_phone) < 10:
+            raise ValueError("Nomor HP tidak valid")
+        
+        if not message or len(message.strip()) == 0:
+            raise ValueError("Message tidak boleh kosong")
+        
+        # Send WhatsApp
+        msg_data = WhatsAppMessageCreate(
+            message_type="text",
+            to=normalized_phone,
+            body=message.strip(),
+            file=None,
+            delay=None,
+            schedule=None
+        )
+        
+        result = send_whatsapp_message_sync(msg_data)
+        
+        logger.info(f"Custom message sent to {normalized_phone}")
+        
+        return {
+            "status": "sent",
+            "no_hp": normalized_phone,
+            "message": message.strip(),
+            "api_response": result
+        }
+    
+    except Exception as e:
+        logger.error(f"Failed to send custom message to {no_hp}: {str(e)}")
+        raise

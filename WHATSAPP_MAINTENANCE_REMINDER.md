@@ -221,18 +221,38 @@ Sistem query:
 - `fastapi`: Web framework
 - `sqlalchemy`: ORM
 - `pydantic`: Data validation
+- `python-dotenv`: Environment variables loader
 
 Install:
 ```bash
-pip install apscheduler httpx fastapi sqlalchemy pydantic
+pip install apscheduler httpx fastapi sqlalchemy pydantic python-dotenv
 ```
+
+## Konfigurasi
+
+### Environment Variables
+
+Buat file `.env` di root project:
+
+```env
+# WhatsApp API Configuration
+STARSENDER_API_KEY=your_api_key_here
+
+# Database Configuration
+DATABASE_URL=postgresql+psycopg2://username:password@localhost:5432/database_name
+```
+
+Setup:
+1. Copy `.env.example` ke `.env`
+2. Isi nilai sesuai konfigurasi Anda
+3. File `.env` otomatis diabaikan oleh git (sudah ada di `.gitignore`)
 
 ## Catatan Penting
 
 1. **JWT Authentication:** Semua endpoint scheduler memerlukan JWT token
 2. **Timezone:** Scheduler menggunakan timezone lokal sistem
 3. **Database Connection:** Scheduler membuat koneksi DB baru setiap kali job dijalankan
-4. **WhatsApp API Key:** Ensure API key di `services_whatsapp.py` valid dan terdaftar
+4. **Environment Variables:** API key dan DATABASE_URL sekarang menggunakan file `.env` untuk keamanan
 5. **Multiple Instances:** Jika menjalankan multiple instances aplikasi, gunakan scheduler external (seperti systemd timer atau cron) daripada built-in scheduler
 
 ## Troubleshooting
@@ -242,9 +262,15 @@ pip install apscheduler httpx fastapi sqlalchemy pydantic
 - Lihat logs untuk error message
 
 ### Pesan tidak terkirim
-- Verify WhatsApp API key di `services_whatsapp.py`
+- Verify WhatsApp API key di file `.env` valid dan terdaftar
 - Cek format nomor HP customer (harus ada di database)
 - Lihat response detail di `status: "failed"` untuk error message
+- Pastikan `python-dotenv` sudah terinstall
+
+### Database Connection Error
+- Pastikan `DATABASE_URL` di `.env` sudah benar
+- Format: `postgresql+psycopg2://user:password@host:port/database`
+- Pastikan database server sudah running
 
 ### Job berjalan lebih dari 1x
 - Max instances sudah set ke 1, jika masih ada issue check APScheduler version

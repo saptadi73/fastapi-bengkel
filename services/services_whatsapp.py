@@ -4,13 +4,63 @@ Dokumentasi API: https://api.starsender.online/api/send
 """
 import httpx
 import json
+import logging
+import os
+from logging.handlers import RotatingFileHandler
 from typing import Optional, Dict, Any
+from dotenv import load_dotenv
+
 from schemas.service_whatsapp import WhatsAppMessageCreate, WhatsAppMessageResponse
+
+# Load environment variables from .env file
+load_dotenv()
 
 # StarSender API Configuration
 STARSENDER_API_URL = "https://api.starsender.online/api/send"
-STARSENDER_API_KEY = "a234d49a-a181-4a83-964d-0d118b3a6e45"
+STARSENDER_API_KEY = os.getenv('STARSENDER_API_KEY', '')
 REQUEST_TIMEOUT = 30
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+LOG_DIR = "logs"
+LOG_FILE = os.path.join(LOG_DIR, "starsender.log")
+
+
+def _ensure_file_logger() -> None:
+    """Attach rotating file handler for StarSender logs if not already present."""
+    # Logging disabled temporarily - already working fine
+    pass
+    # os.makedirs(LOG_DIR, exist_ok=True)
+    # exists = any(isinstance(h, RotatingFileHandler) and getattr(h, "baseFilename", "") == os.path.abspath(LOG_FILE) for h in logger.handlers)
+    # if exists:
+    #     return
+    # handler = RotatingFileHandler(LOG_FILE, maxBytes=1_000_000, backupCount=3, encoding="utf-8")
+    # handler.setLevel(logging.DEBUG)
+    # formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s")
+    # handler.setFormatter(formatter)
+    # logger.addHandler(handler)
+    # logger.propagate = False
+
+
+_ensure_file_logger()
+
+
+def _mask_key(key: str) -> str:
+    """Mask API key for safe logging."""
+    if not key:
+        return "<empty>"
+    if len(key) <= 8:
+        return "***"
+    return key[:4] + "***" + key[-4:]
+
+
+def _as_json(data: Any) -> str:
+    """Safe JSON stringify for logging."""
+    try:
+        return json.dumps(data, ensure_ascii=False)
+    except Exception:
+        return str(data)
 
 
 async def send_whatsapp_message(message_data: WhatsAppMessageCreate) -> Dict[str, Any]:
@@ -51,6 +101,13 @@ async def send_whatsapp_message(message_data: WhatsAppMessageCreate) -> Dict[str
         "Content-Type": "application/json",
         "Authorization": STARSENDER_API_KEY
     }
+
+    logger.debug(
+        "StarSender request (async) url=%s auth=%s payload=%s",
+        STARSENDER_API_URL,
+        _mask_key(STARSENDER_API_KEY),
+        _as_json(payload)
+    )
     
     try:
         # Gunakan httpx untuk mengirim request
@@ -64,8 +121,20 @@ async def send_whatsapp_message(message_data: WhatsAppMessageCreate) -> Dict[str
             # Check status code
             if response.status_code == 200:
                 result = response.json()
+                logger.debug(
+                    "StarSender response (async) status=%s body=%s",
+                    response.status_code,
+                    _as_json(result)
+                )
                 return result
             else:
+                logger.error(
+                    "StarSender HTTP error (async) status=%s url=%s payload=%s response=%s",
+                    response.status_code,
+                    STARSENDER_API_URL,
+                    _as_json(payload),
+                    response.text
+                )
                 raise Exception(
                     f"API StarSender error: HTTP {response.status_code} - {response.text}"
                 )
@@ -109,6 +178,13 @@ def send_whatsapp_message_sync(message_data: WhatsAppMessageCreate) -> Dict[str,
         "Content-Type": "application/json",
         "Authorization": STARSENDER_API_KEY
     }
+
+    logger.debug(
+        "StarSender request (sync) url=%s auth=%s payload=%s",
+        STARSENDER_API_URL,
+        _mask_key(STARSENDER_API_KEY),
+        _as_json(payload)
+    )
     
     try:
         # Gunakan httpx untuk mengirim request (sync)
@@ -122,8 +198,20 @@ def send_whatsapp_message_sync(message_data: WhatsAppMessageCreate) -> Dict[str,
             # Check status code
             if response.status_code == 200:
                 result = response.json()
+                logger.debug(
+                    "StarSender response (sync) status=%s body=%s",
+                    response.status_code,
+                    _as_json(result)
+                )
                 return result
             else:
+                logger.error(
+                    "StarSender HTTP error (sync) status=%s url=%s payload=%s response=%s",
+                    response.status_code,
+                    STARSENDER_API_URL,
+                    _as_json(payload),
+                    response.text
+                )
                 raise Exception(
                     f"API StarSender error: HTTP {response.status_code} - {response.text}"
                 )

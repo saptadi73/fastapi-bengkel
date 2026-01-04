@@ -28,6 +28,7 @@ Sistem Manual WhatsApp adalah fitur untuk mengirim reminder WhatsApp ke customer
 - ✅ Phone number normalization otomatis (08xxx → 62xxx)
 - ✅ Bulk import untuk banyak customer sekaligus
 - ✅ Pengiriman reminder WhatsApp otomatis/manual
+- ✅ **Pengiriman custom message ke nomor manapun (tanpa database)**
 - ✅ Tracking reminder (berapa kali sudah dikirim, terakhir kapan)
 - ✅ Status aktif/tidak aktif per customer
 - ✅ Statistics dan reporting
@@ -135,6 +136,22 @@ POST/GET/PUT/DELETE /manual-whatsapp
 ```
 
 **Authentication**: ✅ Semua endpoint memerlukan JWT Token
+
+### Summary Endpoint
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/manual-whatsapp/` | Create record baru |
+| POST | `/manual-whatsapp/bulk-import` | Bulk import banyak records |
+| GET | `/manual-whatsapp/` | Get semua records |
+| GET | `/manual-whatsapp/{record_id}` | Get by ID |
+| GET | `/manual-whatsapp/by-nopol/{nopol}` | Get by nopol |
+| PUT | `/manual-whatsapp/{record_id}` | Update record |
+| PATCH | `/manual-whatsapp/{record_id}/toggle-active` | Toggle active status |
+| DELETE | `/manual-whatsapp/{record_id}` | Delete record |
+| POST | `/manual-whatsapp/send-reminders` | Bulk send reminders |
+| POST | `/manual-whatsapp/{record_id}/send-reminder` | Send reminder to specific customer |
+| **POST** | **`/manual-whatsapp/send-custom-message`** | **Send custom message (NEW)** |
+| GET | `/manual-whatsapp/stats/summary` | Get statistics |
 
 ---
 
@@ -503,7 +520,93 @@ curl -X POST "http://localhost:8000/manual-whatsapp/550e8400-e29b-41d4-a716-4466
 
 ---
 
-### 11. GET STATISTICS - GET `/manual-whatsapp/stats/summary`
+### 11. SEND CUSTOM MESSAGE - POST `/manual-whatsapp/send-custom-message`
+
+Kirim custom WhatsApp message ke nomor yang ditentukan (tidak harus ada di database).
+
+**Use Cases:**
+- Kirim pesan promosi manual
+- Kirim reminder custom dengan format bebas
+- Kirim notifikasi khusus ke customer
+- Testing pengiriman WhatsApp
+- Kirim pesan ke nomor yang tidak ada di database
+
+**Request Body:**
+```json
+{
+  "no_hp": "08123456789",
+  "message": "Halo Bapak John, kami ingin mengingatkan bahwa kendaraan B 1234 XYZ Anda perlu service rutin minggu depan. Hubungi kami di 08551000727."
+}
+```
+
+**Parameters:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `no_hp` | string | ✅ Yes | Nomor HP tujuan (format: 62xxx atau 08xxx) |
+| `message` | string | ✅ Yes | Isi pesan WhatsApp (custom dari front-end, max 2000 karakter) |
+
+**Response:**
+```json
+{
+  "status": "sent",
+  "no_hp": "628123456789",
+  "message": "Halo Bapak John, kami ingin mengingatkan bahwa kendaraan B 1234 XYZ Anda perlu service rutin minggu depan. Hubungi kami di 08551000727.",
+  "api_response": {
+    "success": true,
+    "data": {
+      "message_id": 123456
+    },
+    "message": "Success sent message"
+  }
+}
+```
+
+**Example cURL:**
+```bash
+curl -X POST "http://localhost:8000/manual-whatsapp/send-custom-message" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "no_hp": "08123456789",
+    "message": "Halo Bapak John, kendaraan B 1234 XYZ Anda perlu service minggu depan."
+  }'
+```
+
+**Example Python:**
+```python
+import requests
+
+headers = {
+    'Authorization': 'Bearer YOUR_JWT_TOKEN',
+    'Content-Type': 'application/json'
+}
+
+data = {
+    "no_hp": "08123456789",
+    "message": "Halo Bapak John, kendaraan B 1234 XYZ Anda perlu service minggu depan. Hubungi kami di 08551000727."
+}
+
+response = requests.post(
+    'http://localhost:8000/manual-whatsapp/send-custom-message',
+    headers=headers,
+    json=data
+)
+
+result = response.json()
+print(f"Status: {result['status']}")
+print(f"Sent to: {result['no_hp']}")
+```
+
+**Features:**
+- ✅ Tidak perlu nomor ada di database
+- ✅ Message bebas/custom dari front-end
+- ✅ Auto normalize nomor HP (08xxx → 62xxx)
+- ✅ Validasi nomor dan message
+- ✅ Real-time response dari WhatsApp API
+
+---
+
+### 12. GET STATISTICS - GET `/manual-whatsapp/stats/summary`
 
 Get statistik manual WhatsApp customers.
 
@@ -574,6 +677,24 @@ curl -X GET "http://localhost:8000/manual-whatsapp/stats/summary" \
 }
 ```
 
+### SendCustomMessageRequest
+```python
+{
+    "no_hp": str,              # Required (format: 62xxx atau 08xxx)
+    "message": str             # Required (max 2000 karakter)
+}
+```
+
+### SendCustomMessageResponse
+```python
+{
+    "status": str,             # "sent" atau "failed"
+    "no_hp": str,              # Normalized phone number
+    "message": str,            # Message yang dikirim
+    "api_response": dict       # Response dari WhatsApp API
+}
+```
+
 ---
 
 ## Service Functions
@@ -629,6 +750,12 @@ Kirim reminder WhatsApp ke customers. Auto-track reminder count & last sent time
 def bulk_import_manual_whatsapp(db: Session, records_data: List[ManualWhatsAppCreate]) -> Dict[str, Any]
 ```
 Bulk import multiple records.
+
+### send_custom_whatsapp_message()
+```python
+def send_custom_whatsapp_message(no_hp: str, message: str) -> Dict[str, Any]
+```
+Kirim custom WhatsApp message ke nomor manapun (tidak perlu ada di database). Auto-normalize phone number.
 
 ---
 
@@ -755,7 +882,39 @@ scheduler.start()
 
 ---
 
-### Use Case 4: Dashboard Monitoring
+### Use Case 4: Kirim Custom Message Manual
+
+```python
+from services.services_manual_whatsapp import send_custom_whatsapp_message
+
+try:
+    result = send_custom_whatsapp_message(
+        no_hp="08123456789",
+        message="Halo Bapak John, kami ada promo service gratis untuk kendaraan B 1234 XYZ. Hubungi kami di 08551000727."
+    )
+    
+    print(f"✓ Pesan berhasil dikirim ke {result['no_hp']}")
+    print(f"  Status: {result['status']}")
+    print(f"  API Response: {result['api_response']}")
+    
+except Exception as e:
+    print(f"✗ Gagal mengirim pesan: {str(e)}")
+```
+
+**API Request:**
+```bash
+curl -X POST "http://localhost:8000/manual-whatsapp/send-custom-message" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "no_hp": "08123456789",
+    "message": "Halo, ada promo service gratis minggu ini!"
+  }'
+```
+
+---
+
+### Use Case 5: Dashboard Monitoring
 
 ```python
 # routes untuk dashboard

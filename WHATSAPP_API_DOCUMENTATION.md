@@ -51,15 +51,35 @@ Fitur pengiriman WhatsApp di aplikasi FastAPI Bengkel menggunakan **StarSender A
 
 ### Environment Variables
 
-File: `services/services_whatsapp.py`
+**File `.env`** (di root project):
 
+```env
+# WhatsApp API Configuration
+STARSENDER_API_KEY=your_api_key_here
+
+# Database Configuration
+DATABASE_URL=postgresql+psycopg2://username:password@localhost:5432/database_name
+```
+
+**Setup:**
+1. Copy file `.env.example` menjadi `.env`
+2. Isi `STARSENDER_API_KEY` dengan API key dari StarSender
+3. Sesuaikan `DATABASE_URL` dengan konfigurasi database Anda
+4. Install dependency: `pip install python-dotenv`
+
+**Implementasi** (`services/services_whatsapp.py`):
 ```python
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
 STARSENDER_API_URL = "https://api.starsender.online/api/send"
-STARSENDER_API_KEY = "a234d49a-a181-4a83-964d-0d118b3a6e45"
+STARSENDER_API_KEY = os.getenv('STARSENDER_API_KEY', '')
 REQUEST_TIMEOUT = 30  # timeout dalam detik
 ```
 
-⚠️ **Security Note**: Sebaiknya API Key dipindahkan ke environment variables (`.env`) untuk keamanan yang lebih baik.
+✅ **Security**: API Key dan DATABASE_URL sekarang tersimpan aman di file `.env` yang tidak ter-commit ke repository (ada di `.gitignore`).
 
 ---
 

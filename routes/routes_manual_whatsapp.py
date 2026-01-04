@@ -11,7 +11,9 @@ from schemas.manual_whatsapp import (
     ManualWhatsAppResponse,
     ManualWhatsAppListResponse,
     SendReminderRequest,
-    SendReminderResponse
+    SendReminderResponse,
+    SendCustomMessageRequest,
+    SendCustomMessageResponse
 )
 from services.services_manual_whatsapp import (
     create_manual_whatsapp,
@@ -21,7 +23,8 @@ from services.services_manual_whatsapp import (
     update_manual_whatsapp,
     delete_manual_whatsapp,
     send_reminder_to_manual_customers,
-    bulk_import_manual_whatsapp
+    bulk_import_manual_whatsapp,
+    send_custom_whatsapp_message
 )
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
@@ -408,6 +411,50 @@ Terima kasih atas kepercayaan Anda.
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/send-custom-message", response_model=SendCustomMessageResponse)
+def send_custom_message(
+    request: SendCustomMessageRequest,
+    _=Depends(jwt_required)
+):
+    """
+    Kirim custom WhatsApp message ke nomor yang ditentukan (tidak harus ada di database)
+    
+    **Use Cases:**
+    - Kirim pesan promosi manual
+    - Kirim reminder custom
+    - Kirim notifikasi khusus
+    - Testing pengiriman WhatsApp
+    
+    **Request Body:**
+    - no_hp: Nomor HP tujuan (format: 62xxx atau 08xxx)
+    - message: Isi pesan WhatsApp (custom dari front-end)
+    
+    **Example Request:**
+    ```json
+    {
+        "no_hp": "08123456789",
+        "message": "Halo Bapak John, kami ingin mengingatkan bahwa kendaraan B 1234 XYZ Anda perlu service rutin minggu depan."
+    }
+    ```
+    
+    **Response:**
+    - status: Status pengiriman ("sent" atau "failed")
+    - no_hp: Nomor HP yang dikirim (sudah dinormalisasi)
+    - message: Isi pesan yang dikirim
+    - api_response: Response dari WhatsApp API
+    """
+    try:
+        result = send_custom_whatsapp_message(
+            no_hp=request.no_hp,
+            message=request.message
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal mengirim pesan: {str(e)}")
 
 
 # ============= STATISTICS & REPORTING =============
