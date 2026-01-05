@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from uuid import UUID
 
 class UserRegister(BaseModel):
@@ -21,7 +21,18 @@ class UserResponse(BaseModel):
         "from_attributes": True
     }
 
+class UserWithRolesResponse(BaseModel):
+    id: UUID
+    username: str
+    email: str
+    is_active: Optional[bool] = None
+    roles: List[Dict[str, Any]] = []
+
+    model_config = {
+        "from_attributes": True
+    }
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
-    user: Optional[UserResponse]=None
+    user: Optional[Dict[str, Any]] = None

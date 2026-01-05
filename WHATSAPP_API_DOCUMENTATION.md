@@ -1,18 +1,22 @@
 # Dokumentasi API WhatsApp - FastAPI Bengkel
 
 ## Daftar Isi
+
 - [Ringkasan](#ringkasan)
 - [Konfigurasi](#konfigurasi)
 - [API Endpoints](#api-endpoints)
   - [WhatsApp Send Endpoints](#whatsapp-send-endpoints)
   - [Maintenance Reminder Endpoints](#maintenance-reminder-endpoints)
-    - [Manual WhatsApp Endpoints](#manual-whatsapp-endpoints)
+  - [Manual WhatsApp Endpoints](#manual-whatsapp-endpoints)
+  - [WhatsApp Report Endpoints](#whatsapp-report-endpoints)
 - [Schemas](#schemas)
 - [Service Functions](#service-functions)
 - [Maintenance Reminder System](#maintenance-reminder-system)
   - [Scheduler Configuration](#scheduler-configuration)
   - [Service Logic](#service-logic)
   - [Routes Integration](#routes-integration)
+- [WhatsApp Report Tracking System](#whatsapp-report-tracking-system)
+- [Manual WhatsApp System](#manual-whatsapp-system)
 - [Contoh Penggunaan](#contoh-penggunaan)
 - [Error Handling](#error-handling)
 
@@ -20,9 +24,10 @@
 
 ## Ringkasan
 
-Fitur pengiriman WhatsApp di aplikasi FastAPI Bengkel menggunakan **StarSender API Gateway** untuk mengirim pesan WhatsApp secara programatik. Fitur ini mencakup dua sistem utama:
+Fitur pengiriman WhatsApp di aplikasi FastAPI Bengkel menggunakan **StarSender API Gateway** untuk mengirim pesan WhatsApp secara programatik. Fitur ini mencakup empat sistem utama:
 
 ### 1. WhatsApp Messaging System
+
 - Pengiriman pesan teks sederhana
 - Pengiriman pesan dengan file/media
 - Pengiriman pesan terjadwal (scheduled messages)
@@ -30,6 +35,7 @@ Fitur pengiriman WhatsApp di aplikasi FastAPI Bengkel menggunakan **StarSender A
 - Autentikasi JWT pada endpoint utama
 
 ### 2. Maintenance Reminder System (Automated)
+
 - **Scheduler otomatis** yang berjalan setiap hari
 - Mengirim reminder WhatsApp ke customer yang kendaraannya akan jatuh tempo service
 - Deteksi otomatis berdasarkan `next_visit_date` (kurang dari 3 hari)
@@ -37,11 +43,21 @@ Fitur pengiriman WhatsApp di aplikasi FastAPI Bengkel menggunakan **StarSender A
 - Logging lengkap untuk monitoring
 
 ### 3. Manual WhatsApp System (Manual Customers)
+
 - CRUD data customer manual (tidak ada di tabel utama)
 - Kirim reminder manual berbasis `next_service`
-- Bulk import data (CSV/Excel -> JSON payload)
+- Bulk import data (CSV/Excel → JSON payload)
 - Toggle aktif/non-aktif per customer
 - Statistik ringkas (total/active/inactive)
+
+### 4. WhatsApp Report Tracking System (NEW)
+
+- **Auto tracking** setiap pengiriman WhatsApp ke customer+vehicle
+- Update frequency dan last_message_date otomatis
+- Statistik agregat (total pesan, average, breakdown by frequency)
+- Detail report dengan customer & vehicle info
+- Reset frequency untuk analisis berkala
+- Integration seamless dengan maintenance reminder scheduler
 
 **Gateway API**: [https://api.starsender.online/api/send](https://api.starsender.online/api/send)
 
@@ -62,12 +78,14 @@ DATABASE_URL=postgresql+psycopg2://username:password@localhost:5432/database_nam
 ```
 
 **Setup:**
+
 1. Copy file `.env.example` menjadi `.env`
 2. Isi `STARSENDER_API_KEY` dengan API key dari StarSender
 3. Sesuaikan `DATABASE_URL` dengan konfigurasi database Anda
 4. Install dependency: `pip install python-dotenv`
 
 **Implementasi** (`services/services_whatsapp.py`):
+
 ```python
 from dotenv import load_dotenv
 import os
@@ -94,6 +112,7 @@ Endpoint utama untuk mengirim pesan WhatsApp dengan berbagai opsi.
 **Authentication**: ✅ Memerlukan JWT Token
 
 **Request Body**:
+
 ```json
 {
   "to": "628123456789",
@@ -105,6 +124,7 @@ Endpoint utama untuk mengirim pesan WhatsApp dengan berbagai opsi.
 ```
 
 **Parameters**:
+
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `to` | string | ✅ Yes | Nomor WhatsApp tujuan (format: 62xxx atau 08xxx) |
@@ -114,6 +134,7 @@ Endpoint utama untuk mengirim pesan WhatsApp dengan berbagai opsi.
 | `schedule` | integer | ❌ No | Timestamp jadwal pengiriman (dalam milliseconds) |
 
 **Response Success**:
+
 ```json
 {
   "success": true,
@@ -126,6 +147,7 @@ Endpoint utama untuk mengirim pesan WhatsApp dengan berbagai opsi.
 ```
 
 **Response Error**:
+
 ```json
 {
   "success": false,
@@ -135,6 +157,7 @@ Endpoint utama untuk mengirim pesan WhatsApp dengan berbagai opsi.
 ```
 
 **Example cURL**:
+
 ```bash
 curl -X POST "http://localhost:8000/whatsapp/send" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
@@ -154,17 +177,20 @@ Endpoint sederhana untuk mengirim pesan teks tanpa autentikasi.
 **Authentication**: ❌ Tidak memerlukan JWT Token
 
 **Query Parameters**:
+
 - `phone` (string, required): Nomor WhatsApp tujuan
 - `message` (string, required): Isi pesan
 
 **Response**: Sama dengan endpoint `/send`
 
 **Example cURL**:
+
 ```bash
 curl -X POST "http://localhost:8000/whatsapp/send-simple?phone=628123456789&message=Hello%20World"
 ```
 
 **Example JavaScript (fetch)**:
+
 ```javascript
 fetch('http://localhost:8000/whatsapp/send-simple?phone=628123456789&message=Hello', {
   method: 'POST'
@@ -182,22 +208,26 @@ Endpoint untuk mengirim pesan dengan attachment file/media.
 **Authentication**: ❌ Tidak memerlukan JWT Token
 
 **Query Parameters**:
+
 - `phone` (string, required): Nomor WhatsApp tujuan
 - `message` (string, required): Isi pesan
 - `file_url` (string, required): URL publik dari file yang akan dikirim
 
 **Supported File Types**:
+
 - Gambar: JPG, PNG, GIF
 - Dokumen: PDF, DOC, DOCX, XLS, XLSX
 - Video: MP4, AVI
 - Audio: MP3, WAV
 
 **Example cURL**:
+
 ```bash
 curl -X POST "http://localhost:8000/whatsapp/send-with-file?phone=628123456789&message=Invoice%20Anda&file_url=https://example.com/invoice.pdf"
 ```
 
 **Example Python**:
+
 ```python
 import requests
 
@@ -221,11 +251,13 @@ Endpoint untuk mengirim pesan terjadwal (scheduled message).
 **Authentication**: ❌ Tidak memerlukan JWT Token
 
 **Query Parameters**:
+
 - `phone` (string, required): Nomor WhatsApp tujuan
 - `message` (string, required): Isi pesan
 - `schedule_timestamp_ms` (integer, required): Timestamp dalam milliseconds
 
 **Cara Mendapatkan Timestamp**:
+
 ```python
 # Python
 from datetime import datetime, timedelta
@@ -244,6 +276,7 @@ const timestamp_ms = futureTime.getTime();
 ```
 
 **Example cURL**:
+
 ```bash
 curl -X POST "http://localhost:8000/whatsapp/send-scheduled?phone=628123456789&message=Reminder%20Service&schedule_timestamp_ms=1704067200000"
 ```
@@ -261,6 +294,7 @@ Endpoint untuk mengirim reminder WhatsApp secara manual ke semua customer yang k
 **Request**: Tidak ada body/parameter
 
 **Response Success**:
+
 ```json
 {
   "success": true,
@@ -297,6 +331,7 @@ Endpoint untuk mengirim reminder WhatsApp secara manual ke semua customer yang k
 ```
 
 **Response Fields**:
+
 - `total_customers`: Total customer dengan kendaraan dalam database
 - `reminder_sent`: Jumlah reminder yang berhasil dikirim
 - `details`: Array berisi detail setiap kendaraan dengan status:
@@ -305,6 +340,7 @@ Endpoint untuk mengirim reminder WhatsApp secara manual ke semua customer yang k
   - `failed`: Gagal kirim (error API)
 
 **Logic Pengiriman**:
+
 1. Mengambil semua customer dengan vehicle dari database
 2. Cek setiap vehicle untuk `next_visit_date`
 3. Jika `next_visit_date` kurang dari 3 hari dari hari ini (0-2 hari), kirim reminder
@@ -312,6 +348,7 @@ Endpoint untuk mengirim reminder WhatsApp secara manual ke semua customer yang k
 5. Kirim WhatsApp dengan format standar maintenance reminder
 
 **Format Pesan**:
+
 ```
 Bapak {customer_nama} untuk nomor kendaraan {no_pol} 
 sebentar lagi tiba saat pemeliharaan rutin pada tanggal {dd-mm-yyyy}, 
@@ -319,6 +356,7 @@ daftarkan segera melalui nomor pelayanan kami 08551000727
 ```
 
 **Example cURL**:
+
 ```bash
 curl -X POST "http://localhost:8000/customers/send-maintenance-reminder" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
@@ -326,6 +364,7 @@ curl -X POST "http://localhost:8000/customers/send-maintenance-reminder" \
 ```
 
 **Example Python**:
+
 ```python
 import requests
 
@@ -343,6 +382,7 @@ print(f"Reminder terkirim: {result['data']['reminder_sent']}/{result['data']['to
 ```
 
 **Use Case**:
+
 - Manual trigger saat ingin mengirim reminder di luar jadwal scheduler
 - Testing sistem reminder sebelum deploy scheduler
 - Emergency reminder saat ada banyak kendaraan jatuh tempo
@@ -361,14 +401,17 @@ Endpoint untuk pelanggan manual (tidak ada di tabel customer utama). Semua endpo
 - **PATCH `/manual-whatsapp/{record_id}/toggle-active`** — Toggle aktif/non-aktif
 - **DELETE `/manual-whatsapp/{record_id}`** — Hapus data
 - **POST `/manual-whatsapp/send-reminders`** — Kirim reminder ke semua customer manual yang `next_service` jatuh dalam threshold (default 3 hari); request body:
+
     ```json
     {"days_threshold": 3, "only_active": true}
     ```
+
 - **POST `/manual-whatsapp/{record_id}/send-reminder`** — Kirim reminder ke satu customer manual
 - **POST `/manual-whatsapp/bulk-import`** — Bulk import array JSON; setiap item mengikuti schema `ManualWhatsAppCreate`
 - **GET `/manual-whatsapp/stats/summary`** — Statistik ringkas (total/active/inactive)
 
 **Catatan penting**:
+
 - Nomor HP otomatis dinormalisasi ke format 62xxx
 - `next_service` dipakai sebagai acuan reminder manual
 - `reminder_sent_count` dan `last_reminder_sent` otomatis ter-update saat pengiriman reminder
@@ -430,11 +473,13 @@ async def send_whatsapp_message(message_data: WhatsAppMessageCreate) -> Dict[str
 ```
 
 **Parameters**:
+
 - `message_data`: Instance dari WhatsAppMessageCreate
 
 **Returns**: Dictionary dengan struktur response API
 
 **Usage Example**:
+
 ```python
 from services.services_whatsapp import send_whatsapp_message
 from schemas.service_whatsapp import WhatsAppMessageCreate
@@ -464,6 +509,7 @@ def send_whatsapp_message_sync(message_data: WhatsAppMessageCreate) -> Dict[str,
 **Returns**: Dictionary dengan struktur response API
 
 **Usage Example**:
+
 ```python
 from services.services_whatsapp import send_whatsapp_message_sync
 from schemas.service_whatsapp import WhatsAppMessageCreate
@@ -490,12 +536,14 @@ def send_simple_message(phone: str, message: str) -> Dict[str, Any]
 ```
 
 **Parameters**:
+
 - `phone`: Nomor WhatsApp tujuan
 - `message`: Isi pesan
 
 **Returns**: Dictionary response API
 
 **Usage Example**:
+
 ```python
 from services.services_whatsapp import send_simple_message
 
@@ -513,6 +561,7 @@ def send_message_with_file(phone: str, message: str, file_url: str) -> Dict[str,
 ```
 
 **Parameters**:
+
 - `phone`: Nomor WhatsApp tujuan
 - `message`: Isi pesan
 - `file_url`: URL file publik
@@ -520,6 +569,7 @@ def send_message_with_file(phone: str, message: str, file_url: str) -> Dict[str,
 **Returns**: Dictionary response API
 
 **Usage Example**:
+
 ```python
 from services.services_whatsapp import send_message_with_file
 
@@ -541,6 +591,7 @@ def send_scheduled_message(phone: str, message: str, schedule_timestamp_ms: int)
 ```
 
 **Parameters**:
+
 - `phone`: Nomor WhatsApp tujuan
 - `message`: Isi pesan
 - `schedule_timestamp_ms`: Timestamp dalam milliseconds
@@ -548,6 +599,7 @@ def send_scheduled_message(phone: str, message: str, schedule_timestamp_ms: int)
 **Returns**: Dictionary response API
 
 **Usage Example**:
+
 ```python
 from services.services_whatsapp import send_scheduled_message
 from datetime import datetime, timedelta
@@ -576,9 +628,11 @@ def send_maintenance_reminder_whatsapp(db: Session) -> Dict[str, Any]
 ```
 
 **Parameters**:
+
 - `db`: Database session SQLAlchemy
 
 **Returns**: Dictionary dengan struktur:
+
 ```python
 {
     "total_customers": int,  # Total customer dengan vehicle
@@ -599,6 +653,7 @@ def send_maintenance_reminder_whatsapp(db: Session) -> Dict[str, Any]
 ```
 
 **Logic**:
+
 1. Mengambil semua customer dengan vehicle dari `getListCustomersWithvehicles(db)`
 2. Iterasi setiap vehicle, cek `next_visit_date`
 3. Hitung selisih hari: `days_until_visit = (next_visit_date - today).days`
@@ -608,6 +663,7 @@ def send_maintenance_reminder_whatsapp(db: Session) -> Dict[str, Any]
 7. Return hasil dengan detail status setiap pengiriman
 
 **Format Pesan**:
+
 ```
 Bapak {customer_nama} untuk nomor kendaraan {no_pol} 
 sebentar lagi tiba saat pemeliharaan rutin pada tanggal {dd-mm-yyyy}, 
@@ -615,6 +671,7 @@ daftarkan segera melalui nomor pelayanan kami 08551000727
 ```
 
 **Usage Example**:
+
 ```python
 from services.services_customer import send_maintenance_reminder_whatsapp
 from models.database import SessionLocal
@@ -635,6 +692,7 @@ finally:
 ```
 
 **Error Handling**:
+
 - Customer tanpa data lengkap (nama, HP, no_pol, next_visit_date) → status `skipped`
 - Format `next_visit_date` tidak valid → status `skipped`
 - Error saat kirim WhatsApp API → status `failed` dengan detail error
@@ -670,12 +728,14 @@ def start_scheduler(hour: int = 7, minute: int = 0) -> BackgroundScheduler
 ```
 
 **Parameters**:
+
 - `hour`: Jam untuk menjalankan job (default: 7 = jam 7 pagi)
 - `minute`: Menit untuk menjalankan job (default: 0)
 
 **Returns**: Instance BackgroundScheduler
 
 **Configuration**:
+
 ```python
 scheduler.add_job(
     maintenance_reminder_job,           # Function yang akan dijalankan
@@ -688,6 +748,7 @@ scheduler.add_job(
 ```
 
 **Usage Example**:
+
 ```python
 from services.scheduler_maintenance_reminder import start_scheduler
 
@@ -700,6 +761,7 @@ scheduler = start_scheduler(hour=6, minute=0)   # Jam 6 pagi
 ```
 
 **Integration di main.py**:
+
 ```python
 from fastapi import FastAPI
 from services.scheduler_maintenance_reminder import start_scheduler
@@ -729,6 +791,7 @@ def stop_scheduler() -> None
 ```
 
 **Usage**:
+
 ```python
 from services.scheduler_maintenance_reminder import stop_scheduler
 
@@ -744,6 +807,7 @@ def get_scheduler_status() -> Dict[str, Any]
 ```
 
 **Returns**:
+
 ```python
 {
     "running": bool,  # True jika scheduler berjalan
@@ -759,6 +823,7 @@ def get_scheduler_status() -> Dict[str, Any]
 ```
 
 **Usage Example**:
+
 ```python
 from services.scheduler_maintenance_reminder import get_scheduler_status
 
@@ -778,6 +843,7 @@ def maintenance_reminder_job() -> Dict[str, Any]
 ```
 
 **Flow**:
+
 1. Buat database session baru
 2. Panggil `send_maintenance_reminder_whatsapp(db)`
 3. Log hasil (berapa reminder terkirim)
@@ -785,6 +851,7 @@ def maintenance_reminder_job() -> Dict[str, Any]
 5. Return hasil
 
 **Logging**:
+
 ```
 [2026-01-03 07:00:00] Memulai job send_maintenance_reminder...
 [2026-01-03 07:00:15] Job selesai. Reminder terkirim: 12/45
@@ -832,6 +899,7 @@ def maintenance_reminder_job() -> Dict[str, Any]
 #### Kriteria Pengiriman
 
 Reminder **AKAN** dikirim jika:
+
 - ✅ Customer memiliki data lengkap (nama, HP, no_pol)
 - ✅ `next_visit_date` valid dan ter-parse
 - ✅ `next_visit_date` antara **0-2 hari** dari hari ini
@@ -840,6 +908,7 @@ Reminder **AKAN** dikirim jika:
   - 2 hari = lusa
 
 Reminder **TIDAK** dikirim jika:
+
 - ❌ Data customer tidak lengkap → status `skipped`
 - ❌ `next_visit_date` lebih dari 3 hari → tidak masuk kriteria
 - ❌ `next_visit_date` sudah lewat (negatif) → tidak masuk kriteria
@@ -857,6 +926,7 @@ elif not phone.startswith('62'):
 ```
 
 **Contoh**:
+
 - `08123456789` → `628123456789` ✅
 - `8123456789` → `628123456789` ✅
 - `628123456789` → `628123456789` ✅
@@ -891,12 +961,14 @@ def send_maintenance_reminder_router(db: Session = Depends(get_db)):
 ```
 
 **Features**:
+
 - ✅ JWT Authentication required
 - ✅ Database dependency injection
 - ✅ Error handling dengan try-catch
 - ✅ Response wrapper (success_response/error_response)
 
 **Access Control**:
+
 - Hanya user yang sudah login (punya JWT token valid) yang bisa trigger
 - Berguna untuk membatasi akses endpoint sensitif
 
@@ -1001,6 +1073,54 @@ def monitor_scheduler():
 if __name__ == "__main__":
     monitor_scheduler()
 ```
+
+---
+
+### Maintenance Reminder Scheduler API
+
+**Prefix**: `/scheduler/maintenance-reminder`
+
+| Method | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| POST | `/start` | ✅ JWT | Start scheduler (default 07:00, configurable via `hour`/`minute`) |
+| POST | `/stop` | ✅ JWT | Stop scheduler |
+| GET | `/status` | ✅ JWT | Check scheduler status and next run |
+| POST | `/run-now` | ✅ JWT | Manual trigger job sekali jalan |
+| POST | `/customers/send-maintenance-reminder` | ✅ JWT | Manual trigger tanpa scheduler (prefix `/customers`) |
+
+**Quick Usage (cURL)**:
+
+```bash
+# Start scheduler (jam 7 pagi)
+curl -X POST "http://localhost:8000/scheduler/maintenance-reminder/start?hour=7&minute=0" \
+    -H "Authorization: Bearer YOUR_TOKEN"
+
+# Cek status
+curl -X GET "http://localhost:8000/scheduler/maintenance-reminder/status" \
+    -H "Authorization: Bearer YOUR_TOKEN"
+
+# Run sekarang (tanpa menunggu jadwal)
+curl -X POST "http://localhost:8000/scheduler/maintenance-reminder/run-now" \
+    -H "Authorization: Bearer YOUR_TOKEN"
+
+# Stop scheduler
+curl -X POST "http://localhost:8000/scheduler/maintenance-reminder/stop" \
+    -H "Authorization: Bearer YOUR_TOKEN"
+
+# Manual trigger tanpa scheduler
+curl -X POST "http://localhost:8000/customers/send-maintenance-reminder" \
+    -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+**Kriteria & Perilaku Utama**:
+
+- Eligibility: reminder dikirim jika `0 <= days_until_visit < 3` (hari ini, besok, lusa)
+- Phone normalization: `08xxx` → `62xxx`; `8123` → `628123`; `+62` tidak digunakan
+- Error isolation: kegagalan satu customer tidak menghentikan job; status dikembalikan di `details`
+- Max instances: scheduler diset 1 instance untuk hindari duplikasi
+- DB session: tiap eksekusi job membuat sesi DB baru lalu ditutup
+
+**Reference Lengkap**: lihat [WHATSAPP_MAINTENANCE_REMINDER.md](WHATSAPP_MAINTENANCE_REMINDER.md) untuk flow, contoh payload, dan troubleshooting detail.
 
 ---
 
@@ -1179,6 +1299,7 @@ def check_scheduler():
 ```
 
 **Automatic Flow**:
+
 1. Aplikasi start → Scheduler dimulai
 2. Setiap hari jam 07:00 → Job `maintenance_reminder_job()` dijalankan
 3. Job mengambil semua customer dengan vehicle
@@ -1501,6 +1622,7 @@ generate_and_send_summary_report(admin_phone="628123456789")
 ### Common Errors
 
 #### 1. API Connection Error
+
 ```json
 {
   "success": false,
@@ -1508,7 +1630,8 @@ generate_and_send_summary_report(admin_phone="628123456789")
 }
 ```
 
-**Solusi**: 
+**Solusi**:
+
 - Periksa koneksi internet
 - Periksa apakah API StarSender sedang down
 - Tingkatkan REQUEST_TIMEOUT jika perlu
@@ -1516,6 +1639,7 @@ generate_and_send_summary_report(admin_phone="628123456789")
 ---
 
 #### 2. Invalid API Key
+
 ```json
 {
   "success": false,
@@ -1523,13 +1647,15 @@ generate_and_send_summary_report(admin_phone="628123456789")
 }
 ```
 
-**Solusi**: 
+**Solusi**:
+
 - Verifikasi API Key di konfigurasi
 - Hubungi StarSender untuk mendapatkan API Key yang valid
 
 ---
 
 #### 3. Invalid Phone Number
+
 ```json
 {
   "success": false,
@@ -1537,13 +1663,15 @@ generate_and_send_summary_report(admin_phone="628123456789")
 }
 ```
 
-**Solusi**: 
+**Solusi**:
+
 - Pastikan format nomor: `628123456789` (kode negara + nomor)
 - Atau format: `08123456789` (akan dikonversi otomatis oleh API)
 
 ---
 
 #### 4. Invalid JSON Response
+
 ```json
 {
   "success": false,
@@ -1551,7 +1679,8 @@ generate_and_send_summary_report(admin_phone="628123456789")
 }
 ```
 
-**Solusi**: 
+**Solusi**:
+
 - Periksa response dari API
 - Log response untuk debugging
 
@@ -1704,11 +1833,13 @@ def test_send_simple_message_api_error():
 ### 1. API Key Management
 
 ❌ **Jangan**:
+
 ```python
 STARSENDER_API_KEY = "a234d49a-a181-4a83-964d-0d118b3a6e45"  # Hardcoded
 ```
 
 ✅ **Lakukan**:
+
 ```python
 import os
 from dotenv import load_dotenv
@@ -1765,6 +1896,7 @@ class WhatsAppSendRequest(BaseModel):
 ### Problem: Pesan tidak terkirim
 
 **Checklist**:
+
 - [ ] Verifikasi API Key valid
 - [ ] Cek koneksi internet
 - [ ] Pastikan format nomor telepon benar
@@ -1774,6 +1906,7 @@ class WhatsAppSendRequest(BaseModel):
 ### Problem: File tidak muncul di WhatsApp
 
 **Solusi**:
+
 - Pastikan URL file dapat diakses publik (tidak ada authentication)
 - Cek ukuran file (max biasanya 16MB untuk dokumen, 5MB untuk gambar)
 - Verifikasi format file didukung
@@ -1781,6 +1914,7 @@ class WhatsAppSendRequest(BaseModel):
 ### Problem: Scheduled message tidak terkirim
 
 **Solusi**:
+
 - Pastikan timestamp dalam format milliseconds
 - Verifikasi timestamp adalah waktu di masa depan
 - Cek timezone server vs timestamp yang dikirim
@@ -1792,6 +1926,7 @@ class WhatsAppSendRequest(BaseModel):
 ### Problem: Pesan tidak terkirim
 
 **Checklist**:
+
 - [ ] Verifikasi API Key valid
 - [ ] Cek koneksi internet
 - [ ] Pastikan format nomor telepon benar
@@ -1801,6 +1936,7 @@ class WhatsAppSendRequest(BaseModel):
 ### Problem: File tidak muncul di WhatsApp
 
 **Solusi**:
+
 - Pastikan URL file dapat diakses publik (tidak ada authentication)
 - Cek ukuran file (max biasanya 16MB untuk dokumen, 5MB untuk gambar)
 - Verifikasi format file didukung
@@ -1808,6 +1944,7 @@ class WhatsAppSendRequest(BaseModel):
 ### Problem: Scheduled message tidak terkirim
 
 **Solusi**:
+
 - Pastikan timestamp dalam format milliseconds
 - Verifikasi timestamp adalah waktu di masa depan
 - Cek timezone server vs timestamp yang dikirim
@@ -1815,12 +1952,14 @@ class WhatsAppSendRequest(BaseModel):
 ### Problem: Scheduler tidak berjalan
 
 **Checklist**:
+
 - [ ] Verifikasi `start_scheduler()` dipanggil di startup event
 - [ ] Cek logs untuk error scheduler
 - [ ] Test manual: `get_scheduler_status()`
 - [ ] Pastikan APScheduler terinstall: `pip install apscheduler`
 
 **Debug**:
+
 ```python
 from services.scheduler_maintenance_reminder import get_scheduler_status
 
@@ -1832,19 +1971,21 @@ print(f"Jobs: {status['jobs']}")
 ### Problem: Maintenance reminder tidak kirim ke customer tertentu
 
 **Kemungkinan penyebab**:
+
 1. **Data tidak lengkap** (nama, HP, atau no_pol kosong)
    - Solusi: Cek database, pastikan semua field terisi
-   
+
 2. **next_visit_date tidak valid**
    - Solusi: Pastikan format `YYYY-MM-DD` dan tanggal valid
-   
+
 3. **next_visit_date > 3 hari**
    - Solusi: Normal behavior, reminder hanya kirim untuk 0-2 hari ke depan
-   
+
 4. **Format nomor HP salah**
    - Solusi: Pastikan format `08xxx` atau `62xxx`
 
 **Debug specific customer**:
+
 ```python
 from services.services_customer import getListCustomersWithvehicles
 from models.database import SessionLocal
@@ -1876,11 +2017,13 @@ db.close()
 **Penyebab**: Job berjalan multiple times atau scheduler di-restart berkali-kali
 
 **Solusi**:
+
 1. Pastikan `max_instances=1` di scheduler config
 2. Implementasi deduplikasi berdasarkan tanggal pengiriman
 3. Simpan log pengiriman di database
 
 **Implementasi Anti-Duplicate**:
+
 ```python
 # models/model_reminder_log.py
 from sqlalchemy import Column, Integer, String, DateTime
@@ -2123,6 +2266,7 @@ def getListCustomersWithvehicles_optimized(db: Session):
 ### v1.0.0 (Current)
 
 **WhatsApp Messaging:**
+
 - ✅ Implementasi pengiriman pesan text
 - ✅ Support file attachment (image, PDF, document)
 - ✅ Support scheduled messages
@@ -2132,6 +2276,7 @@ def getListCustomersWithvehicles_optimized(db: Session):
 - ✅ 4 endpoints WhatsApp (send, send-simple, send-with-file, send-scheduled)
 
 **Maintenance Reminder System:**
+
 - ✅ Automatic scheduler dengan APScheduler
 - ✅ Background job berjalan setiap hari (configurable)
 - ✅ Deteksi otomatis kendaraan jatuh tempo (< 3 hari)
@@ -2141,16 +2286,19 @@ def getListCustomersWithvehicles_optimized(db: Session):
 - ✅ Detailed response dengan status per vehicle
 
 **Services:**
+
 - ✅ 6 service functions (5 WhatsApp + 1 Maintenance)
 - ✅ Async dan sync variants
 - ✅ Helper functions untuk use case umum
 
 **Schemas:**
+
 - ✅ WhatsAppMessageCreate
 - ✅ WhatsAppSendRequest
 - ✅ WhatsAppMessageResponse
 
 **Documentation:**
+
 - ✅ Complete API documentation
 - ✅ 10 use case examples
 - ✅ Error handling guide
@@ -2161,6 +2309,7 @@ def getListCustomersWithvehicles_optimized(db: Session):
 ### Planned Features
 
 **v1.1.0 (Upcoming)**
+
 - 🔄 Database logging untuk message history
 - 🔄 Anti-duplicate system untuk reminders
 - 🔄 Webhook untuk delivery status
@@ -2172,6 +2321,7 @@ def getListCustomersWithvehicles_optimized(db: Session):
 - 🔄 Multi-language support
 
 **v2.0.0 (Future)**
+
 - 🔄 Queue system dengan Redis/Celery untuk bulk messages
 - 🔄 WhatsApp Business API integration
 - 🔄 Media upload service
@@ -2212,6 +2362,7 @@ python-dotenv>=1.0.0
 ```
 
 **Install all**:
+
 ```bash
 pip install fastapi uvicorn sqlalchemy pydantic httpx apscheduler python-dotenv
 ```
@@ -2254,6 +2405,7 @@ cp .env.example .env
 ### 2. Configuration
 
 Edit `.env`:
+
 ```bash
 # Database
 DATABASE_URL=postgresql://user:password@localhost/dbname
@@ -2300,6 +2452,7 @@ curl http://localhost:8000/health/scheduler
 ### 5. Enable Scheduler
 
 Di `main.py`, tambahkan:
+
 ```python
 from fastapi import FastAPI
 from services.scheduler_maintenance_reminder import start_scheduler
@@ -2428,11 +2581,117 @@ db.close()
                │       └─▶ HTTP POST to StarSender API
                │           └─▶ WhatsApp delivered to customer
                │
+               └─▶ [NEW] Update whatsapp_report tracking
+                   ├─▶ Check existing record (customer_id + vehicle_id)
+                   ├─▶ Create or update record
+                   ├─▶ Increment frequency
+                   └─▶ Update last_message_date
+               
                └─▶ Return summary + details
 
 3. Logging
    └─▶ Log results (sent/failed/skipped)
        └─▶ Optional: Alert admin if errors
+```
+
+---
+
+## WhatsApp Report Tracking System
+
+**WhatsApp Report** adalah fitur untuk tracking pengiriman pesan WhatsApp ke setiap kombinasi customer dan vehicle. Setiap kali pesan terkirim melalui scheduler maintenance reminder, sistem otomatis mencatat tracking data.
+
+### Features
+
+- ✅ Auto tracking setiap pengiriman WhatsApp
+- ✅ Update frequency dan last_message_date otomatis  
+- ✅ Statistik agregat (total pesan, average, breakdown)
+- ✅ Detail report dengan customer & vehicle info
+- ✅ Reset frequency untuk analisis berkala
+- ✅ Integration seamless dengan scheduler
+
+### WhatsApp Report Endpoints
+
+**Prefix**: `/whatsapp-report`
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | List semua reports |
+| GET | `/detail` | List reports dengan detail lengkap |
+| GET | `/statistics` | Statistik agregat |
+| GET | `/customer/{id}` | Reports untuk customer |
+| GET | `/customer/{id}/vehicle/{id}` | Report spesifik |
+| DELETE | `/{id}` | Hapus report |
+| POST | `/reset-frequency` | Reset frequency |
+
+**Dokumentasi Lengkap**: Lihat [WHATSAPP_REPORT_DOCUMENTATION.md](./WHATSAPP_REPORT_DOCUMENTATION.md)
+
+**Quick Setup**:
+
+```bash
+# Create table
+python database/create_whatsapp_report_table.py
+
+# Check statistics
+curl http://localhost:8000/whatsapp-report/statistics
+```
+
+---
+
+## Manual WhatsApp System
+
+**Manual WhatsApp** adalah sistem untuk mengelola customer yang **belum terintegrasi** dengan sistem customer utama (tidak ada di tabel `customer` utama).
+
+### Features
+
+- ✅ Table terpisah `manual_whatsapp` untuk customer manual
+- ✅ CRUD operations lengkap
+- ✅ Phone number normalization otomatis
+- ✅ Bulk import untuk banyak customer
+- ✅ Pengiriman reminder manual/otomatis
+- ✅ Tracking reminder per customer
+- ✅ Status aktif/tidak aktif
+- ✅ Statistics dan reporting
+
+### Manual WhatsApp Endpoints
+
+**Prefix**: `/manual-whatsapp`
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/` | Buat customer manual |
+| GET | `/` | List semua customer |
+| GET | `/{id}` | Detail by ID |
+| GET | `/by-nopol/{nopol}` | Detail by nopol |
+| PUT | `/{id}` | Update data |
+| PATCH | `/{id}/toggle-active` | Toggle aktif/non-aktif |
+| DELETE | `/{id}` | Hapus data |
+| POST | `/send-reminders` | Kirim reminder ke semua |
+| POST | `/{id}/send-reminder` | Kirim reminder ke satu |
+| POST | `/bulk-import` | Bulk import array JSON |
+| GET | `/stats/summary` | Statistik ringkas |
+
+**Dokumentasi Lengkap**: Lihat [MANUAL_WHATSAPP_DOCUMENTATION.md](./MANUAL_WHATSAPP_DOCUMENTATION.md)
+
+**Quick Setup**:
+
+```bash
+# Create table
+python database/create_manual_whatsapp_table.py
+
+# Bulk import
+curl -X POST "http://localhost:8000/manual-whatsapp/bulk-import" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customers": [
+      {
+        "customer_name": "John Doe",
+        "nopol": "B 1234 XYZ",
+        "no_hp": "08123456789",
+        "next_service": "2026-04-01"
+      }
+    ]
+  }'
 ```
 
 ---

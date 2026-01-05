@@ -15,7 +15,7 @@ def get_db():
         db.close()
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login")
 def login(payload: UserLogin, db: Session = Depends(get_db)):
     user = authenticate_user(db, payload.username, payload.password)
     if not user:
@@ -33,7 +33,7 @@ def login(payload: UserLogin, db: Session = Depends(get_db)):
     return success_response(data={"access_token": token, "token_type": "bearer", "user": user_data}, message="Login successful")
 
 
-@router.post("/register", response_model=UserResponse)
+@router.post("/register")
 def register(payload: UserRegister, db: Session = Depends(get_db)):
     user = create_user(db, payload.username, payload.email, payload.password)
     user_response = UserResponse.model_validate(user)

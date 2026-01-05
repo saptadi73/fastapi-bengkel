@@ -40,7 +40,7 @@ def remove_role(assign_data: AssignRoleToUser, user_id: str, db: Session = Depen
         return error_response(message="Role not assigned to user", status_code=404)
     return success_response(message="Role removed successfully")
 
-@router.get("/user/{user_id}/roles", response_model=UserWithRolesResponse)
+@router.get("/user/{user_id}/roles")
 def get_user_roles(user_id: str, db: Session = Depends(get_db)):
     user_data = get_user_with_roles(db, user_id)
     if not user_data:

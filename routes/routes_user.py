@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from services.user_service import get_user_by_id
+from services.user_service import get_user_by_id, get_all_users
 from schemas.service_user import UserResponse
 from models.database import SessionLocal
 from supports.utils_json_response import success_response, error_response
@@ -14,7 +14,19 @@ def get_db():
     finally:
         db.close()
 
-@router.get("/{user_id}", response_model=UserResponse)
+@router.get("/")
+def get_all_users_list(db: Session = Depends(get_db)):
+    """Get all users for frontend dropdown/selection"""
+    users = get_all_users(db)
+    users_data = [{
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "is_active": user.is_active
+    } for user in users]
+    return success_response(data=users_data, message="All users retrieved successfully")
+
+@router.get("/{user_id}")
 def get_user(user_id: str, db: Session = Depends(get_db)):
     user = get_user_by_id(db, user_id)
     if not user:

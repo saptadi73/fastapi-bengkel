@@ -116,10 +116,12 @@ def getListCustomersWithvehicles(db: Session):
             v_dict['customer_nama'] = customer.nama
             v_dict['customer_hp'] = customer.hp
             v_dict['customer_alamat'] = customer.alamat
+            v_dict['id_customer'] = str(customer.id)  # Tambahkan untuk WhatsApp report tracking
         else:
             v_dict['customer_nama'] = None
             v_dict['customer_hp'] = None
             v_dict['customer_alamat'] = None
+            v_dict['id_customer'] = None
 
         # Cari tanggal_keluar terakhir dari workorder kendaraan ini
         last_wo = None
@@ -323,6 +325,7 @@ def send_maintenance_reminder_whatsapp(db: Session):
     - Ambil daftar customer dengan vehicle dari getListCustomersWithvehicles
     - Cek setiap vehicle apakah next_visit_date kurang dari 3 hari dari hari ini
     - Jika ya, kirim pesan WhatsApp dengan format yang ditentukan
+    - Update tracking di whatsapp_report table
     
     Returns:
         Dict berisi:
@@ -334,6 +337,7 @@ def send_maintenance_reminder_whatsapp(db: Session):
     """
     from datetime import datetime, timedelta
     from services.services_whatsapp import send_whatsapp_message_sync
+    from services.services_whatsapp_report import create_or_update_whatsapp_report
     
     try:
         # Ambil daftar customer dengan vehicle
@@ -355,6 +359,8 @@ def send_maintenance_reminder_whatsapp(db: Session):
             customer_hp = vehicle_data.get('customer_hp')
             no_pol = vehicle_data.get('no_pol')
             next_visit_date_str = vehicle_data.get('next_visit_date')
+            customer_id = vehicle_data.get('id_customer') or vehicle_data.get('customer_id')
+            vehicle_id = vehicle_data.get('id')
             
             # Skip jika data tidak lengkap
             if not all([customer_nama, customer_hp, no_pol, next_visit_date_str]):
@@ -405,6 +411,16 @@ def send_maintenance_reminder_whatsapp(db: Session):
                         schedule=None
                     )
                     result = send_whatsapp_message_sync(msg_data)
+                    
+                    # Update WhatsApp report tracking (jika customer_id dan vehicle_id tersedia)
+                    if customer_id and vehicle_id:
+                        try:
+                            create_or_update_whatsapp_report(db, customer_id, vehicle_id)
+                        except Exception as report_error:
+                            # Log error tapi jangan stop pengiriman
+                            import logging
+                            logger = logging.getLogger(__name__)
+                            logger.warning(f"Error updating whatsapp report for {no_pol}: {str(report_error)}")
                     
                     reminder_sent += 1
                     details.append({
