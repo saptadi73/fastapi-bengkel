@@ -29,12 +29,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# CORS middleware
+# CORS middleware - HARUS DITAMBAHKAN PALING PERTAMA!
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Ganti dengan list domain jika perlu
+    allow_origins=[
+        "http://localhost:3000",      # Frontend dev
+        "http://127.0.0.1:3000",
+        "https://carspeed.gagakrimang.web.id",     # Production
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
