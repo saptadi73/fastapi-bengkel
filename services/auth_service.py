@@ -3,13 +3,29 @@ from models.auth import Auth
 from sqlalchemy.orm import Session, joinedload
 from passlib.context import CryptContext
 from middleware.jwt import create_access_token
+import hashlib
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+def _truncate_password(password: str) -> str:
+    """
+    Truncate password to 72 bytes for bcrypt compatibility.
+    If password is longer, hash it first.
+    """
+    password_bytes = password.encode('utf-8')
+    if len(password_bytes) <= 72:
+        return password
+    # Hash long passwords with SHA256 first, then use result as password
+    return hashlib.sha256(password_bytes).hexdigest()
+
 def verify_password(plain_password, hashed_password):
+    # Truncate/hash plain password to ensure it's <= 72 bytes
+    plain_password = _truncate_password(plain_password)
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password):
+    # Truncate/hash password to ensure it's <= 72 bytes
+    password = _truncate_password(password)
     return pwd_context.hash(password)
 
 def authenticate_user(db: Session, username: str, password: str):
