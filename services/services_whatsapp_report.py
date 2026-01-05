@@ -48,9 +48,9 @@ def create_or_update_whatsapp_report(
         
         if existing_report:
             # Update existing report
-            existing_report.last_message_date = datetime.now()
-            existing_report.frequency += 1
-            existing_report.updated_at = datetime.now()
+            existing_report.last_message_date = datetime.now()  # type: ignore
+            existing_report.frequency += 1  # type: ignore
+            existing_report.updated_at = datetime.now()  # type: ignore
             db.commit()
             db.refresh(existing_report)
             logger.info(f"Updated WhatsApp report for customer {id_customer}, vehicle {id_vehicle}")

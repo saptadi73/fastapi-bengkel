@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import Dict, List
+from typing import Dict, List, Union
 from decimal import Decimal
 from sqlalchemy.orm import Session
 from sqlalchemy import func, cast, Date
@@ -92,7 +92,7 @@ def get_workorder_pie(db: Session) -> Dict[str, float]:
     }
 
 
-def _monthly_series(db: Session, query, date_column, value_column, months: int) -> List[Dict[str, float]]:
+def _monthly_series(db: Session, query, date_column, value_column, months: int) -> List[Dict[str, Union[str, float]]]:
     start = _start_month(months)
     rows = (
         query
@@ -109,7 +109,7 @@ def _monthly_series(db: Session, query, date_column, value_column, months: int) 
     buckets = {_month_label(r.month.date()): _normalize_decimal(r.total) for r in rows}
 
     # Fill missing months with zero
-    series: List[Dict[str, float]] = []
+    series: List[Dict[str, Union[str, float]]] = []
     current = _start_month(months)
     for _ in range(months):
         label = _month_label(current)
@@ -122,13 +122,13 @@ def _monthly_series(db: Session, query, date_column, value_column, months: int) 
     return series
 
 
-def get_sales_monthly(db: Session, months: int = 6) -> List[Dict[str, float]]:
+def get_sales_monthly(db: Session, months: int = 6) -> List[Dict[str, Union[str, float]]]:
     # Sales diambil dari total_biaya workorder yang selesai
     q = _completed_status_filter(db.query(Workorder))
     return _monthly_series(db, q, Workorder.tanggal_masuk, Workorder.total_biaya, months)
 
 
-def get_purchase_monthly(db: Session, months: int = 6) -> List[Dict[str, float]]:
+def get_purchase_monthly(db: Session, months: int = 6) -> List[Dict[str, Union[str, float]]]:
     allowed_status = [
         PurchaseOrderStatus.dijalankan,
         PurchaseOrderStatus.diterima,
@@ -141,12 +141,12 @@ def get_purchase_monthly(db: Session, months: int = 6) -> List[Dict[str, float]]
     return _monthly_series(db, q, PurchaseOrder.date, PurchaseOrder.total, months)
 
 
-def get_expenses_monthly(db: Session, months: int = 6) -> List[Dict[str, float]]:
+def get_expenses_monthly(db: Session, months: int = 6) -> List[Dict[str, Union[str, float]]]:
     q = db.query(Expenses)
     return _monthly_series(db, q, Expenses.date, Expenses.amount, months)
 
 
-def get_combined_monthly(db: Session, months: int = 6) -> List[Dict[str, float]]:
+def get_combined_monthly(db: Session, months: int = 6) -> List[Dict[str, Union[str, float]]]:
     sales = {item["month"]: item["total"] for item in get_sales_monthly(db, months)}
     purchase = {item["month"]: item["total"] for item in get_purchase_monthly(db, months)}
     expenses = {item["month"]: item["total"] for item in get_expenses_monthly(db, months)}
@@ -154,7 +154,7 @@ def get_combined_monthly(db: Session, months: int = 6) -> List[Dict[str, float]]
     labels = list({*sales.keys(), *purchase.keys(), *expenses.keys()})
     labels.sort()
 
-    series: List[Dict[str, float]] = []
+    series: List[Dict[str, Union[str, float]]] = []
     for label in labels:
         series.append({
             "month": label,
