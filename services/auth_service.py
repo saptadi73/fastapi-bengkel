@@ -5,19 +5,18 @@ from passlib.context import CryptContext
 from middleware.jwt import create_access_token
 import hashlib
 
-# Simple CryptContext configuration
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Use Argon2 instead of bcrypt - no 72 byte limitation
+pwd_context = CryptContext(
+    schemes=["argon2"],
+    deprecated="auto"
+)
 
 def _truncate_password(password: str) -> str:
     """
-    Truncate password to 72 bytes for bcrypt compatibility.
-    If password is longer, hash it first.
+    No need to truncate with Argon2 - it handles any length.
+    But keep it for compatibility.
     """
-    password_bytes = password.encode('utf-8')
-    if len(password_bytes) <= 72:
-        return password
-    # Hash long passwords with SHA256 first, then use result as password
-    return hashlib.sha256(password_bytes).hexdigest()
+    return password
 
 def verify_password(plain_password, hashed_password):
     # Truncate/hash plain password to ensure it's <= 72 bytes
