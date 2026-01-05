@@ -4,17 +4,9 @@ from sqlalchemy.orm import Session, joinedload
 from passlib.context import CryptContext
 from middleware.jwt import create_access_token
 import hashlib
-import os
 
-# Disable bcrypt internal bug detection to avoid password length issues
-os.environ['PASSLIB_BCRYPT_IDENT_CHECK'] = '0'
-
-# Configure CryptContext with bcrypt roundsetting and disable bug detection
-pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    deprecated="auto",
-    bcrypt__rounds=12,
-)
+# Simple CryptContext configuration
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def _truncate_password(password: str) -> str:
     """
