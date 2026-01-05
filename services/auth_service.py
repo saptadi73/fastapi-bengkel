@@ -5,9 +5,11 @@ from passlib.context import CryptContext
 from middleware.jwt import create_access_token
 import hashlib
 
-# Use Argon2 instead of bcrypt - no 72 byte limitation
+# Support both Argon2 (new) and bcrypt (legacy) for password migration
+# New passwords will be hashed with Argon2
+# Existing bcrypt passwords will still work
 pwd_context = CryptContext(
-    schemes=["argon2"],
+    schemes=["argon2", "bcrypt"],
     deprecated="auto"
 )
 
