@@ -84,6 +84,7 @@ class CreateWorkorderOnly(BaseModel):
     total_biaya: float
     customer_id: UUID
     vehicle_id: UUID
+    karyawan_id: Optional[UUID] = None
 
 class CreateServiceOrderedOnly(BaseModel):
     id: Optional[UUID] = None

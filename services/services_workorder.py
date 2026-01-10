@@ -493,11 +493,20 @@ def updateProductOrderedOnlynya(db: Session, product_ordered_data: CreateProduct
 
 def update_only_workorder(db: Session, workorder_id: str, data: CreateWorkorderOnly):
     wo = db.query(Workorder).filter(Workorder.id == workorder_id).first()
+    today = datetime.datetime.now()
     if not wo:
         return None
 
+    old_status = wo.status
+
     wo.tanggal_masuk = data.tanggal_masuk  # type: ignore
-    wo.tanggal_keluar = data.tanggal_keluar  # type: ignore
+    if data.status == 'selesai':
+        wo.tanggal_keluar = today  # type: ignore
+    elif data.tanggal_keluar is not None:
+        wo.tanggal_keluar = data.tanggal_keluar  # type: ignore
+    else:
+        wo.tanggal_keluar = None  # type: ignore
+        
     wo.keluhan = data.keluhan  # type: ignore
     wo.kilometer = data.kilometer  # type: ignore
     wo.saran = data.saran  # type: ignore
@@ -517,6 +526,22 @@ def update_only_workorder(db: Session, workorder_id: str, data: CreateWorkorderO
     db.add(wo)
     db.commit()
     db.refresh(wo)
+    
+    # Jika status berubah menjadi 'selesai', pindahkan stok produk
+    if old_status != 'selesai' and data.status == 'selesai':  # type: ignore
+        # Move stock for products if not already moved
+        if not _wo_stock_already_moved(db, str(wo.id)):
+            for po in wo.product_ordered:
+                move_data = CreateProductMovedHistory(
+                    product_id=po.product_id,
+                    type='outcome',
+                    quantity=po.quantity,
+                    performed_by='system',
+                    notes=f"WO:{wo.id} ({wo.no_wo}) complete → deduct for ProductOrdered:{po.id}",
+                    timestamp=datetime.datetime.now(datetime.timezone.utc)
+                )
+                createProductMoveHistoryNew(db, move_data)
+    
     wo_dict = to_dict(wo)
     return wo_dict
 
