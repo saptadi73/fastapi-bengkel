@@ -104,19 +104,40 @@ def get_service_by_id(db: Session, service_id: str):
 
 def update_service(db: Session, service_id: str, service_data: CreateService):
     """Update service details"""
-    service = db.query(Service).filter(Service.id == service_id).first()
-    if not service:
-        raise ValueError(f'Service dengan ID {service_id} tidak ditemukan!')
-    
-    service.name = service_data.name
-    service.description = service_data.description
-    service.price = service_data.price
-    if service_data.cost:
-        service.cost = service_data.cost
-    
-    db.commit()
-    db.refresh(service)
-    return to_dict(service)
+    from sqlalchemy import update
+    try:
+        # Use UUID if service_id is string
+        if isinstance(service_id, str):
+            service_uuid = uuid.UUID(service_id)
+        else:
+            service_uuid = service_id
+        
+        # Prepare update values using string keys (column names)
+        update_values = {
+            'name': service_data.name,
+            'description': service_data.description,
+            'price': str(service_data.price) if service_data.price else None,
+        }
+        if service_data.cost:
+            update_values['cost'] = Decimal(str(service_data.cost))
+        
+        # Execute update
+        stmt = update(Service).where(Service.id == service_uuid).values(**update_values)
+        db.execute(stmt)
+        db.commit()
+        
+        # Retrieve updated service to verify it exists
+        service = db.query(Service).filter(Service.id == service_uuid).first()
+        if not service:
+            raise ValueError(f'Service dengan ID {service_id} tidak ditemukan!')
+        
+        return to_dict(service)
+    except ValueError as ve:
+        db.rollback()
+        raise ve
+    except Exception as e:
+        db.rollback()
+        raise ValueError(f'Error updating service: {str(e)}')
 
 def delete_service(db: Session, service_id: str):
     """Delete service"""
