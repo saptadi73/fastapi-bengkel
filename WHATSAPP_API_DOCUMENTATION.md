@@ -352,7 +352,7 @@ Endpoint untuk mengirim reminder WhatsApp secara manual ke semua customer yang k
 ```
 Bapak {customer_nama} untuk nomor kendaraan {no_pol} 
 sebentar lagi tiba saat pemeliharaan rutin pada tanggal {dd-mm-yyyy}, 
-daftarkan segera melalui nomor pelayanan kami 08551000727
+daftarkan segera melalui nomor pelayanan kami 087740659525
 ```
 
 **Example cURL**:
@@ -667,7 +667,7 @@ def send_maintenance_reminder_whatsapp(db: Session) -> Dict[str, Any]
 ```
 Bapak {customer_nama} untuk nomor kendaraan {no_pol} 
 sebentar lagi tiba saat pemeliharaan rutin pada tanggal {dd-mm-yyyy}, 
-daftarkan segera melalui nomor pelayanan kami 08551000727
+daftarkan segera melalui nomor pelayanan kami 087740659525
 ```
 
 **Usage Example**:
@@ -1377,7 +1377,7 @@ Halo Bapak {customer.nama},
 Reminder: Kendaraan {vehicle.no_pol} Anda terjadwal untuk maintenance pada:
 📅 {vehicle.next_visit_date.strftime('%d %B %Y')}
 
-Harap daftarkan melalui nomor pelayanan kami 08551000727
+Harap daftarkan melalui nomor pelayanan kami 087740659525
 
 Terima kasih!
         """.strip()
@@ -1445,7 +1445,7 @@ def send_bulk_reminders_with_throttle(days_threshold: int = 3, delay_seconds: in
             message = f"""
 Bapak {customer.nama} untuk nomor kendaraan {vehicle.no_pol} 
 sebentar lagi tiba saat pemeliharaan rutin pada tanggal {vehicle.next_visit_date.strftime('%d-%m-%Y')}, 
-daftarkan segera melalui nomor pelayanan kami 08551000727
+daftarkan segera melalui nomor pelayanan kami 087740659525
             """.strip()
             
             # Format phone

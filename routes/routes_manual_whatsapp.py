@@ -366,7 +366,7 @@ Kami mengingatkan bahwa kendaraan dengan nomor polisi {record['nopol']} Anda aka
 📅 {next_service_date.strftime('%d %B %Y')}
 
 Mohon segera menghubungi kami untuk melakukan penjadwalan service:
-📞 08551000727
+📞 087740659525
 
 Terima kasih atas kepercayaan Anda.
         """.strip()

@@ -6,7 +6,7 @@ Fitur ini memungkinkan sistem untuk mengirim reminder WhatsApp secara otomatis k
 
 **Format Pesan:**
 ```
-Bapak {nama_pelanggan} untuk nomor kendaraan {no_pol} sebentar lagi tiba saat pemeliharaan rutin pada tanggal {next_visit_date}, daftarkan segera melalui nomor pelayanan kami 08551000727
+Bapak {nama_pelanggan} untuk nomor kendaraan {no_pol} sebentar lagi tiba saat pemeliharaan rutin pada tanggal {next_visit_date}, daftarkan segera melalui nomor pelayanan kami 087740659525
 ```
 
 ## Komponen Sistem
@@ -122,7 +122,7 @@ Response:
         "next_visit_date": "2025-12-18",
         "days_until_visit": 1,
         "status": "sent",
-        "message": "Bapak Budi Santoso untuk nomor kendaraan B 1234 ABC sebentar lagi tiba saat pemeliharaan rutin pada tanggal 18-12-2025, daftarkan segera melalui nomor pelayanan kami 08551000727",
+        "message": "Bapak Budi Santoso untuk nomor kendaraan B 1234 ABC sebentar lagi tiba saat pemeliharaan rutin pada tanggal 18-12-2025, daftarkan segera melalui nomor pelayanan kami 087740659525",
         "api_response": "Message sent successfully"
       },
       ...

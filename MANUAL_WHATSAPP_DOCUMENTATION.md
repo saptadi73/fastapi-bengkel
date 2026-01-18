@@ -535,7 +535,7 @@ Kirim custom WhatsApp message ke nomor yang ditentukan (tidak harus ada di datab
 ```json
 {
   "no_hp": "08123456789",
-  "message": "Halo Bapak John, kami ingin mengingatkan bahwa kendaraan B 1234 XYZ Anda perlu service rutin minggu depan. Hubungi kami di 08551000727."
+  "message": "Halo Bapak John, kami ingin mengingatkan bahwa kendaraan B 1234 XYZ Anda perlu service rutin minggu depan. Hubungi kami di 087740659525."
 }
 ```
 
@@ -550,7 +550,7 @@ Kirim custom WhatsApp message ke nomor yang ditentukan (tidak harus ada di datab
 {
   "status": "sent",
   "no_hp": "628123456789",
-  "message": "Halo Bapak John, kami ingin mengingatkan bahwa kendaraan B 1234 XYZ Anda perlu service rutin minggu depan. Hubungi kami di 08551000727.",
+  "message": "Halo Bapak John, kami ingin mengingatkan bahwa kendaraan B 1234 XYZ Anda perlu service rutin minggu depan. Hubungi kami di 087740659525.",
   "api_response": {
     "success": true,
     "data": {
@@ -583,7 +583,7 @@ headers = {
 
 data = {
     "no_hp": "08123456789",
-    "message": "Halo Bapak John, kendaraan B 1234 XYZ Anda perlu service minggu depan. Hubungi kami di 08551000727."
+    "message": "Halo Bapak John, kendaraan B 1234 XYZ Anda perlu service minggu depan. Hubungi kami di 087740659525."
 }
 
 response = requests.post(
@@ -890,7 +890,7 @@ from services.services_manual_whatsapp import send_custom_whatsapp_message
 try:
     result = send_custom_whatsapp_message(
         no_hp="08123456789",
-        message="Halo Bapak John, kami ada promo service gratis untuk kendaraan B 1234 XYZ. Hubungi kami di 08551000727."
+        message="Halo Bapak John, kami ada promo service gratis untuk kendaraan B 1234 XYZ. Hubungi kami di 087740659525."
     )
     
     print(f"✓ Pesan berhasil dikirim ke {result['no_hp']}")

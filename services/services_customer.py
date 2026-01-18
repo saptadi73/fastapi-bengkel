@@ -398,7 +398,7 @@ def send_maintenance_reminder_whatsapp(db: Session):
                         phone = '62' + phone
                     
                     # Format pesan
-                    message = f"Bapak {customer_nama} untuk nomor kendaraan {no_pol} sebentar lagi tiba saat pemeliharaan rutin pada tanggal {next_visit_date.strftime('%d-%m-%Y')}, daftarkan segera melalui nomor pelayanan kami 08551000727"
+                    message = f"Bapak {customer_nama} untuk nomor kendaraan {no_pol} sebentar lagi tiba saat pemeliharaan rutin pada tanggal {next_visit_date.strftime('%d-%m-%Y')}, daftarkan segera melalui nomor pelayanan kami 087740659525"
                     
                     # Kirim WhatsApp
                     from schemas.service_whatsapp import WhatsAppMessageCreate
