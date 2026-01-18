@@ -102,6 +102,32 @@ def get_service_by_id(db: Session, service_id: str):
         s_dict = to_dict(service)
         return s_dict
 
+def update_service(db: Session, service_id: str, service_data: CreateService):
+    """Update service details"""
+    service = db.query(Service).filter(Service.id == service_id).first()
+    if not service:
+        raise ValueError(f'Service dengan ID {service_id} tidak ditemukan!')
+    
+    service.name = service_data.name
+    service.description = service_data.description
+    service.price = service_data.price
+    if service_data.cost:
+        service.cost = service_data.cost
+    
+    db.commit()
+    db.refresh(service)
+    return to_dict(service)
+
+def delete_service(db: Session, service_id: str):
+    """Delete service"""
+    service = db.query(Service).filter(Service.id == service_id).first()
+    if not service:
+        raise ValueError(f'Service dengan ID {service_id} tidak ditemukan!')
+    
+    db.delete(service)
+    db.commit()
+    return True
+
 def update_product_cost(db: Session, product_id: str, cost: Decimal):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:

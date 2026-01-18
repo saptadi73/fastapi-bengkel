@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from models.database import SessionLocal
 from services.services_customer import create_customer_with_vehicles,getListCustomersWithvehicles, getListCustomersWithVehiclesCustomersID
-from services.services_product import CreateProductNew, get_all_products, get_product_by_id, createServicenya,get_all_services, createBrandnya, createCategorynya, createSatuannya, getAllBrands, getAllCategories, getAllSatuans, getAllInventoryProducts, getInventoryByProductID, createProductMoveHistoryNew, get_service_by_id, update_product_cost, getAllInventoryProductsConsignment,getAllInventoryProductsExcConsignment
+from services.services_product import CreateProductNew, get_all_products, get_product_by_id, createServicenya,get_all_services, createBrandnya, createCategorynya, createSatuannya, getAllBrands, getAllCategories, getAllSatuans, getAllInventoryProducts, getInventoryByProductID, createProductMoveHistoryNew, get_service_by_id, update_product_cost, getAllInventoryProductsConsignment,getAllInventoryProductsExcConsignment, update_service, delete_service
 from services.services_inventory import manual_adjustment_inventory
 from services.services_costing import get_product_cost_history, get_product_cost_summary
 from schemas.service_inventory import CreateProductMovedHistory, ManualAdjustment, CreateProductMovedHistories
@@ -103,6 +103,41 @@ def get_service(
         if not result:
             raise HTTPException(status_code=404, detail="Service not found")
         return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()
+
+@router.put("/service/{service_id}", response_model=ServiceResponse, dependencies=[Depends(jwt_required)])
+def update_service_router(
+    service_id: str,
+    service_data: CreateService,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = update_service(db, service_id, service_data)
+        if not result:
+            return error_response(message="Failed to update service")
+        return success_response(data=result, message="Service updated successfully")
+    except ValueError as e:
+        return error_response(message=str(e), status_code=404)
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()
+
+@router.delete("/service/{service_id}", dependencies=[Depends(jwt_required)])
+def delete_service_router(
+    service_id: str,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = delete_service(db, service_id)
+        if not result:
+            return error_response(message="Failed to delete service")
+        return success_response(message="Service deleted successfully")
+    except ValueError as e:
+        return error_response(message=str(e), status_code=404)
     except Exception as e:
         return error_response(message=str(e))
     finally:
