@@ -5,7 +5,14 @@ from contextlib import asynccontextmanager
 import os
 
 # Auto-import all routers from routes directory
-from routes import all_routers
+try:
+    from routes import all_routers
+    print(f"✓ Successfully imported {len(all_routers)} routers")
+except Exception as e:
+    print(f"✗ Error importing routers: {e}")
+    import traceback
+    traceback.print_exc()
+    all_routers = []
 
 
 # Startup dan shutdown events
@@ -53,8 +60,15 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 # Auto-include all routers
 # No need to manually add each router anymore!
 # Just add new routes_*.py files in the routes directory
-for router in all_routers:
-    app.include_router(router)
+print(f"📋 Including {len(all_routers)} routers...")
+for i, router in enumerate(all_routers, 1):
+    try:
+        app.include_router(router)
+        print(f"  ✓ [{i}/{len(all_routers)}] Included: {router.prefix or 'root'}")
+    except Exception as e:
+        print(f"  ✗ [{i}/{len(all_routers)}] Error including router: {e}")
+
+print(f"✓ All {len(all_routers)} routers included successfully")
 
 @app.get("/")
 def root():
