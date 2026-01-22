@@ -21,6 +21,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+def _status_value(status):
+    if isinstance(status, enum.Enum):
+        return status.value
+    return status
+
+
 def to_dict(obj):
     result = {}
     for c in obj.__table__.columns:
@@ -88,7 +95,7 @@ def create_purchase_order(db: Session, data: CreatePurchaseOrder):
     db.refresh(purchase_order)
 
     # If status is 'diterima', call productMovedHistoryNew with type 'income'
-    status_value = str(purchase_order.status)
+    status_value = _status_value(purchase_order.status)
     if status_value == 'diterima':
         for line in purchase_order.lines:
             move_data = CreateProductMovedHistory(
@@ -209,8 +216,9 @@ def update_purchase_order(db: Session, purchase_order_id: str, data: UpdatePurch
         db.refresh(po)
 
         # If status changed to 'diterima', call productMovedHistoryNew with type 'income'
-        status_value = str(po.status)
-        if old_status != 'diterima' and status_value == 'diterima':
+        old_status_value = _status_value(old_status)
+        status_value = _status_value(po.status)
+        if old_status_value != 'diterima' and status_value == 'diterima':
             for line in po.lines:
                 move_data = CreateProductMovedHistory(
                     product_id=line.product_id,
@@ -236,14 +244,18 @@ def update_purchase_order_status(db: Session, purchase_order_id: str, status: st
         # Store old status for comparison
         old_status = po.status
 
+        if status:
+            po.status = status
+
         po.updated_at = datetime.datetime.now()
 
         db.commit()
         db.refresh(po)
 
         # If status changed to 'diterima', call productMovedHistoryNew with type 'income'
-        status_value = str(po.status)
-        if old_status != 'diterima' and status_value == 'diterima':
+        old_status_value = _status_value(old_status)
+        status_value = _status_value(po.status)
+        if old_status_value != 'diterima' and status_value == 'diterima':
             for line in po.lines:
                 move_data = CreateProductMovedHistory(
                     product_id=line.product_id,
@@ -303,8 +315,9 @@ def edit_purchase_order(db: Session, purchase_order_id: str, data: UpdatePurchas
         print("Database commit successful")
         print(f" purchase order id: {po.id}")
         # If status changed to 'diterima', call productMovedHistoryNew with type 'income' and create purchase journal entry
-        status_value = str(data.status) if data.status is not None else old_status
-        if old_status != 'diterima' and status_value == 'diterima':
+        old_status_value = _status_value(old_status)
+        status_value = _status_value(data.status) if data.status is not None else old_status_value
+        if old_status_value != 'diterima' and status_value == 'diterima':
             print("Status changed to 'diterima', creating product moves, calculating average cost, and journal entry")
             for line in po.lines:
                 # Create product move history
