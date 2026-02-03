@@ -26,16 +26,16 @@ class Customer(Base):
 class Vehicle(Base):
     __tablename__ = 'vehicle'
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, index=True)
-    model = Column(String, nullable=False)
+    model = Column(String, nullable=True)
 
-    brand_id = Column(UUID(as_uuid=True), ForeignKey('brand.id'))
+    brand_id = Column(UUID(as_uuid=True), ForeignKey('brand.id'), nullable=True)
     brand = relationship('Brand', back_populates='vehicles')
     
-    type = Column(String, nullable=False)
-    kapasitas = Column(String, nullable=False)
-    no_pol = Column(String, nullable=False)
-    tahun = Column(Numeric, nullable=False)
-    warna = Column(String, nullable=False)
+    type = Column(String, nullable=True)
+    kapasitas = Column(String, nullable=True)
+    no_pol = Column(String, nullable=True)
+    tahun = Column(Numeric, nullable=True)
+    warna = Column(String, nullable=True)
     no_mesin = Column(String, nullable=True)
     no_rangka = Column(String, nullable=True)
     customer_id = Column(UUID(as_uuid=True), ForeignKey('customer.id'))

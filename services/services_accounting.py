@@ -1,7 +1,7 @@
 # services_accounting.py
 import uuid
 from decimal import Decimal
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Any, cast
 from sqlalchemy.orm import Session
 from sqlalchemy import func, select, Date
 from datetime import date
@@ -72,6 +72,9 @@ from schemas.service_accounting import (
 )
 from collections import defaultdict
 
+def to_float(value: Any) -> float:
+    return float(cast(Decimal, value))
+
 def to_dict(obj):
     result = {}
     for c in obj.__table__.columns:
@@ -81,7 +84,7 @@ def to_dict(obj):
             value = str(value)
         # Konversi Decimal ke float
         elif isinstance(value, decimal.Decimal):
-            value = float(value)
+            value = to_float(value)
         # Konversi datetime/date/time ke isoformat string
         elif isinstance(value, (datetime.datetime, datetime.date, datetime.time)):
             value = value.isoformat()
@@ -210,8 +213,8 @@ def _to_entry_out(db: Session, entry: JournalEntry) -> dict:
             "account_code": ln.account.code,
             "account_name": ln.account.name,
             "description": ln.description,
-            "debit": float(ln.debit),
-            "credit": float(ln.credit),
+            "debit": to_float(ln.debit),
+            "credit": to_float(ln.credit),
         })
     return {
         "id": str(entry.id),
@@ -1676,21 +1679,24 @@ def generate_product_sales_report(db: Session, request: ProductSalesReportReques
     Lists each product line sold in workorders, with totals for quantity and sales.
     Optionally filters by product_id and customer_id.
     """
+    from models.customer import Vehicle
 
-
-    # Query product_ordered joined with workorder, product, customer
+    # Query product_ordered joined with workorder, product, customer, vehicle
     query = db.query(
         Workorder.no_wo,
         Workorder.tanggal_masuk,
         Customer.nama.label('customer_name'),
         Product.name.label('product_name'),
+        Vehicle.no_pol,
         ProductOrdered.quantity,
         ProductOrdered.price,
+        Product.cost.label('hpp'),
         ProductOrdered.subtotal,
         ProductOrdered.discount
     ).join(ProductOrdered, Workorder.id == ProductOrdered.workorder_id)\
      .join(Product, ProductOrdered.product_id == Product.id)\
      .join(Customer, Workorder.customer_id == Customer.id)\
+     .outerjoin(Vehicle, Workorder.vehicle_id == Vehicle.id)\
      .filter(Workorder.tanggal_masuk >= request.start_date)\
      .filter(Workorder.tanggal_masuk < request.end_date + datetime.timedelta(days=1))
 
@@ -1707,6 +1713,7 @@ def generate_product_sales_report(db: Session, request: ProductSalesReportReques
     items = []
     total_quantity = Decimal("0.00")
     total_sales = Decimal("0.00")
+    total_hpp = Decimal("0.00")
 
     for row in results:
         item = ProductSalesReportItem(
@@ -1714,18 +1721,30 @@ def generate_product_sales_report(db: Session, request: ProductSalesReportReques
             workorder_date=row.tanggal_masuk.date() if isinstance(row.tanggal_masuk, datetime.datetime) else row.tanggal_masuk,
             customer_name=row.customer_name,
             product_name=row.product_name,
+            nopol=row.no_pol,
             quantity=row.quantity,
             price=row.price,
+            hpp=row.hpp,
             subtotal=row.subtotal,
             discount=row.discount
         )
         items.append(item)
         total_quantity += row.quantity
         total_sales += row.subtotal
+        # Calculate total HPP based on quantity and cost
+        if row.hpp:
+            total_hpp += row.hpp * row.quantity
+
+    # Calculate margin
+    total_margin = total_sales - total_hpp
+    margin_percentage = Decimal((total_margin / total_sales * Decimal("100")) if total_sales != 0 else Decimal("0.00"))
 
     return ProductSalesReport(
         total_quantity=total_quantity,
-        total_sales=total_sales,
+        total_sales=Decimal(total_sales),
+        total_hpp=Decimal(total_hpp),
+        total_margin=Decimal(total_margin),
+        margin_percentage=margin_percentage,
         items=items
     )
 
@@ -1737,22 +1756,25 @@ def generate_service_sales_report(db: Session, request: ServiceSalesReportReques
     Optionally filters by service_id and customer_id.
     """
     from models.workorder import Workorder, ServiceOrdered, Service
-    from models.customer import Customer
+    from models.customer import Customer, Vehicle
     from sqlalchemy import func
 
-    # Query service_ordered joined with workorder, service, customer
+    # Query service_ordered joined with workorder, service, customer, vehicle
     query = db.query(
         Workorder.no_wo,
         Workorder.tanggal_masuk,
         Customer.nama.label('customer_name'),
         Service.name.label('service_name'),
+        Vehicle.no_pol,
         ServiceOrdered.quantity,
         ServiceOrdered.price,
+        Service.cost.label('hpp'),
         ServiceOrdered.subtotal,
         ServiceOrdered.discount
     ).join(ServiceOrdered, Workorder.id == ServiceOrdered.workorder_id)\
      .join(Service, ServiceOrdered.service_id == Service.id)\
      .join(Customer, Workorder.customer_id == Customer.id)\
+     .outerjoin(Vehicle, Workorder.vehicle_id == Vehicle.id)\
      .filter(func.date(Workorder.tanggal_masuk) >= request.start_date)\
      .filter(func.date(Workorder.tanggal_masuk) <= request.end_date)
 
@@ -1769,6 +1791,7 @@ def generate_service_sales_report(db: Session, request: ServiceSalesReportReques
     items = []
     total_quantity = Decimal("0.00")
     total_sales = Decimal("0.00")
+    total_hpp = Decimal("0.00")
 
     for row in results:
         # Calculate subtotal as quantity * price - discount
@@ -1778,18 +1801,30 @@ def generate_service_sales_report(db: Session, request: ServiceSalesReportReques
             workorder_date=row.tanggal_masuk.date() if isinstance(row.tanggal_masuk, datetime.datetime) else row.tanggal_masuk,
             customer_name=row.customer_name,
             service_name=row.service_name,
+            nopol=row.no_pol,
             quantity=row.quantity,
             price=row.price,
+            hpp=row.hpp,
             subtotal=calculated_subtotal,
             discount=row.discount
         )
         items.append(item)
         total_quantity += row.quantity
         total_sales += calculated_subtotal
+        # Calculate total HPP based on quantity and cost
+        if row.hpp:
+            total_hpp += row.hpp * row.quantity
+
+    # Calculate margin
+    total_margin = total_sales - total_hpp
+    margin_percentage = Decimal((total_margin / total_sales * Decimal("100")) if total_sales != 0 else Decimal("0.00"))
 
     return ServiceSalesReport(
         total_quantity=total_quantity,
-        total_sales=total_sales,
+        total_sales=Decimal(total_sales),
+        total_hpp=Decimal(total_hpp),
+        total_margin=Decimal(total_margin),
+        margin_percentage=margin_percentage,
         items=items
     )
 

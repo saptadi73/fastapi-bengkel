@@ -4,6 +4,8 @@ from models.database import SessionLocal
 from services.services_customer import create_customer_with_vehicles,getListCustomersWithvehicles, getListCustomersWithVehiclesCustomersID
 from services.services_product import CreateProductNew, get_all_products, get_product_by_id, createServicenya,get_all_services, createBrandnya, createCategorynya, createSatuannya, getAllBrands, getAllCategories, getAllSatuans, getAllInventoryProducts, getInventoryByProductID, createProductMoveHistoryNew, get_service_by_id, update_product_cost, getAllInventoryProductsConsignment,getAllInventoryProductsExcConsignment, update_service, delete_service
 from services.services_inventory import manual_adjustment_inventory
+from services.services_inventory_extended import update_inventory_adjustment, delete_inventory_adjustment, get_adjustment_by_id
+from uuid import UUID
 from services.services_costing import get_product_cost_history, get_product_cost_summary
 from schemas.service_inventory import CreateProductMovedHistory, ManualAdjustment, CreateProductMovedHistories
 from schemas.service_product import CreateProduct, ProductResponse, CreateService, ServiceResponse, CreateBrand, CreateCategory, CreateSatuan, UpdateProductCost, ProductCostHistoryRequest, ProductCostHistoryResponse
@@ -339,6 +341,65 @@ def manual_adjustment_inventory_router(
         if not result:
             return error_response(message="Failed to perform manual adjustment")
         return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()
+
+@router.put("/inventory/adjustment/{adjustment_id}", dependencies=[Depends(jwt_required)])
+def update_adjustment_inventory_router(
+    adjustment_id: UUID,
+    adjustment_data: ManualAdjustment,
+    db: Session = Depends(get_db)
+):
+    """
+    Update an existing inventory adjustment record
+    
+    **Path parameters:**
+    - adjustment_id: UUID of the adjustment to update
+    
+    **Request body:**
+    - product_id: Product ID
+    - old_quantity: Old/current quantity
+    - new_quantity: New quantity
+    - reason: Reason for adjustment
+    - performed_by: User performing adjustment
+    - notes: Additional notes
+    """
+    try:
+        result = update_inventory_adjustment(db, adjustment_id, adjustment_data)
+        if not result:
+            return error_response(message="Failed to update adjustment")
+        return success_response(data=result, message="Adjustment updated successfully")
+    except ValueError as e:
+        return error_response(message=str(e), status_code=404)
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()
+
+@router.delete("/inventory/adjustment/{adjustment_id}", dependencies=[Depends(jwt_required)])
+def delete_adjustment_inventory_router(
+    adjustment_id: UUID,
+    db: Session = Depends(get_db)
+):
+    """
+    Delete an inventory adjustment record and reverse the adjustment
+    
+    **Path parameters:**
+    - adjustment_id: UUID of the adjustment to delete
+    
+    **Notes:**
+    - Deleting an adjustment will reverse its effect on inventory
+    - The quantity adjustment will be reversed automatically
+    """
+    try:
+        result = delete_inventory_adjustment(db, adjustment_id)
+        if not result:
+            return error_response(message="Failed to delete adjustment")
+        return success_response(data=result, message="Adjustment deleted and reversed successfully")
+    except ValueError as e:
+        return error_response(message=str(e), status_code=404)
     except Exception as e:
         return error_response(message=str(e))
     finally:

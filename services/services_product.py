@@ -13,6 +13,10 @@ from schemas.service_product import CreateProduct, ProductResponse, BrandRespons
 import decimal
 import datetime
 from decimal import Decimal
+from typing import Any, cast
+
+def to_float(value: Any) -> float:
+    return float(cast(Decimal, value))
 
 def to_dict(obj):
     result = {}
@@ -23,7 +27,7 @@ def to_dict(obj):
             value = str(value)
         # Konversi Decimal ke float
         elif isinstance(value, decimal.Decimal):
-            value = float(value)
+            value = to_float(value)
         # Konversi datetime/date/time ke isoformat string
         elif isinstance(value, (datetime.datetime, datetime.date, datetime.time)):
             value = value.isoformat()
@@ -169,8 +173,9 @@ def getAllInventoryProducts(db: Session):
         p_dict['supplier_name'] = product.supplier.nama if product.supplier else None
         # Hitung total stock dari inventory
         total_stock = sum(inv.quantity for inv in product.inventory) if product.inventory else 0
-        p_dict['total_stock'] = float(total_stock)  # Konversi Decimal ke float
-        p_dict['cost'] = float(product.cost) if product.cost is not None else None  # type: ignore
+        p_dict['total_stock'] = to_float(total_stock)  # Konversi Decimal ke float
+        p_dict['price'] = to_float(product.price) if product.price is not None else None  # type: ignore
+        p_dict['hpp'] = to_float(product.cost) if product.cost is not None else None  # type: ignore
         result.append(p_dict)
     return result
 
@@ -185,8 +190,9 @@ def getAllInventoryProductsExcConsignment(db: Session):
         p_dict['supplier_name'] = product.supplier.nama if product.supplier else None
         # Hitung total stock dari inventory
         total_stock = sum(inv.quantity for inv in product.inventory) if product.inventory else 0
-        p_dict['total_stock'] = float(total_stock)  # Konversi Decimal ke float
-        p_dict['cost'] = float(product.cost) if product.cost is not None else None  # type: ignore
+        p_dict['total_stock'] = to_float(total_stock)  # Konversi Decimal ke float
+        p_dict['price'] = to_float(product.price) if product.price is not None else None  # type: ignore
+        p_dict['hpp'] = to_float(product.cost) if product.cost is not None else None  # type: ignore
         result.append(p_dict)
     return result
 
@@ -201,8 +207,9 @@ def getAllInventoryProductsConsignment(db: Session):
         p_dict['supplier_name'] = product.supplier.nama if product.supplier else None
         # Hitung total stock dari inventory
         total_stock = sum(inv.quantity for inv in product.inventory) if product.inventory else 0
-        p_dict['total_stock'] = float(total_stock)  # Konversi Decimal ke float
-        p_dict['cost'] = float(product.cost) if product.cost is not None else None  # type: ignore
+        p_dict['price'] = to_float(product.price) if product.price is not None else None  # type: ignore
+        p_dict['hppl_stock'] = to_float(total_stock)  # Konversi Decimal ke float
+        p_dict['cost'] = to_float(product.cost) if product.cost is not None else None  # type: ignore
         result.append(p_dict)
     return result
 
@@ -217,7 +224,9 @@ def getInventoryByProductID(db: Session, product_id: str):
     p_dict['supplier_name'] = product.supplier.nama if product.supplier else None
     # Hitung total stock dari inventory
     total_stock = sum(inv.quantity for inv in product.inventory) if product.inventory else 0
-    p_dict['total_stock'] = float(total_stock)  # Konversi Decimal ke float
+    p_dict['total_stock'] = to_float(total_stock)  # Konversi Decimal ke float
+    p_dict['price'] = to_float(product.price) if product.price is not None else None  # type: ignore
+    p_dict['hpp'] = to_float(product.cost) if product.cost is not None else None  # type: ignore
     return p_dict
 
 def createProductMoveHistoryNew(db: Session, move_data: CreateProductMovedHistory):

@@ -191,9 +191,13 @@ def createProductMoveHistoryNewLoss(db: Session, move_data: CreateProductMovedHi
 def generate_product_move_history_report(db: Session, request: ProductMoveHistoryReportRequest) -> ProductMoveHistoryReport:
     """
     Generate a product move history report within a date range.
-    Lists all product movement entries with product details, customer for outcome, supplier for income.
+    Lists all product movement entries with product details, customer/nopol for outcome (sales), supplier for income (purchases).
     """
-    
+    from models.customer import Customer, Vehicle
+    from models.supplier import Supplier
+    from models.purchase_order import PurchaseOrder, PurchaseOrderLine
+    from models.workorder import Workorder
+    import re
 
     # Query ProductMovedHistory with product join
     query = db.query(ProductMovedHistory, Product).join(Product, ProductMovedHistory.product_id == Product.id).filter(
@@ -206,22 +210,54 @@ def generate_product_move_history_report(db: Session, request: ProductMoveHistor
     items = []
     for move, product in moves:
         customer_name = None
-        supplier_name = None
+        vendor_name = None
+        nopol = None
+        price = product.price
+        hpp = product.cost
 
-        # For outcome, get customer from related workorder or sale
+        # For outcome, get customer and vehicle from workorder
         if move.type.lower() == 'outcome':
-            # Assuming notes or performed_by might contain customer info, or we need to join with workorder
-            # For simplicity, if notes contain customer name, or we can add logic to fetch from workorder
-            # Since the model doesn't have direct customer_id, we might need to parse notes or add a field
-            # For now, leave as None, or assume notes contain customer name
-            if move.notes and "customer:" in move.notes.lower():
-                # Parse customer name from notes if present
-                customer_name = move.notes.split("customer:")[1].strip() if "customer:" in move.notes.lower() else None
+            # Extract workorder_id from notes if present (e.g., "Product ordered in Workorder <UUID>")
+            wo_match = re.search(r'Workorder\s+([a-f0-9\-]{36})', move.notes or '', re.IGNORECASE)
+            if wo_match:
+                wo_id = wo_match.group(1)
+                try:
+                    workorder = db.query(Workorder).filter(Workorder.id == wo_id).first()
+                    if workorder:
+                        customer = db.query(Customer).filter(Customer.id == workorder.customer_id).first()
+                        if customer:
+                            customer_name = customer.nama
+                        
+                        # Get nopol from vehicle
+                        if workorder.vehicle_id:
+                            vehicle = db.query(Vehicle).filter(Vehicle.id == workorder.vehicle_id).first()
+                            if vehicle:
+                                nopol = vehicle.no_pol
+                except Exception:
+                    pass
 
-        # For income, get supplier from related purchase
+        # For income, get supplier from purchase order
         elif move.type.lower() == 'income':
-            if move.notes and "supplier:" in move.notes.lower():
-                supplier_name = move.notes.split("supplier:")[1].strip() if "supplier:" in move.notes.lower() else None
+            # Extract PO number from notes (e.g., "Purchase order PO001 received")
+            po_match = re.search(r'Purchase order\s+(\S+)', move.notes or '', re.IGNORECASE)
+            if po_match:
+                po_no = po_match.group(1)
+                try:
+                    purchase_order = db.query(PurchaseOrder).filter(PurchaseOrder.po_no == po_no).first()
+                    if purchase_order and purchase_order.supplier_id:
+                        supplier = db.query(Supplier).filter(Supplier.id == purchase_order.supplier_id).first()
+                        if supplier:
+                            vendor_name = supplier.nama
+                        
+                        # Get price from purchase order line for this product
+                        po_line = db.query(PurchaseOrderLine).filter(
+                            PurchaseOrderLine.purchase_order_id == purchase_order.id,
+                            PurchaseOrderLine.product_id == product.id
+                        ).first()
+                        if po_line:
+                            price = po_line.unit_price
+                except Exception:
+                    pass
 
         items.append(ProductMoveHistoryReportItem(
             product_id=str(move.product_id),
@@ -231,8 +267,11 @@ def generate_product_move_history_report(db: Session, request: ProductMoveHistor
             timestamp=move.timestamp,
             performed_by=move.performed_by,
             notes=move.notes,
+            price=price,
+            hpp=hpp,
             customer_name=customer_name,
-            supplier_name=supplier_name
+            vendor_name=vendor_name,
+            nopol=nopol
         ))
 
     return ProductMoveHistoryReport(

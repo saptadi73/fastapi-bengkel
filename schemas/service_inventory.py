@@ -36,8 +36,11 @@ class ProductMoveHistoryReportItem(BaseModel):
     timestamp: datetime
     performed_by: str
     notes: Optional[str] = None
+    price: Optional[Decimal] = None
+    hpp: Optional[Decimal] = None
     customer_name: Optional[str] = None
-    supplier_name: Optional[str] = None
+    vendor_name: Optional[str] = None
+    nopol: Optional[str] = None
 
 class ProductMoveHistoryReport(DecimalModel):
     total_entries: int

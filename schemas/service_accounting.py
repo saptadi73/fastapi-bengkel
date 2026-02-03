@@ -422,8 +422,10 @@ class ProductSalesReportItem(DecimalModel):
     workorder_date: date
     customer_name: str
     product_name: str
+    nopol: Optional[str] = None
     quantity: Decimal
     price: Decimal
+    hpp: Optional[Decimal] = None
     subtotal: Decimal
     discount: Decimal
 
@@ -431,6 +433,9 @@ class ProductSalesReportItem(DecimalModel):
 class ProductSalesReport(DecimalModel):
     total_quantity: Decimal
     total_sales: Decimal
+    total_hpp: Decimal
+    total_margin: Decimal
+    margin_percentage: Decimal
     items: List[ProductSalesReportItem]
 
     model_config = ConfigDict()
@@ -448,8 +453,10 @@ class ServiceSalesReportItem(DecimalModel):
     workorder_date: date
     customer_name: str
     service_name: str
+    nopol: Optional[str] = None
     quantity: Decimal
     price: Decimal
+    hpp: Optional[Decimal] = None
     subtotal: Decimal
     discount: Decimal
 
@@ -457,6 +464,9 @@ class ServiceSalesReportItem(DecimalModel):
 class ServiceSalesReport(DecimalModel):
     total_quantity: Decimal
     total_sales: Decimal
+    total_hpp: Decimal
+    total_margin: Decimal
+    margin_percentage: Decimal
     items: List[ServiceSalesReportItem]
 
     model_config = ConfigDict()
