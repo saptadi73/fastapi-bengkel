@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from services.services_inventory import get_or_create_inventory, createProductMoveHistoryNew, generate_product_move_history_report, createProductMoveHistoryNewLoss, updateCostCostingMethodeAverage
-from services.services_inventory_extended import update_inventory_loss, delete_inventory_loss, get_loss_by_id
+from services.services_inventory_extended import update_inventory_loss, delete_inventory_loss, get_loss_by_id, get_inventory_losses
 from uuid import UUID
 from schemas.service_inventory import CreateProductMovedHistory, ProductMoveHistoryReportRequest, ProductMoveHistoryReport, PurchaseOrderUpdateCost
 from models.database import SessionLocal
@@ -63,6 +63,36 @@ def product_move_loss_router(
     except Exception as e:
         return error_response(message=str(e))
 
+
+@router.get("/loss")
+def list_loss_inventory_router(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = get_inventory_losses(db, skip, limit)
+        return success_response(
+            data=result,
+            message=f"Retrieved {len(result)} loss records"
+        )
+    except Exception as e:
+        return error_response(message=str(e))
+
+
+@router.get("/loss/{loss_id}")
+def get_loss_inventory_router(
+    loss_id: UUID,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = get_loss_by_id(db, loss_id)
+        return success_response(data=result)
+    except ValueError as e:
+        return error_response(message=str(e), status_code=404)
+    except Exception as e:
+        return error_response(message=str(e))
+
 @router.put("/loss/{loss_id}", dependencies=[Depends(jwt_required)])
 def update_loss_inventory_router(
     loss_id: UUID,
@@ -86,7 +116,7 @@ def update_loss_inventory_router(
     - Updating a loss will adjust inventory accordingly
     """
     try:
-        result = update_inventory_loss(db, loss_id, loss_data)
+        result = update_inventory_loss(db, loss_id, loss_data.model_dump(exclude_unset=True))
         if not result:
             return error_response(message="Failed to update loss record")
         return success_response(data=result, message="Loss record updated successfully")

@@ -57,6 +57,7 @@ class Product(Base):
     inventory = relationship('Inventory', back_populates='product')
     product_moved_history = relationship('ProductMovedHistory', back_populates='product')
     product_line_packet_order = relationship('ProductLinePacketOrder', back_populates='product')
+    consignment_receipts = relationship('ConsignmentReceipt', back_populates='product')
     purchase_order_lines = relationship('PurchaseOrderLine', back_populates='product')
     
 

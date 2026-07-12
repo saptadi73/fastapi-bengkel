@@ -5,6 +5,9 @@ from models.inventory import Inventory, ProductMovedHistory
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import joinedload
+from sqlalchemy import or_
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func, select
 from models.workorder import Product, Brand, Satuan, Category, Service, Workorder, ProductOrdered, ServiceOrdered
 import uuid
@@ -36,6 +39,81 @@ def to_dict(obj):
             value = value.decode('utf-8')
         result[c.name] = value
     return result
+
+
+def _decimal_or_none(value):
+    if value is None:
+        return None
+    return to_float(value)
+
+
+def _get_total_stock(product: Product) -> Decimal:
+    return sum((inv.quantity for inv in product.inventory), Decimal("0.00")) if product.inventory else Decimal("0.00")
+
+
+def _get_latest_purchase_price(db: Session, product_id):
+    from models.purchase_order import PurchaseOrderLine, PurchaseOrder
+    from models.consignment import ConsignmentReceipt
+
+    try:
+        consignment_receipt = db.query(ConsignmentReceipt).filter(
+            ConsignmentReceipt.product_id == product_id,
+            ConsignmentReceipt.quantity_received > 0
+        ).order_by(ConsignmentReceipt.receipt_date.desc(), ConsignmentReceipt.created_at.desc(), ConsignmentReceipt.id.desc()).first()
+        if consignment_receipt and consignment_receipt.unit_price is not None:
+            return consignment_receipt.unit_price
+    except SQLAlchemyError:
+        pass
+
+    try:
+        purchase_line = db.query(PurchaseOrderLine).join(PurchaseOrder).filter(
+            PurchaseOrderLine.product_id == product_id,
+            PurchaseOrderLine.quantity > 0
+        ).order_by(PurchaseOrder.date.desc(), PurchaseOrderLine.id.desc()).first()
+
+        if purchase_line and purchase_line.price is not None:
+            return purchase_line.price
+    except SQLAlchemyError:
+        pass
+
+    return None
+
+
+def _build_inventory_item(db: Session, product: Product) -> dict:
+    p_dict = to_dict(product)
+    p_dict['category_name'] = product.category.name if product.category else None
+    p_dict['brand_name'] = product.brand.name if product.brand else None
+    p_dict['satuan_name'] = product.satuan.name if product.satuan else None
+    p_dict['supplier_name'] = product.supplier.nama if product.supplier else None
+
+    total_stock = _get_total_stock(product)
+    price = product.price
+    purchase_price = _get_latest_purchase_price(db, product.id)
+    hpp = product.cost if product.cost is not None else purchase_price
+
+    margin = None
+    margin_percentage = None
+    if price is not None and hpp is not None:
+        margin = price - hpp
+        margin_percentage = (margin / price * Decimal('100')) if price != 0 else Decimal('0.00')
+
+    min_stock = product.min_stock or Decimal('0.00')
+    if total_stock > min_stock:
+        stock_status = 'safe'
+    else:
+        stock_status = 'reorder'
+
+    p_dict.update({
+        'price': _decimal_or_none(price),
+        'purchase_price': _decimal_or_none(purchase_price),
+        'hpp': _decimal_or_none(hpp),
+        'margin': _decimal_or_none(margin),
+        'margin_percentage': to_float(margin_percentage) if margin_percentage is not None else None,
+        'total_stock': to_float(total_stock),
+        'min_stock': _decimal_or_none(min_stock),
+        'stock_status': stock_status,
+    })
+    return p_dict
 
 def CreateProductNew(db:Session, product_data: CreateProduct):
     new_product = Product(
@@ -163,71 +241,97 @@ def update_product_cost(db: Session, product_id: str, cost: Decimal):
     return to_dict(product)
 
 def getAllInventoryProducts(db: Session):
-    products = db.query(Product).all()
-    result = []
-    for product in products:
-        p_dict = to_dict(product)
-        p_dict['category_name'] = product.category.name if product.category else None
-        p_dict['brand_name'] = product.brand.name if product.brand else None
-        p_dict['satuan_name'] = product.satuan.name if product.satuan else None
-        p_dict['supplier_name'] = product.supplier.nama if product.supplier else None
-        # Hitung total stock dari inventory
-        total_stock = sum(inv.quantity for inv in product.inventory) if product.inventory else 0
-        p_dict['total_stock'] = to_float(total_stock)  # Konversi Decimal ke float
-        p_dict['price'] = to_float(product.price) if product.price is not None else None  # type: ignore
-        p_dict['hpp'] = to_float(product.cost) if product.cost is not None else None  # type: ignore
-        result.append(p_dict)
-    return result
+    products = db.query(Product).options(
+        joinedload(Product.category),
+        joinedload(Product.brand),
+        joinedload(Product.satuan),
+        joinedload(Product.supplier),
+        joinedload(Product.inventory),
+        joinedload(Product.purchase_order_lines).joinedload(PurchaseOrderLine.product),
+    ).all()
+    return [_build_inventory_item(db, product) for product in products]
 
 def getAllInventoryProductsExcConsignment(db: Session):
-    products = db.query(Product).filter(Product.is_consignment == False).all()
-    result = []
-    for product in products:
-        p_dict = to_dict(product)
-        p_dict['category_name'] = product.category.name if product.category else None
-        p_dict['brand_name'] = product.brand.name if product.brand else None
-        p_dict['satuan_name'] = product.satuan.name if product.satuan else None
-        p_dict['supplier_name'] = product.supplier.nama if product.supplier else None
-        # Hitung total stock dari inventory
-        total_stock = sum(inv.quantity for inv in product.inventory) if product.inventory else 0
-        p_dict['total_stock'] = to_float(total_stock)  # Konversi Decimal ke float
-        p_dict['price'] = to_float(product.price) if product.price is not None else None  # type: ignore
-        p_dict['hpp'] = to_float(product.cost) if product.cost is not None else None  # type: ignore
-        result.append(p_dict)
-    return result
+    products = db.query(Product).options(
+        joinedload(Product.category),
+        joinedload(Product.brand),
+        joinedload(Product.satuan),
+        joinedload(Product.supplier),
+        joinedload(Product.inventory),
+    ).filter(Product.is_consignment == False).all()
+    return [_build_inventory_item(db, product) for product in products]
 
 def getAllInventoryProductsConsignment(db: Session):
-    products = db.query(Product).filter(Product.is_consignment == True).all()
-    result = []
-    for product in products:
-        p_dict = to_dict(product)
-        p_dict['category_name'] = product.category.name if product.category else None
-        p_dict['brand_name'] = product.brand.name if product.brand else None
-        p_dict['satuan_name'] = product.satuan.name if product.satuan else None
-        p_dict['supplier_name'] = product.supplier.nama if product.supplier else None
-        # Hitung total stock dari inventory
-        total_stock = sum(inv.quantity for inv in product.inventory) if product.inventory else 0
-        p_dict['price'] = to_float(product.price) if product.price is not None else None  # type: ignore
-        p_dict['hppl_stock'] = to_float(total_stock)  # Konversi Decimal ke float
-        p_dict['cost'] = to_float(product.cost) if product.cost is not None else None  # type: ignore
-        result.append(p_dict)
-    return result
+    products = db.query(Product).options(
+        joinedload(Product.category),
+        joinedload(Product.brand),
+        joinedload(Product.satuan),
+        joinedload(Product.supplier),
+        joinedload(Product.inventory),
+    ).filter(Product.is_consignment == True).all()
+    return [_build_inventory_item(db, product) for product in products]
 
 def getInventoryByProductID(db: Session, product_id: str):
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         return None
-    p_dict = to_dict(product)
-    p_dict['category_name'] = product.category.name if product.category else None
-    p_dict['brand_name'] = product.brand.name if product.brand else None
-    p_dict['satuan_name'] = product.satuan.name if product.satuan else None
-    p_dict['supplier_name'] = product.supplier.nama if product.supplier else None
-    # Hitung total stock dari inventory
-    total_stock = sum(inv.quantity for inv in product.inventory) if product.inventory else 0
-    p_dict['total_stock'] = to_float(total_stock)  # Konversi Decimal ke float
-    p_dict['price'] = to_float(product.price) if product.price is not None else None  # type: ignore
-    p_dict['hpp'] = to_float(product.cost) if product.cost is not None else None  # type: ignore
-    return p_dict
+    return _build_inventory_item(db, product)
+
+
+def get_inventory_products_paginated(
+    db: Session,
+    page: int = 1,
+    limit: int = 25,
+    search: str | None = None,
+    category_id = None,
+    stock_status: str | None = None,
+):
+    query = db.query(Product).options(
+        joinedload(Product.category),
+        joinedload(Product.brand),
+        joinedload(Product.satuan),
+        joinedload(Product.supplier),
+        joinedload(Product.inventory),
+    )
+
+    if search:
+        search_like = f"%{search}%"
+        query = query.filter(
+            or_(
+                Product.name.ilike(search_like),
+                Product.type.ilike(search_like),
+                Product.description.ilike(search_like),
+            )
+        )
+
+    if category_id:
+        query = query.filter(Product.category_id == category_id)
+
+    products = query.order_by(Product.name.asc()).all()
+    data = [_build_inventory_item(db, product) for product in products]
+
+    if stock_status in {'safe', 'reorder'}:
+        data = [item for item in data if item.get('stock_status') == stock_status]
+
+    total_after_filter = len(data)
+    start_index = (page - 1) * limit
+    end_index = start_index + limit
+    paginated_data = data[start_index:end_index]
+    total_pages = (total_after_filter + limit - 1) // limit if total_after_filter else 0
+
+    return {
+        'status': 'success',
+        'message': 'Inventory retrieved successfully',
+        'data': paginated_data,
+        'pagination': {
+            'page': page,
+            'limit': limit,
+            'total': total_after_filter,
+            'total_pages': total_pages,
+            'has_previous': page > 1,
+            'has_next': page < total_pages,
+        }
+    }
 
 def createProductMoveHistoryNew(db: Session, move_data: CreateProductMovedHistory):
     inventory = db.query(Inventory).filter(Inventory.product_id == move_data.product_id).first()

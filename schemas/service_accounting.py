@@ -4,7 +4,7 @@
 from typing import List, Optional
 from decimal import Decimal
 from pydantic import BaseModel, Field, condecimal, ConfigDict, field_serializer
-from datetime import date
+from datetime import date, datetime
 from enum import Enum
 from uuid import UUID
 
@@ -343,6 +343,11 @@ class ProfitLossReport(DecimalModel):
     net_profit: Decimal
     revenues: List[ProfitLossReportItem]
     expenses: List[ProfitLossReportItem]
+    product_hpp: Decimal = Decimal("0.00")
+    service_hpp: Decimal = Decimal("0.00")
+    total_hpp: Decimal = Decimal("0.00")
+    gross_profit: Decimal = Decimal("0.00")
+    operating_expenses: Decimal = Decimal("0.00")
 
     model_config = ConfigDict()
 
@@ -415,6 +420,7 @@ class ProductSalesReportRequest(BaseModel):
     end_date: date
     product_id: Optional[UUID] = None
     customer_id: Optional[UUID] = None
+    workorder_ids: Optional[List[UUID]] = Field(default=None, exclude=True)
 
 
 class ProductSalesReportItem(DecimalModel):
@@ -446,6 +452,7 @@ class ServiceSalesReportRequest(BaseModel):
     end_date: date
     service_id: Optional[UUID] = None
     customer_id: Optional[UUID] = None
+    workorder_ids: Optional[List[UUID]] = Field(default=None, exclude=True)
 
 
 class ServiceSalesReportItem(DecimalModel):
@@ -550,28 +557,111 @@ class DailyReportRequest(BaseModel):
 
 
 class WorkOrderSummaryItem(DecimalModel):
+    workorder_id: Optional[str] = None
     workorder_no: str
     customer_name: str
     total_biaya: Decimal
     status: str
+    total_revenue: Optional[Decimal] = None
+    total_hpp: Optional[Decimal] = Decimal("0.00")
+    gross_profit: Optional[Decimal] = Decimal("0.00")
+    payment_status: Optional[str] = None
 
 
 class WorkOrderSummary(DecimalModel):
     total_workorders: int
     total_revenue: Decimal
+    total_hpp: Decimal = Decimal("0.00")
+    gross_profit: Decimal = Decimal("0.00")
     items: List[WorkOrderSummaryItem]
 
     model_config = ConfigDict()
 
 
+class DailyExpensePaymentItem(DecimalModel):
+    expense_id: Optional[str] = None
+    payment_id: str
+    payment_date: date
+    category: Optional[str] = None
+    description: Optional[str] = None
+    amount: Decimal
+    payment_channel: str
+    channel_code: str
+    account_code: str
+    account_name: str
+
+
+class DailyPurchaseOrderPaymentItem(DecimalModel):
+    purchase_order_id: Optional[str] = None
+    purchase_order_no: Optional[str] = None
+    payment_id: str
+    payment_date: date
+    supplier_name: Optional[str] = None
+    amount_paid: Decimal
+    payment_channel: str
+    channel_code: str
+    account_code: str
+    account_name: str
+
+
+class DailyExpenseOutflowGroup(DecimalModel):
+    total: Decimal = Decimal("0.00")
+    items: List[DailyExpensePaymentItem] = Field(default_factory=list)
+
+
+class DailyPurchaseOrderOutflowGroup(DecimalModel):
+    total: Decimal = Decimal("0.00")
+    items: List[DailyPurchaseOrderPaymentItem] = Field(default_factory=list)
+
+
+class DailyOutflows(DecimalModel):
+    total_cash_out: Decimal = Decimal("0.00")
+    expenses: DailyExpenseOutflowGroup = Field(default_factory=DailyExpenseOutflowGroup)
+    purchase_order_payments: DailyPurchaseOrderOutflowGroup = Field(default_factory=DailyPurchaseOrderOutflowGroup)
+
+
+class PaymentChannelSummary(DecimalModel):
+    code: str
+    name: str
+    type: str
+    account_code: str
+    opening_balance: Decimal = Decimal("0.00")
+    cash_in: Decimal = Decimal("0.00")
+    cash_out: Decimal = Decimal("0.00")
+    closing_balance: Decimal = Decimal("0.00")
+
+
+class CashierCashSummary(DecimalModel):
+    code: str = "CASHIER_CASH"
+    account_code: str = "1001"
+    account_name: str = "Kas Kasir"
+    opening_balance: Decimal = Decimal("0.00")
+    cash_in: Decimal = Decimal("0.00")
+    cash_out: Decimal = Decimal("0.00")
+    closing_balance: Decimal = Decimal("0.00")
+
+
 class DailyReport(DecimalModel):
     date: date
+    timezone: Optional[str] = None
+    generated_at: Optional[datetime] = None
     cash_books: List[CashBookReport]
     product_sales: ProductSalesReport
     service_sales: ServiceSalesReport
     purchase_orders: PurchaseOrderReport
     profit_loss: ProfitLossReport
     work_orders: WorkOrderSummary
+    outflows: DailyOutflows = Field(default_factory=DailyOutflows)
+    payment_channels: List[PaymentChannelSummary] = Field(default_factory=list)
+    cashier_cash: CashierCashSummary = Field(default_factory=CashierCashSummary)
+    # Legacy fields kept for backward compatibility during frontend transition.
+    sales_count: Optional[int] = None
+    sales_total: Optional[Decimal] = None
+    cash_in: Optional[Decimal] = None
+    cash_out: Optional[Decimal] = None
+    expenses: Optional[Decimal] = None
+    net_cash: Optional[Decimal] = None
+    workorders: Optional[List[WorkOrderSummaryItem]] = None
 
     model_config = ConfigDict()
 

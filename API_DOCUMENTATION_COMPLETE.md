@@ -3,8 +3,8 @@
 **Base URL:** `http://localhost:8000`  
 **Production URL:** `https://carspeed.gagakrimang.web.id`
 
-**Version:** 1.0.0  
-**Last Updated:** January 18, 2026
+**Version:** 1.0.1  
+**Last Updated:** July 12, 2026
 
 ## 📋 Table of Contents
 
@@ -31,6 +31,7 @@
 18. [WhatsApp Reports](#18-whatsapp-reports)
 19. [Manual WhatsApp](#19-manual-whatsapp)
 20. [Scheduler](#20-scheduler)
+21. [Packet Orders](#21-packet-orders)
 
 ---
 
@@ -820,15 +821,21 @@ Authorization: Bearer <your_jwt_token>
 
 ### 7.13 Get All Inventory
 
-### 7.13 Get All Inventory
-
 **Endpoint:** `GET /products/inventory/all`  
 **Auth Required:** ❌ No
+
+**Query Parameters:**
+- `page` (optional, default `1`): halaman data inventory
+- `limit` (optional, default `25`): jumlah item per halaman
+- `search` (optional): pencarian nama, type, atau deskripsi produk
+- `category_id` (optional): filter berdasarkan kategori
+- `stock_status` (optional): `safe` atau `reorder`
 
 **Response Body:**
 ```json
 {
   "status": "success",
+  "message": "Inventory retrieved successfully",
   "data": [
     {
       "id": "550e8400-e29b-41d4-a716-446655440000",
@@ -836,33 +843,61 @@ Authorization: Bearer <your_jwt_token>
       "type": "product",
       "description": "Oli mesin berkualitas tinggi",
       "price": 150000,
+      "purchase_price": 95000,
       "hpp": 100000,
+      "margin": 50000,
+      "margin_percentage": 33.33,
       "min_stock": 10,
+      "total_stock": 50,
+      "stock_status": "safe",
       "is_consignment": false,
       "category_name": "Sparepart",
       "brand_name": "Shell",
       "satuan_name": "Botol",
-      "supplier_name": "PT Supplier Maju",
-      "total_stock": 50
+      "supplier_name": "PT Supplier Maju"
     }
-  ]
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 25,
+    "total": 150,
+    "total_pages": 6,
+    "has_previous": false,
+    "has_next": true
+  }
 }
 ```
 
 **Field Definitions:**
-- `id` (string): ID produk
-- `name` (string): Nama produk
-- `type` (string): Tipe produk
-- `description` (string): Deskripsi produk
-- `price` (decimal): Harga jual per unit
-- `hpp` (decimal): Harga pokok penjualan/cost per unit
-- `min_stock` (decimal): Stok minimum
-- `is_consignment` (boolean): Apakah produk konsinyasi
-- `category_name` (string): Nama kategori
-- `brand_name` (string): Nama brand
-- `satuan_name` (string): Satuan pengukuran
-- `supplier_name` (string): Nama supplier/vendor
-- `total_stock` (decimal): Total stok saat ini di inventori
+- `price` (decimal): harga jual saat ini
+- `purchase_price` (decimal): harga beli terakhir yang valid
+- `hpp` (decimal): harga pokok inventory yang dipakai untuk margin/laba-rugi
+- `margin` (decimal): selisih `price - hpp`
+- `margin_percentage` (decimal): persentase margin terhadap harga jual
+- `min_stock` (decimal): stok minimum
+- `total_stock` (decimal): total stok saat ini di inventory
+- `stock_status` (string): status stok, saat ini `safe` atau `reorder`
+- `category_name` (string): nama kategori
+- `brand_name` (string): nama brand
+- `satuan_name` (string): nama satuan
+- `supplier_name` (string): nama supplier/vendor
+
+**Empty Response:**
+```json
+{
+  "status": "success",
+  "message": "Inventory retrieved successfully",
+  "data": [],
+  "pagination": {
+    "page": 1,
+    "limit": 25,
+    "total": 0,
+    "total_pages": 0,
+    "has_previous": false,
+    "has_next": false
+  }
+}
+```
 
 ### 7.14 Get All Consignment Inventory
 
@@ -883,7 +918,7 @@ Authorization: Bearer <your_jwt_token>
 **Endpoint:** `GET /products/inventory/{product_id}`  
 **Auth Required:** ❌ No
 
-**Response:** Sama seperti "Get All Inventory" tetapi hanya 1 produk berdasarkan product_id
+**Response:** Sama seperti item pada "Get All Inventory" tetapi hanya 1 produk berdasarkan `product_id`
 
 ### 7.17 Create Product Move (Single)
 
@@ -949,9 +984,9 @@ Authorization: Bearer <your_jwt_token>
 ```json
 {
   "product_id": "uuid-string",
-  "adjustment_qty": -5,
-  "reason": "Lost/damaged",
-  "tanggal": "2025-01-18"
+  "quantity": -5,
+  "performed_by": "admin",
+  "notes": "Stock opname selisih -5"
 }
 ```
 
@@ -1278,15 +1313,49 @@ Authorization: Bearer <your_jwt_token>
 ```json
 {
   "product_id": "uuid-string",
-  "old_quantity": 100,
-  "new_quantity": 95,
-  "reason": "Inventory correction after physical count",
+  "quantity": -5,
   "performed_by": "John Doe",
-  "notes": "5 units missing after physical inventory"
+  "notes": "Stock opname selisih -5"
 }
 ```
 
-### 8.7.2 Update Inventory Adjustment
+### 8.7.2 List Inventory Adjustments
+
+**Endpoint:** `GET /products/inventory/adjustment`  
+**Auth Required:** ❌ No
+
+**Query Parameters:**
+- `skip` (int, optional, default: 0): Jumlah data yang dilewati
+- `limit` (int, optional, default: 100): Jumlah data yang diambil
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Retrieved 2 adjustment records",
+  "data": [
+    {
+      "id": "uuid-string",
+      "product_id": "uuid-string",
+      "type": "adjustment",
+      "quantity": -5,
+      "timestamp": "2026-07-12T09:15:00",
+      "performed_by": "John Doe",
+      "notes": "Stock opname selisih -5"
+    }
+  ]
+}
+```
+
+### 8.7.3 Get Inventory Adjustment by ID
+
+**Endpoint:** `GET /products/inventory/adjustment/{adjustment_id}`  
+**Auth Required:** ❌ No
+
+**Path Parameters:**
+- `adjustment_id` (string): UUID adjustment
+
+### 8.7.4 Update Inventory Adjustment
 
 **Endpoint:** `PUT /products/inventory/adjustment/{adjustment_id}`  
 **Auth Required:** ✅ Yes
@@ -1298,11 +1367,9 @@ Authorization: Bearer <your_jwt_token>
 ```json
 {
   "product_id": "uuid-string",
-  "old_quantity": 100,
-  "new_quantity": 90,
-  "reason": "Revised adjustment after recount",
+  "quantity": -10,
   "performed_by": "Jane Doe",
-  "notes": "10 units found missing"
+  "notes": "Revisi hasil stock opname"
 }
 ```
 
@@ -1314,10 +1381,11 @@ Authorization: Bearer <your_jwt_token>
   "data": {
     "id": "uuid-string",
     "product_id": "uuid-string",
-    "old_quantity": 100,
-    "new_quantity": 90,
-    "quantity_difference": -10,
-    "updated_at": "2025-01-18T14:30:00"
+    "type": "adjustment",
+    "quantity": -10,
+    "timestamp": "2026-07-12T10:30:00",
+    "performed_by": "Jane Doe",
+    "notes": "Revisi hasil stock opname"
   }
 }
 ```
@@ -1325,9 +1393,9 @@ Authorization: Bearer <your_jwt_token>
 **Important Note:**
 - When updating an adjustment, the inventory is recalculated based on the difference
 - Old adjustment effect is reversed, then new adjustment is applied
-- Example: Old: 100→95 (-5), New: 100→90 (-10) = Net change: -5 more units removed
+- Example: Old quantity move: -5, New quantity move: -10 = Net change: -5 more units removed
 
-### 8.7.3 Delete Inventory Adjustment
+### 8.7.5 Delete Inventory Adjustment
 
 **Endpoint:** `DELETE /products/inventory/adjustment/{adjustment_id}`  
 **Auth Required:** ✅ Yes
@@ -1341,10 +1409,9 @@ Authorization: Bearer <your_jwt_token>
   "status": "success",
   "message": "Adjustment deleted and reversed successfully",
   "data": {
-    "id": "uuid-string",
-    "product_id": "uuid-string",
-    "reversed_quantity": -5,
-    "deleted_at": "2025-01-18T14:45:00"
+    "message": "Adjustment deleted successfully",
+    "deleted_id": "uuid-string",
+    "reversed_quantity": -5
   }
 }
 ```
@@ -1369,13 +1436,31 @@ Authorization: Bearer <your_jwt_token>
 ```json
 {
   "product_id": "uuid-string",
-  "kuantitas": 2,
-  "reason": "Damaged during inspection",
-  "tanggal": "2025-01-18"
+  "type": "outcome",
+  "quantity": 2,
+  "performed_by": "Gudang",
+  "notes": "Barang rusak saat inspeksi"
 }
 ```
 
-### 8.8.2 Update Inventory Loss
+### 8.8.2 List Inventory Loss
+
+**Endpoint:** `GET /inventory/loss`  
+**Auth Required:** ❌ No
+
+**Query Parameters:**
+- `skip` (int, optional, default: 0): Jumlah data yang dilewati
+- `limit` (int, optional, default: 100): Jumlah data yang diambil
+
+### 8.8.3 Get Inventory Loss by ID
+
+**Endpoint:** `GET /inventory/loss/{loss_id}`  
+**Auth Required:** ❌ No
+
+**Path Parameters:**
+- `loss_id` (string): UUID loss record
+
+### 8.8.4 Update Inventory Loss
 
 **Endpoint:** `PUT /inventory/loss/{loss_id}`  
 **Auth Required:** ✅ Yes
@@ -1387,9 +1472,10 @@ Authorization: Bearer <your_jwt_token>
 ```json
 {
   "product_id": "uuid-string",
-  "kuantitas": 3,
-  "reason": "Additional damaged units found",
-  "tanggal": "2025-01-18"
+  "type": "outcome",
+  "quantity": 3,
+  "performed_by": "Gudang",
+  "notes": "Tambahan barang rusak ditemukan"
 }
 ```
 
@@ -1401,9 +1487,11 @@ Authorization: Bearer <your_jwt_token>
   "data": {
     "id": "uuid-string",
     "product_id": "uuid-string",
+    "type": "outcome",
     "quantity": 3,
-    "reason": "Additional damaged units found",
-    "updated_at": "2025-01-18T15:20:00"
+    "timestamp": "2026-07-12T11:20:00",
+    "performed_by": "Gudang",
+    "notes": "Tambahan barang rusak ditemukan"
   }
 }
 ```
@@ -1413,7 +1501,7 @@ Authorization: Bearer <your_jwt_token>
 - Old loss effect is reversed, then new loss quantity is applied
 - Example: Old: 2 lost, New: 3 lost = 1 additional unit removed from inventory
 
-### 8.8.3 Delete Inventory Loss
+### 8.8.5 Delete Inventory Loss
 
 **Endpoint:** `DELETE /inventory/loss/{loss_id}`  
 **Auth Required:** ✅ Yes
@@ -1427,10 +1515,9 @@ Authorization: Bearer <your_jwt_token>
   "status": "success",
   "message": "Loss record deleted and reversed successfully",
   "data": {
-    "id": "uuid-string",
-    "product_id": "uuid-string",
-    "loss_quantity_reversed": 2,
-    "deleted_at": "2025-01-18T15:35:00"
+    "message": "Loss record deleted successfully",
+    "deleted_id": "uuid-string",
+    "reversed_quantity": 2
   }
 }
 ```
@@ -2318,6 +2405,8 @@ All accounting endpoints require authentication (✅).
 **Endpoint:** `POST /accounting/daily-report`  
 **Auth Required:** ✅ Yes
 
+**Purpose:** Menyediakan snapshot laporan harian terpadu untuk dashboard/halaman Daily Report frontend dalam satu request.
+
 **Request Body:**
 ```json
 {
@@ -2325,22 +2414,334 @@ All accounting endpoints require authentication (✅).
 }
 ```
 
+**Request Validation Rules:**
+- `date` wajib diisi.
+- Format `date` harus `YYYY-MM-DD`.
+- Batas waktu harian dihitung berdasarkan timezone bisnis backend.
+- Rekomendasi timezone default: `Asia/Bangkok`.
+- Batas hari: dari `YYYY-MM-DDT00:00:00+07:00` sampai sebelum hari berikutnya.
+
 **Response:**
 ```json
 {
   "status": "success",
+  "message": "Laporan harian berhasil dihasilkan",
   "data": {
     "date": "2025-01-18",
-    "sales_count": 12,
-    "sales_total": 5500000,
-    "cash_in": 5500000,
-    "cash_out": 1200000,
-    "expenses": 800000,
-    "net_cash": 3500000,
+    "timezone": "Asia/Bangkok",
+    "generated_at": "2026-07-12T17:30:00+07:00",
+    "work_orders": {
+      "total_workorders": 10,
+      "total_revenue": 7500000,
+      "total_hpp": 4200000,
+      "gross_profit": 3300000,
+      "items": [
+        {
+          "workorder_id": "uuid-string",
+          "workorder_no": "WO-20250118-001",
+          "customer_name": "Budi",
+          "total_biaya": 750000,
+          "status": "completed",
+          "total_revenue": 750000,
+          "total_hpp": 420000,
+          "gross_profit": 330000,
+          "payment_status": "paid"
+        }
+      ]
+    },
+    "outflows": {
+      "total_cash_out": 2500000,
+      "expenses": {
+        "total": 500000,
+        "items": [
+          {
+            "expense_id": null,
+            "payment_id": "uuid-string",
+            "payment_date": "2025-01-18",
+            "category": "Biaya Listrik",
+            "description": "Pembayaran listrik bulanan",
+            "amount": 500000,
+            "payment_channel": "bank",
+            "account_code": "1002",
+            "account_name": "Bank BCA",
+            "channel_code": "BANK_1002"
+          }
+        ]
+      },
+      "purchase_order_payments": {
+        "total": 2000000,
+        "items": [
+          {
+            "purchase_order_id": "uuid-string",
+            "purchase_order_no": "PO-20250117-001",
+            "payment_id": "uuid-string",
+            "payment_date": "2025-01-18",
+            "supplier_name": "PT Supplier Jaya",
+            "amount_paid": 2000000,
+            "payment_channel": "bank",
+            "account_code": "1002",
+            "account_name": "Bank BCA",
+            "channel_code": "BANK_1002"
+          }
+        ]
+      }
+    },
+    "payment_channels": [
+      {
+        "code": "CASHIER_CASH",
+        "name": "Kas Kasir",
+        "type": "cashier_cash",
+        "account_code": "1001",
+        "opening_balance": 1000000,
+        "cash_in": 3500000,
+        "cash_out": 500000,
+        "closing_balance": 4000000
+      },
+      {
+        "code": "BANK_1002",
+        "name": "Bank BCA",
+        "type": "bank",
+        "account_code": "1002",
+        "opening_balance": 10000000,
+        "cash_in": 1500000,
+        "cash_out": 2000000,
+        "closing_balance": 9500000
+      },
+      {
+        "code": "QRIS",
+        "name": "QRIS",
+        "type": "qris",
+        "account_code": "1003",
+        "opening_balance": 0,
+        "cash_in": 1250000,
+        "cash_out": 0,
+        "closing_balance": 1250000
+      },
+      {
+        "code": "DEBIT",
+        "name": "Debit",
+        "type": "debit",
+        "account_code": "1004",
+        "opening_balance": 0,
+        "cash_in": 1000000,
+        "cash_out": 0,
+        "closing_balance": 1000000
+      }
+    ],
+    "cashier_cash": {
+      "code": "CASHIER_CASH",
+      "account_code": "1001",
+      "account_name": "Kas Kasir",
+      "opening_balance": 1000000,
+      "cash_in": 3500000,
+      "cash_out": 500000,
+      "closing_balance": 4000000
+    },
+    "product_sales": {
+      "total_quantity": 15,
+      "total_sales": 3750000,
+      "total_hpp": 2250000,
+      "total_margin": 1500000,
+      "margin_percentage": 40,
+      "items": []
+    },
+    "service_sales": {
+      "total_quantity": 8,
+      "total_sales": 3750000,
+      "total_hpp": 1950000,
+      "total_margin": 1800000,
+      "margin_percentage": 48,
+      "items": []
+    },
+    "purchase_orders": {
+      "total_quantity": 0,
+      "total_purchases": 0,
+      "items": []
+    },
+    "profit_loss": {
+      "total_revenue": 7500000,
+      "product_hpp": 2250000,
+      "service_hpp": 1950000,
+      "total_hpp": 4200000,
+      "gross_profit": 3300000,
+      "operating_expenses": 500000,
+      "total_expenses": 4700000,
+      "net_profit": 2800000,
+      "revenues": [],
+      "expenses": []
+    },
+    "sales_count": 23,
+    "sales_total": 7500000,
+    "cash_in": 7250000,
+    "cash_out": 2500000,
+    "expenses": 500000,
+    "net_cash": 4750000,
+    "workorders": [
+      {
+        "workorder_id": "uuid-string",
+        "workorder_no": "WO-20250118-001",
+        "customer_name": "Budi",
+        "total_biaya": 750000,
+        "status": "completed",
+        "total_revenue": 750000,
+        "total_hpp": 420000,
+        "gross_profit": 330000,
+        "payment_status": "paid"
+      }
+    ]
+  }
+}
+```
+
+**Calculation Rules:**
+- `outflows.total_cash_out = outflows.expenses.total + outflows.purchase_order_payments.total`
+- `product_sales.total_margin = product_sales.total_sales - product_sales.total_hpp`
+- `service_sales.total_margin = service_sales.total_sales - service_sales.total_hpp`
+- `work_orders.gross_profit = work_orders.total_revenue - work_orders.total_hpp`
+- `payment_channels[].closing_balance = opening_balance + cash_in - cash_out`
+- `profit_loss.total_hpp = profit_loss.product_hpp + profit_loss.service_hpp`
+- `profit_loss.gross_profit = profit_loss.total_revenue - profit_loss.total_hpp`
+- `profit_loss.net_profit = profit_loss.gross_profit - profit_loss.operating_expenses`
+- Pembayaran PO tidak dikurangkan langsung dari `profit_loss.net_profit`.
+
+**Field Definitions (Main):**
+- `date` (date): Tanggal laporan harian.
+- `timezone` (string): Timezone perhitungan harian.
+- `generated_at` (datetime): Waktu report dibuat.
+- `work_orders` (object): Aggregate dan daftar WO harian.
+- `outflows` (object): Cash-out aktual (biaya + pembayaran PO).
+- `payment_channels` (array): Posisi kas per channel dengan tipe stabil.
+- `cashier_cash` (object): Ringkasan saldo kas kasir.
+- `product_sales` (object): Aggregate dan detail penjualan produk.
+- `service_sales` (object): Aggregate dan detail penjualan jasa.
+- `purchase_orders` (object): Aggregate pembelian harian.
+- `profit_loss` (object): Laba rugi harian.
+
+**Field Definitions (Work Orders):**
+- `work_orders.total_workorders` (int): Jumlah work order pada tanggal laporan.
+- `work_orders.total_revenue` (decimal): Total revenue WO.
+- `work_orders.total_hpp` (decimal): Total HPP WO.
+- `work_orders.gross_profit` (decimal): Revenue dikurangi HPP.
+- `work_orders.items[].status` (enum): Status proses WO: `draft`, `process`, `completed`, atau `cancelled`.
+- `work_orders.items[].payment_status` (enum): Status pembayaran WO: `unpaid`, `partial`, `paid`, atau `refunded`.
+
+**Field Definitions (Outflows):**
+- `outflows.total_cash_out` (decimal): Total cash-out aktual.
+- `outflows.expenses.total` (decimal): Total biaya yang benar-benar dibayar pada tanggal laporan.
+- `outflows.expenses.items[]` (array): Detail pembayaran biaya per jurnal.
+- `outflows.purchase_order_payments.total` (decimal): Total pembayaran PO aktual pada tanggal laporan.
+- `outflows.purchase_order_payments.items[]` (array): Detail pembayaran PO per jurnal.
+- `outflows.expenses.items[].expense_id` (UUID/null): ID master expense; boleh `null` untuk jurnal biaya yang tidak berasal dari master expense.
+- `outflows.expenses.items[].payment_id` (UUID): ID journal entry pembayaran yang unik.
+- `outflows.expenses.items[].payment_date` (date): Tanggal pembayaran aktual dalam format `YYYY-MM-DD`.
+- `outflows.expenses.items[].amount` (decimal): Nominal biaya yang benar-benar dibayar.
+- `outflows.expenses.items[].payment_channel` (enum): Tipe channel pembayaran: `cashier_cash`, `bank`, `qris`, `debit`, `petty_cash`, atau `other`.
+- `outflows.expenses.items[].channel_code` (string): Identifier channel stabil yang dapat dipetakan ke `payment_channels[].code`.
+- `outflows.expenses.items[].account_code` (string): Kode Chart of Account sumber dana.
+- `outflows.purchase_order_payments.items[].payment_id` (UUID): ID journal entry pembayaran yang unik.
+- `outflows.purchase_order_payments.items[].payment_date` (date): Tanggal pembayaran aktual dalam format `YYYY-MM-DD`.
+- `outflows.purchase_order_payments.items[].amount_paid` (decimal): Nominal pembayaran PO pada tanggal laporan.
+- `outflows.purchase_order_payments.items[].payment_channel` (enum): Tipe channel pembayaran.
+- `outflows.purchase_order_payments.items[].channel_code` (string): Identifier channel stabil yang dapat dipetakan ke `payment_channels[].code`.
+- `outflows.purchase_order_payments.items[].account_code` (string): Kode Chart of Account sumber dana.
+
+**Field Definitions (Payment Channels):**
+- `payment_channels[].code` (string): Kode channel stabil untuk frontend.
+- `payment_channels[].name` (string): Nama akun/channel.
+- `payment_channels[].type` (enum): `cashier_cash`, `bank`, `qris`, `debit`, `petty_cash`, `other`.
+- `payment_channels[].opening_balance` (decimal): Saldo awal channel.
+- `payment_channels[].cash_in` (decimal): Arus masuk channel.
+- `payment_channels[].cash_out` (decimal): Arus keluar channel.
+- `payment_channels[].closing_balance` (decimal): Saldo akhir channel.
+
+**Field Definitions (Legacy Compatibility):**
+- `sales_count` (int): Jumlah item penjualan produk + jasa (legacy).
+- `sales_total` (decimal): Total penjualan produk + jasa (legacy).
+- `cash_in` (decimal): Total cash-in seluruh channel (legacy).
+- `cash_out` (decimal): Total cash-out seluruh channel (legacy).
+- `expenses` (decimal): Alias ke `outflows.expenses.total` (legacy).
+- `net_cash` (decimal): `cash_in - cash_out` (legacy).
+- `workorders` (array): Alias legacy dari `work_orders.items`.
+
+**Empty-State Response Example:**
+```json
+{
+  "status": "success",
+  "message": "Laporan harian berhasil dihasilkan",
+  "data": {
+    "date": "2025-01-18",
+    "timezone": "Asia/Bangkok",
+    "generated_at": "2026-07-12T17:30:00+07:00",
+    "work_orders": {"total_workorders": 0, "total_revenue": 0, "total_hpp": 0, "gross_profit": 0, "items": []},
+    "outflows": {"total_cash_out": 0, "expenses": {"total": 0, "items": []}, "purchase_order_payments": {"total": 0, "items": []}},
+    "payment_channels": [],
+    "cashier_cash": {"code": "CASHIER_CASH", "account_code": "1001", "account_name": "Kas Kasir", "opening_balance": 0, "cash_in": 0, "cash_out": 0, "closing_balance": 0},
+    "product_sales": {"total_quantity": 0, "total_sales": 0, "total_hpp": 0, "total_margin": 0, "margin_percentage": 0, "items": []},
+    "service_sales": {"total_quantity": 0, "total_sales": 0, "total_hpp": 0, "total_margin": 0, "margin_percentage": 0, "items": []},
+    "purchase_orders": {"total_quantity": 0, "total_purchases": 0, "items": []},
+    "profit_loss": {"total_revenue": 0, "product_hpp": 0, "service_hpp": 0, "total_hpp": 0, "gross_profit": 0, "operating_expenses": 0, "total_expenses": 0, "net_profit": 0, "revenues": [], "expenses": []},
+    "sales_count": 0,
+    "sales_total": 0,
+    "cash_in": 0,
+    "cash_out": 0,
+    "expenses": 0,
+    "net_cash": 0,
     "workorders": []
   }
 }
 ```
+
+**Frontend Notes:**
+- Gunakan `outflows.expenses` untuk daftar biaya harian (cash-out aktual)
+- Gunakan `outflows.purchase_order_payments` untuk pembayaran PO aktual
+- Gunakan `cashier_cash.closing_balance` untuk kartu "Sisa Cash di Kasir"
+- Gunakan `payment_channels[].type` untuk klasifikasi channel, jangan berdasarkan `account_name`
+
+**DailyReport.vue Migration Notes:**
+- Ganti sumber kartu biaya dari `profit_loss.expenses` ke `outflows.expenses.total`
+- Ganti total pembayaran PO ke `outflows.purchase_order_payments.total`
+- Ambil ringkasan kas kasir dari `cashier_cash.closing_balance`
+- Gunakan `work_orders.total_workorders`, `work_orders.total_revenue`, `work_orders.gross_profit`
+- Simpan fallback ke field legacy sampai deployment frontend selesai
+
+**Excel Export Mapping (Frontend):**
+- Sheet `Summary`: `date`, `work_orders.total_workorders`, `work_orders.total_revenue`, `outflows.total_cash_out`, `cashier_cash.closing_balance`, `profit_loss.net_profit`
+- Sheet `Work Orders`: `work_orders.items[]`
+- Sheet `Outflows Expenses`: `outflows.expenses.items[]`
+- Sheet `Outflows PO Payments`: `outflows.purchase_order_payments.items[]`
+- Sheet `Payment Channels`: `payment_channels[]`
+- Sheet `Product Sales`: `product_sales.items[]`
+- Sheet `Service Sales`: `service_sales.items[]`
+
+**Backward Compatibility:**
+- Field lama tetap dipertahankan selama masa transisi frontend
+- Field baru ditambahkan agar halaman Daily Report frontend bisa migrasi bertahap tanpa breaking change
+
+**Legacy to New Mapping (Recommended):**
+- `expenses` -> `outflows.expenses.total`
+- `workorders` -> `work_orders.items`
+- `cash_out` -> `outflows.total_cash_out` untuk cash-out harian aktual
+- `sales_total` -> `work_orders.total_revenue` untuk rekonsiliasi utama
+
+**Error Response (Invalid Date):**
+```json
+{
+  "status": "error",
+  "message": "Invalid date format. Expected YYYY-MM-DD"
+}
+```
+
+**HTTP Status:** `422 Unprocessable Entity`
+
+**Error Response (Unauthorized):**
+```json
+{
+  "status": "error",
+  "message": "Authentication required"
+}
+```
+
+**HTTP Status:** `401 Unauthorized`
 
 ---
 
@@ -2680,25 +3081,30 @@ All accounting endpoints require authentication (✅).
 
 ### 21.1 Create Packet Order
 
-**Endpoint:** `POST /packet-orders/create/new`  
+**Endpoint:** `POST /packetorders/create/new`  
 **Auth Required:** ✅ Yes
 
 **Request Body:**
 ```json
 {
-  "nama_paket": "Paket Servis Lengkap",
-  "deskripsi": "Ganti oli + tune up + cuci mobil",
-  "harga": 500000,
-  "products_in_packet": [
+  "name": "Paket Servis Lengkap",
+  "product_line_packet_order": [
     {
       "product_id": "uuid-string",
-      "kuantitas": 4
+      "quantity": 4,
+      "price": 75000,
+      "satuan_id": "uuid-string",
+      "discount": 0,
+      "subtotal": 300000
     }
   ],
-  "services_in_packet": [
+  "service_line_packet_order": [
     {
       "service_id": "uuid-string",
-      "kuantitas": 1
+      "quantity": 1,
+      "price": 200000,
+      "discount": 0,
+      "subtotal": 200000
     }
   ]
 }
@@ -2706,13 +3112,28 @@ All accounting endpoints require authentication (✅).
 
 ### 21.2 Get All Packet Orders
 
-**Endpoint:** `GET /packet-orders/all`  
+**Endpoint:** `GET /packetorders/all`  
 **Auth Required:** ❌ No
 
 ### 21.3 Get Packet Order by ID
 
-**Endpoint:** `GET /packet-orders/{packet_id}`  
+**Endpoint:** `GET /packetorders/{packet_id}`  
 **Auth Required:** ❌ No
+
+### 21.4 Update Packet Order
+
+**Endpoint:** `PUT /packetorders/{packet_id}`  
+**Auth Required:** ✅ Yes
+
+**Path Parameters:**
+- `packet_id` (string): UUID packet order
+
+**Request Body:** Same as Create Packet Order
+
+### 21.5 Delete Packet Order
+
+**Endpoint:** `DELETE /packetorders/{packet_id}`  
+**Auth Required:** ✅ Yes
 
 ---
 
@@ -2806,5 +3227,5 @@ curl -X POST http://localhost:8000/workorders/create/new \
 
 ---
 
-**Last Updated:** January 18, 2026  
+**Last Updated:** July 12, 2026  
 **Maintained by:** FastAPI Bengkel Team

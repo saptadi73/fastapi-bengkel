@@ -1696,15 +1696,19 @@ def generate_product_sales_report(db: Session, request: ProductSalesReportReques
     ).join(ProductOrdered, Workorder.id == ProductOrdered.workorder_id)\
      .join(Product, ProductOrdered.product_id == Product.id)\
      .join(Customer, Workorder.customer_id == Customer.id)\
-     .outerjoin(Vehicle, Workorder.vehicle_id == Vehicle.id)\
-     .filter(Workorder.tanggal_masuk >= request.start_date)\
-     .filter(Workorder.tanggal_masuk < request.end_date + datetime.timedelta(days=1))
+     .outerjoin(Vehicle, Workorder.vehicle_id == Vehicle.id)
+
+    if request.workorder_ids is None:
+        query = query.filter(Workorder.tanggal_masuk >= request.start_date)\
+            .filter(Workorder.tanggal_masuk < request.end_date + datetime.timedelta(days=1))
 
     if request.product_id:
         query = query.filter(ProductOrdered.product_id == request.product_id)
 
     if request.customer_id:
         query = query.filter(Workorder.customer_id == request.customer_id)
+    if request.workorder_ids is not None:
+        query = query.filter(Workorder.id.in_(request.workorder_ids))
 
     query = query.order_by(Workorder.tanggal_masuk, Workorder.no_wo)
 
@@ -1774,15 +1778,19 @@ def generate_service_sales_report(db: Session, request: ServiceSalesReportReques
     ).join(ServiceOrdered, Workorder.id == ServiceOrdered.workorder_id)\
      .join(Service, ServiceOrdered.service_id == Service.id)\
      .join(Customer, Workorder.customer_id == Customer.id)\
-     .outerjoin(Vehicle, Workorder.vehicle_id == Vehicle.id)\
-     .filter(func.date(Workorder.tanggal_masuk) >= request.start_date)\
-     .filter(func.date(Workorder.tanggal_masuk) <= request.end_date)
+     .outerjoin(Vehicle, Workorder.vehicle_id == Vehicle.id)
+
+    if request.workorder_ids is None:
+        query = query.filter(func.date(Workorder.tanggal_masuk) >= request.start_date)\
+            .filter(func.date(Workorder.tanggal_masuk) <= request.end_date)
 
     if request.service_id:
         query = query.filter(ServiceOrdered.service_id == request.service_id)
 
     if request.customer_id:
         query = query.filter(Workorder.customer_id == request.customer_id)
+    if request.workorder_ids is not None:
+        query = query.filter(Workorder.id.in_(request.workorder_ids))
 
     query = query.order_by(Workorder.tanggal_masuk, Workorder.no_wo)
 
@@ -1880,6 +1888,170 @@ def consignment_payment(
     return _to_entry_out(db, entry)
 
 
+def _classify_payment_channel(account_code: Optional[str], account_name: Optional[str]) -> tuple[str, str]:
+    """
+    Returns (stable_code, channel_type) for frontend-safe classification.
+    """
+    code = (account_code or "").strip()
+    lname = (account_name or "").lower()
+
+    if code == "1001" or "kas kasir" in lname:
+        return "CASHIER_CASH", "cashier_cash"
+    if code == "1003" or "qris" in lname:
+        return "QRIS", "qris"
+    if code == "1004" or "debit" in lname or "edc" in lname:
+        return "DEBIT", "debit"
+    if code == "1005" or "kas kecil" in lname or "petty" in lname:
+        return "PETTY_CASH", "petty_cash"
+    if code.startswith("10") or "bank" in lname:
+        return f"BANK_{code}" if code else "BANK", "bank"
+    return code or "OTHER", "other"
+
+
+def _normalize_workorder_status(value: Optional[str]) -> str:
+    normalized = (value or "").strip().lower().replace("_", " ")
+    if normalized in {"selesai", "completed", "complete"}:
+        return "completed"
+    if normalized in {"batal", "dibatalkan", "cancelled", "canceled"}:
+        return "cancelled"
+    if normalized in {"proses", "diproses", "process", "in progress"}:
+        return "process"
+    return "draft"
+
+
+def _normalize_payment_status(value: Optional[str]) -> str:
+    normalized = (value or "").strip().lower().replace("_", " ")
+    if normalized in {"dibayar", "dibayarkan", "lunas", "paid"}:
+        return "paid"
+    if normalized in {"sebagian", "partial", "partial paid"}:
+        return "partial"
+    if normalized in {"refund", "refunded", "dikembalikan"}:
+        return "refunded"
+    return "unpaid"
+
+
+def _build_payment_channels(cash_books: list[CashBookReport]) -> tuple[list[dict], dict]:
+    channels: list[dict] = []
+    cashier_cash = {
+        "code": "CASHIER_CASH",
+        "account_code": "1001",
+        "account_name": "Kas Kasir",
+        "opening_balance": 0.0,
+        "cash_in": 0.0,
+        "cash_out": 0.0,
+        "closing_balance": 0.0
+    }
+
+    for cash_book in cash_books:
+        opening = cast(Decimal, cash_book.opening_balance)
+        cash_in = sum(cast(Decimal, entry.debit) for entry in cash_book.entries)
+        cash_out = sum(cast(Decimal, entry.credit) for entry in cash_book.entries)
+        closing = opening + cash_in - cash_out
+
+        stable_code, channel_type = _classify_payment_channel(cash_book.account_code, cash_book.account_name)
+        channel = {
+            "code": stable_code,
+            "name": cash_book.account_name or stable_code,
+            "type": channel_type,
+            "account_code": cash_book.account_code,
+            "opening_balance": opening,
+            "cash_in": cash_in,
+            "cash_out": cash_out,
+            "closing_balance": closing
+        }
+        channels.append(channel)
+
+        if channel_type == "cashier_cash":
+            cashier_cash = {
+                "code": stable_code,
+                "account_code": cash_book.account_code,
+                "account_name": cash_book.account_name or "Kas Kasir",
+                "opening_balance": opening,
+                "cash_in": cash_in,
+                "cash_out": cash_out,
+                "closing_balance": closing
+            }
+
+    return channels, cashier_cash
+
+
+def _extract_daily_outflows(db: Session, report_date: date) -> dict:
+    expense_items: list[dict] = []
+    po_payment_items: list[dict] = []
+    expense_total = Decimal("0.00")
+    po_payment_total = Decimal("0.00")
+
+    expense_entries = db.query(JournalEntry).filter(
+        JournalEntry.date == report_date,
+        JournalEntry.journal_type == JournalType.expense
+    ).all()
+
+    for entry in expense_entries:
+        lines = db.query(JournalLine, Account).join(Account, JournalLine.account_id == Account.id).filter(
+            JournalLine.entry_id == entry.id
+        ).all()
+
+        expense_line = next((x for x in lines if x[1].account_type == "expense" and cast(Decimal, x[0].debit) > 0), None)
+        cash_lines = [x for x in lines if x[1].account_type == "asset" and cast(Decimal, x[0].credit) > 0]
+
+        for cash_line, cash_account in cash_lines:
+            amount = cast(Decimal, cash_line.credit)
+            stable_code, channel_type = _classify_payment_channel(cash_account.code, cash_account.name)
+            expense_items.append({
+                "expense_id": None,
+                "payment_id": str(entry.id),
+                "payment_date": entry.date.isoformat(),
+                "category": expense_line[1].name if expense_line else None,
+                "description": entry.memo,
+                "amount": amount,
+                "payment_channel": channel_type,
+                "account_code": cash_account.code,
+                "account_name": cash_account.name,
+                "channel_code": stable_code
+            })
+            expense_total += amount
+
+    po_payment_entries = db.query(JournalEntry).filter(
+        JournalEntry.date == report_date,
+        JournalEntry.journal_type == JournalType.ap_payment
+    ).all()
+
+    for entry in po_payment_entries:
+        lines = db.query(JournalLine, Account).join(Account, JournalLine.account_id == Account.id).filter(
+            JournalLine.entry_id == entry.id
+        ).all()
+        cash_lines = [x for x in lines if x[1].account_type == "asset" and cast(Decimal, x[0].credit) > 0]
+
+        for cash_line, cash_account in cash_lines:
+            amount = cast(Decimal, cash_line.credit)
+            stable_code, channel_type = _classify_payment_channel(cash_account.code, cash_account.name)
+            po_payment_items.append({
+                "purchase_order_id": str(entry.purchase_id) if entry.purchase_id else None,
+                "purchase_order_no": entry.purchase_order.po_no if entry.purchase_order else None,
+                "payment_id": str(entry.id),
+                "payment_date": entry.date.isoformat(),
+                "supplier_name": entry.supplier.nama if entry.supplier else None,
+                "amount_paid": amount,
+                "payment_channel": channel_type,
+                "account_code": cash_account.code,
+                "account_name": cash_account.name,
+                "channel_code": stable_code
+            })
+            po_payment_total += amount
+
+    return {
+        "total_cash_out": expense_total + po_payment_total,
+        "expenses": {
+            "total": expense_total,
+            "items": expense_items
+        },
+        "purchase_order_payments": {
+            "total": po_payment_total,
+            "items": po_payment_items
+        }
+    }
+
+
 def generate_daily_report(db: Session, request: DailyReportRequest) -> DailyReport:
     """
     Generate a comprehensive daily report combining multiple reports for a specific date.
@@ -1889,10 +2061,20 @@ def generate_daily_report(db: Session, request: DailyReportRequest) -> DailyRepo
     start_date = request.date
     end_date = request.date
 
-    # Generate cash book reports for each account 1001-1004
-    # Get the accounts 1001 to 1004
+    # Daily revenue is recognized on the sales journal date, not merely on the
+    # Work Order creation date.
+    recognized_workorder_ids = [
+        row[0]
+        for row in db.query(JournalEntry.workorder_id).filter(
+            JournalEntry.date == request.date,
+            JournalEntry.journal_type == JournalType.sale,
+            JournalEntry.workorder_id.is_not(None),
+        ).distinct().all()
+    ]
+
+    # Payment-channel accounts configured for the daily-report contract.
     cash_accounts = db.query(Account).filter(
-        Account.code.in_(['1001', '1002', '1003', '1004']),
+        Account.code.in_(['1001', '1002', '1003', '1004', '1005']),
         Account.is_active == True
     ).all()
 
@@ -1951,13 +2133,15 @@ def generate_daily_report(db: Session, request: DailyReportRequest) -> DailyRepo
 
     product_sales_request = ProductSalesReportRequest(
         start_date=start_date,
-        end_date=end_date
+        end_date=end_date,
+        workorder_ids=recognized_workorder_ids,
     )
     product_sales = generate_product_sales_report(db, product_sales_request)
 
     service_sales_request = ServiceSalesReportRequest(
         start_date=start_date,
-        end_date=end_date
+        end_date=end_date,
+        workorder_ids=recognized_workorder_ids,
     )
     service_sales = generate_service_sales_report(db, service_sales_request)
 
@@ -1968,7 +2152,7 @@ def generate_daily_report(db: Session, request: DailyReportRequest) -> DailyRepo
     profit_loss = generate_profit_loss_report(db, profit_loss_request)
 
     # Generate work order summary
-    work_orders = generate_work_order_summary(db, start_date, end_date)
+    work_orders = generate_work_order_summary(db, start_date, end_date, recognized_workorder_ids)
 
     purchase_order_request = PurchaseOrderReportRequest(
         start_date=start_date,
@@ -1976,15 +2160,84 @@ def generate_daily_report(db: Session, request: DailyReportRequest) -> DailyRepo
     )
     purchase_orders = generate_purchase_order_report(db, purchase_order_request)
 
-    return DailyReport(
-        date=request.date,
-        cash_books=cash_books,
-        product_sales=product_sales,
-        service_sales=service_sales,
-        purchase_orders=purchase_orders,
-        profit_loss=profit_loss,
-        work_orders=work_orders
+    # Enrich work order summary with HPP/profit details for frontend cards/table.
+    total_hpp = cast(Decimal, product_sales.total_hpp) + cast(Decimal, service_sales.total_hpp)
+    recognized_revenue = cast(Decimal, product_sales.total_sales) + cast(Decimal, service_sales.total_sales)
+    work_orders.total_revenue = recognized_revenue
+    work_orders.total_hpp = total_hpp
+    work_orders.gross_profit = recognized_revenue - total_hpp
+
+    wo_hpp_map: dict[str, Decimal] = defaultdict(lambda: Decimal("0.00"))
+    wo_revenue_map: dict[str, Decimal] = defaultdict(lambda: Decimal("0.00"))
+    for item in product_sales.items:
+        wo_hpp_map[item.workorder_no] += (cast(Decimal, item.hpp) if item.hpp else Decimal("0.00")) * cast(Decimal, item.quantity)
+        wo_revenue_map[item.workorder_no] += cast(Decimal, item.subtotal)
+    for item in service_sales.items:
+        wo_hpp_map[item.workorder_no] += (cast(Decimal, item.hpp) if item.hpp else Decimal("0.00")) * cast(Decimal, item.quantity)
+        wo_revenue_map[item.workorder_no] += cast(Decimal, item.subtotal)
+
+    for wo in work_orders.items:
+        wo.total_revenue = wo_revenue_map.get(wo.workorder_no, Decimal("0.00"))
+        wo.total_hpp = wo_hpp_map.get(wo.workorder_no, Decimal("0.00"))
+        wo.gross_profit = cast(Decimal, wo.total_revenue) - cast(Decimal, wo.total_hpp)
+        wo.status = _normalize_workorder_status(wo.status)
+        wo.payment_status = _normalize_payment_status(wo.payment_status)
+
+    outflows = _extract_daily_outflows(db, request.date)
+    payment_channels, cashier_cash = _build_payment_channels(cash_books)
+
+    # The daily P&L contract separates HPP from operating expenses. Operating
+    # expenses use actual paid expense journals; PO payments are cash flow only.
+    operating_expenses = Decimal(str(outflows["expenses"]["total"]))
+    product_hpp = cast(Decimal, product_sales.total_hpp)
+    service_hpp = cast(Decimal, service_sales.total_hpp)
+    gross_profit = cast(Decimal, profit_loss.total_revenue) - total_hpp
+    profit_loss.product_hpp = product_hpp
+    profit_loss.service_hpp = service_hpp
+    profit_loss.total_hpp = total_hpp
+    profit_loss.gross_profit = gross_profit
+    profit_loss.operating_expenses = operating_expenses
+    profit_loss.total_expenses = total_hpp + operating_expenses
+    profit_loss.net_profit = gross_profit - operating_expenses
+
+    total_cash_in = sum(
+        (Decimal(str(ch.get("cash_in", 0))) for ch in payment_channels),
+        Decimal("0.00")
     )
+    total_cash_out = sum(
+        (Decimal(str(ch.get("cash_out", 0))) for ch in payment_channels),
+        Decimal("0.00")
+    )
+    expense_total_legacy = Decimal(str(outflows.get("expenses", {}).get("total", 0)))
+    sales_count_legacy = len(cast(list, product_sales.items)) + len(cast(list, service_sales.items))
+    sales_total_legacy = cast(Decimal, product_sales.total_sales) + cast(Decimal, service_sales.total_sales)
+    net_cash_legacy: Decimal = total_cash_in - total_cash_out
+
+    tz_utc7 = datetime.timezone(datetime.timedelta(hours=7))
+
+    daily_report_payload: dict[str, Any] = {
+        "date": request.date,
+        "timezone": "Asia/Bangkok",
+        "generated_at": datetime.datetime.now(tz_utc7),
+        "cash_books": cash_books,
+        "product_sales": product_sales,
+        "service_sales": service_sales,
+        "purchase_orders": purchase_orders,
+        "profit_loss": profit_loss,
+        "work_orders": work_orders,
+        "outflows": outflows,
+        "payment_channels": payment_channels,
+        "cashier_cash": cashier_cash,
+        "sales_count": sales_count_legacy,
+        "sales_total": sales_total_legacy,
+        "cash_in": total_cash_in,
+        "cash_out": total_cash_out,
+        "expenses": expense_total_legacy,
+        "net_cash": net_cash_legacy,
+        "workorders": work_orders.items,
+    }
+
+    return DailyReport.model_validate(daily_report_payload)
 
 
 def generate_purchase_order_report(db: Session, request: PurchaseOrderReportRequest) -> PurchaseOrderReport:
@@ -2045,20 +2298,32 @@ def generate_purchase_order_report(db: Session, request: PurchaseOrderReportRequ
     )
 
 
-def generate_work_order_summary(db: Session, start_date: date, end_date: date) -> WorkOrderSummary:
+def generate_work_order_summary(
+    db: Session,
+    start_date: date,
+    end_date: date,
+    workorder_ids: Optional[list[uuid.UUID]] = None,
+) -> WorkOrderSummary:
     """
     Generate a summary of work orders within a date range.
     """
     # Query workorders with customer info
     query = db.query(
+        Workorder.id,
         Workorder.no_wo,
         Customer.nama.label('customer_name'),
         Workorder.total_biaya,
-        Workorder.status
-    ).join(Customer, Workorder.customer_id == Customer.id)\
-     .filter(func.date(Workorder.tanggal_masuk) >= start_date)\
-     .filter(func.date(Workorder.tanggal_masuk) <= end_date)\
-     .order_by(Workorder.tanggal_masuk, Workorder.no_wo)
+        Workorder.status,
+        Workorder.status_pembayaran
+    ).join(Customer, Workorder.customer_id == Customer.id)
+
+    if workorder_ids is None:
+        query = query.filter(func.date(Workorder.tanggal_masuk) >= start_date)\
+            .filter(func.date(Workorder.tanggal_masuk) <= end_date)
+    else:
+        query = query.filter(Workorder.id.in_(workorder_ids))
+
+    query = query.order_by(Workorder.tanggal_masuk, Workorder.no_wo)
 
     results = query.all()
 
@@ -2068,10 +2333,13 @@ def generate_work_order_summary(db: Session, start_date: date, end_date: date) -
 
     for row in results:
         item = WorkOrderSummaryItem(
+            workorder_id=str(row.id),
             workorder_no=row.no_wo,
             customer_name=row.customer_name,
             total_biaya=row.total_biaya,
-            status=row.status
+            status=row.status,
+            total_revenue=row.total_biaya,
+            payment_status=row.status_pembayaran
         )
         items.append(item)
         total_workorders += 1
@@ -2080,6 +2348,8 @@ def generate_work_order_summary(db: Session, start_date: date, end_date: date) -
     return WorkOrderSummary(
         total_workorders=total_workorders,
         total_revenue=total_revenue,
+        total_hpp=Decimal("0.00"),
+        gross_profit=total_revenue,
         items=items
     )
 

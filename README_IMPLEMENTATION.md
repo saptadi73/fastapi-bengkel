@@ -29,6 +29,9 @@
 ## ✨ What's Implemented
 
 ```
+✅ Daftar Barang Inventory
+   GET /products/inventory/all (paginated, page=1, limit=25)
+
 ✅ Daftar Penerimaan Konsinyasi
    GET /products/inventory/all/consignment
 

@@ -104,31 +104,28 @@ def getAllPacketOrders(db: Session):
     return result
     
 def getPacketOrderById(db: Session, packet_order_id: str):
-    packetorders = db.query(PacketOrder).filter(PacketOrder.id==packet_order_id).first()
-    result = []
+    packetorder = db.query(PacketOrder).filter(PacketOrder.id == packet_order_id).first()
+    if not packetorder:
+        return None
 
-    for po in packetorders:
-        po_dict = to_dict(po)
+    po_dict = to_dict(packetorder)
 
-        product_line_list =[]
-        for pr in po.product_line_packet_order:
-            pr_dict = to_dict(pr)
+    product_line_list = []
+    for pr in packetorder.product_line_packet_order:
+        pr_dict = to_dict(pr)
+        pr_dict['product_name'] = pr.product.name if pr.product else None
+        pr_dict['satuan_name'] = pr.product.satuan.name if pr.product.satuan else None
+        product_line_list.append(pr_dict)
+    po_dict['product_line'] = product_line_list
 
-            pr_dict['product_name'] = pr.product.name if pr.product else None
-            pr_dict['satuan_name'] = pr.product.satuan.name if pr.product.satuan else None
-            product_line_list.append(pr_dict)
-            po_dict['product_line'] = product_line_list
+    service_line_list = []
+    for srv in packetorder.service_line_packet_order:
+        srv_dict = to_dict(srv)
+        srv_dict['service_name'] = srv.service.name if srv.service else None
+        service_line_list.append(srv_dict)
+    po_dict['service_line'] = service_line_list
 
-        service_line_list = []
-        for srv in po.service_line_packet_order:
-            srv_dict = to_dict(srv)
-
-            srv_dict['service_name'] = srv.service.name if srv.service else None
-            service_line_list.append(srv_dict)
-            po_dict['service_line'] = service_line_list
-
-        result.append(po_dict)
-        return result
+    return po_dict
     
 def deletePacketOrder(db: Session, packet_order_id: str):
     try:

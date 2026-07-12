@@ -12,6 +12,8 @@ request = DailyReportRequest(date=date(2025, 11, 9))
 
 try:
     report = generate_daily_report(db, request)
+    payload = report.model_dump(mode='json')
+
     print('Report generated successfully')
     print(f'Date: {report.date}')
     print(f'Cash Books Count: {len(report.cash_books)}')
@@ -22,6 +24,24 @@ try:
     print(f'Service Sales Total: {report.service_sales.total_sales}')
     print(f'Profit Loss Net Profit: {report.profit_loss.net_profit}')
     print(f'Work Orders Total: {report.work_orders.total_workorders}')
+
+    # Validate new contract fields
+    required_new_fields = [
+        'timezone', 'generated_at', 'outflows', 'payment_channels',
+        'cashier_cash', 'work_orders'
+    ]
+    missing_new = [f for f in required_new_fields if f not in payload]
+    assert not missing_new, f'Missing new fields: {missing_new}'
+
+    # Validate legacy compatibility fields
+    required_legacy_fields = [
+        'sales_count', 'sales_total', 'cash_in', 'cash_out',
+        'expenses', 'net_cash', 'workorders'
+    ]
+    missing_legacy = [f for f in required_legacy_fields if f not in payload]
+    assert not missing_legacy, f'Missing legacy fields: {missing_legacy}'
+
+    print('Contract check passed (new + legacy fields are present)')
 except Exception as e:
     print(f'Error: {e}')
     import traceback

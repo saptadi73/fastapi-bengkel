@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from models.database import SessionLocal
 from models.packet_order import PacketOrder, ProductLinePacketOrder, ServiceLinePacketOrder
 from schemas.service_packet_order import CreatePacketOrder, CreateProductLinePacketOrder,CreateServiceLinePacketOrder
-from services.services_packet_order import CreatePacketOrdernya,getAllPacketOrders, getPacketOrderById
+from services.services_packet_order import CreatePacketOrdernya,getAllPacketOrders, getPacketOrderById, updatePacketOrder, deletePacketOrder
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
 
@@ -56,6 +56,39 @@ def getPacketOrderByIdRouter(
         if not result:
             return error_response(message="Failed to grt All Packet Orders")
         return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()
+
+
+@router.put("/{packet_id}", dependencies=[Depends(jwt_required)])
+def updatePacketOrderRouter(
+    packet_id: str,
+    dataOrder: CreatePacketOrder,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = updatePacketOrder(db, packet_id, dataOrder)
+        if not result:
+            return error_response(message="Failed to update Packet Order")
+        return success_response(data=result, message="Packet Order updated successfully")
+    except Exception as e:
+        return error_response(message=str(e))
+    finally:
+        db.close()
+
+
+@router.delete("/{packet_id}", dependencies=[Depends(jwt_required)])
+def deletePacketOrderRouter(
+    packet_id: str,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = deletePacketOrder(db, packet_id)
+        if not result:
+            return error_response(message="Failed to delete Packet Order")
+        return success_response(data=result, message="Packet Order deleted successfully")
     except Exception as e:
         return error_response(message=str(e))
     finally:

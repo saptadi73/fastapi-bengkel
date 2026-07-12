@@ -7,6 +7,7 @@ from .inventory import *
 from .karyawan import *
 from .attendance import *
 from .packet_order import *
+from .consignment import *
 from .purchase_order import *
 from .role import *
 from .role_user import *

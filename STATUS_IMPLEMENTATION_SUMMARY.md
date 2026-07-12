@@ -6,8 +6,15 @@ Dokumentasi ini merangkum status lengkap implementasi backend untuk tiga fitur u
 1. **Daftar Penerimaan Konsinyasi** (Consignment Receipt List)
 2. **Daftar Adjustmen** (Adjustment List)  
 3. **Daftar Kehilangan Barang** (Lost Goods List)
+4. **Daftar Barang Inventory** (Inventory List, paginated)
 
 **Status Keseluruhan: ✅ COMPLETE - Ready for Frontend Development**
+
+### Inventory List
+
+- ✅ Endpoint `GET /products/inventory/all` sudah mengembalikan data inventory dengan pagination server-side.
+- ✅ Response memuat `price`, `purchase_price`, `hpp`, `margin`, `margin_percentage`, dan `stock_status`.
+- ✅ Default page size adalah 25 item per halaman.
 
 ---
 

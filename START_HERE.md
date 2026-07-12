@@ -56,6 +56,12 @@ Permintaan Anda sudah dilengkapi di backend:
 
 ## 🔗 Endpoint yang Tersedia
 
+### Inventory
+```bash
+GET  /products/inventory/all                      # List inventory paginated (page=1, limit=25)
+GET  /products/inventory/all/consignment          # List semua konsinyasi
+```
+
 ### Konsinyasi
 ```bash
 GET  /products/inventory/all/consignment          # List semua konsinyasi
