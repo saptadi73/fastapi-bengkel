@@ -10,6 +10,7 @@ from sqlalchemy import or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func, select
 from models.workorder import Product, Brand, Satuan, Category, Service, Workorder, ProductOrdered, ServiceOrdered
+from models.purchase_order import PurchaseOrderLine
 import uuid
 from models.database import get_db
 from schemas.service_product import CreateProduct, ProductResponse, BrandResponse, SatuanResponse, CategoryResponse, CreateService, ServiceResponse, CreateBrand, CreateCategory,CreateSatuan
@@ -45,6 +46,14 @@ def _decimal_or_none(value):
     if value is None:
         return None
     return to_float(value)
+
+
+def _as_decimal(value: Any) -> Decimal | None:
+    if value is None:
+        return None
+    if isinstance(value, Decimal):
+        return value
+    return Decimal(str(value))
 
 
 def _get_total_stock(product: Product) -> Decimal:
@@ -87,9 +96,9 @@ def _build_inventory_item(db: Session, product: Product) -> dict:
     p_dict['supplier_name'] = product.supplier.nama if product.supplier else None
 
     total_stock = _get_total_stock(product)
-    price = product.price
+    price = _as_decimal(product.price)
     purchase_price = _get_latest_purchase_price(db, product.id)
-    hpp = product.cost if product.cost is not None else purchase_price
+    hpp = _as_decimal(product.cost) if product.cost is not None else _as_decimal(purchase_price)
 
     margin = None
     margin_percentage = None
@@ -97,7 +106,9 @@ def _build_inventory_item(db: Session, product: Product) -> dict:
         margin = price - hpp
         margin_percentage = (margin / price * Decimal('100')) if price != 0 else Decimal('0.00')
 
-    min_stock = product.min_stock or Decimal('0.00')
+    min_stock = _as_decimal(product.min_stock)
+    if min_stock is None:
+        min_stock = Decimal('0.00')
     if total_stock > min_stock:
         stock_status = 'safe'
     else:
