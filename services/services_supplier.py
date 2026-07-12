@@ -26,6 +26,7 @@ def to_dict(obj):
 
 def create_supplier(db: Session, supplier_data: CreateSupplier):
     new_supplier = Supplier(
+        supplier_code=supplier_data.supplier_code,
         nama=supplier_data.nama,
         hp=supplier_data.hp,
         alamat=supplier_data.alamat,

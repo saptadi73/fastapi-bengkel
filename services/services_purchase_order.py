@@ -104,7 +104,13 @@ def create_purchase_order(db: Session, data: CreatePurchaseOrder):
                 quantity=line.quantity,
                 performed_by='system',
                 notes=f'Purchase order {purchase_order.po_no} received',
-                timestamp=datetime.datetime.now()
+                timestamp=datetime.datetime.now(),
+                reference_type='purchase_order',
+                reference_id=purchase_order.id,
+                purchase_order_id=purchase_order.id,
+                supplier_id=purchase_order.supplier_id,
+                purchase_price=line.price,
+                hpp_snapshot=line.price,
             )
             createProductMoveHistoryNew(db, move_data)
 
@@ -226,7 +232,10 @@ def update_purchase_order(db: Session, purchase_order_id: str, data: UpdatePurch
                     quantity=line.quantity,
                     performed_by='system',
                     notes=f'Purchase order {po.po_no} received',
-                    timestamp=datetime.datetime.now()
+                    timestamp=datetime.datetime.now(),
+                    reference_type='purchase_order', reference_id=po.id,
+                    purchase_order_id=po.id, supplier_id=po.supplier_id,
+                    purchase_price=line.price, hpp_snapshot=line.price,
                 )
                 createProductMoveHistoryNew(db, move_data)
 
@@ -263,7 +272,10 @@ def update_purchase_order_status(db: Session, purchase_order_id: str, status: st
                     quantity=line.quantity,
                     performed_by=created_by or 'system',
                     notes=f'Purchase order {po.po_no} received',
-                    timestamp=datetime.datetime.now()
+                    timestamp=datetime.datetime.now(),
+                    reference_type='purchase_order', reference_id=po.id,
+                    purchase_order_id=po.id, supplier_id=po.supplier_id,
+                    purchase_price=line.price, hpp_snapshot=line.price,
                 )
                 createProductMoveHistoryNew(db, move_data)
 
@@ -327,7 +339,10 @@ def edit_purchase_order(db: Session, purchase_order_id: str, data: UpdatePurchas
                     quantity=line.quantity,
                     performed_by='system',
                     notes=f'Purchase order {po.po_no} received',
-                    timestamp=datetime.datetime.now()
+                    timestamp=datetime.datetime.now(),
+                    reference_type='purchase_order', reference_id=po.id,
+                    purchase_order_id=po.id, supplier_id=po.supplier_id,
+                    purchase_price=line.price, hpp_snapshot=line.price,
                 )
                 logger.info(f"Creating product move: {move_data.product_id}, type: {move_data.type}, quantity: {move_data.quantity}")
                 hasil_create_move = createProductMoveHistoryNew(db, move_data)

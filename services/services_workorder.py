@@ -123,7 +123,13 @@ def ProductMovedCausedProductOrdered(db: Session, product_ordered, performed_by:
                 quantity=po.quantity,  # type: ignore
                 performed_by=performed_by,
                 notes=f"Product ordered in Workorder {po.workorder_id}",  # type: ignore
-                timestamp=datetime.datetime.now(datetime.timezone.utc)
+                timestamp=datetime.datetime.now(datetime.timezone.utc),
+                reference_type='workorder', reference_id=po.workorder_id,
+                workorder_id=po.workorder_id,
+                customer_id=po.workorder.customer_id,
+                vehicle_id=po.workorder.vehicle_id,
+                selling_price=po.price,
+                hpp_snapshot=po.product.cost if po.product else None,
             )
             createProductMoveHistoryNew(db, move_data)
     else:
@@ -134,7 +140,13 @@ def ProductMovedCausedProductOrdered(db: Session, product_ordered, performed_by:
             quantity=po.quantity,  # type: ignore
             performed_by=performed_by,
             notes=f"Product ordered in Workorder {po.workorder_id}",  # type: ignore
-            timestamp=datetime.datetime.now(datetime.timezone.utc)
+            timestamp=datetime.datetime.now(datetime.timezone.utc),
+            reference_type='workorder', reference_id=po.workorder_id,
+            workorder_id=po.workorder_id,
+            customer_id=po.workorder.customer_id,
+            vehicle_id=po.workorder.vehicle_id,
+            selling_price=po.price,
+            hpp_snapshot=po.product.cost if po.product else None,
         )
         createProductMoveHistoryNew(db, move_data)
 
@@ -538,7 +550,11 @@ def update_only_workorder(db: Session, workorder_id: str, data: CreateWorkorderO
                     quantity=po.quantity,
                     performed_by='system',
                     notes=f"WO:{wo.id} ({wo.no_wo}) complete → deduct for ProductOrdered:{po.id}",
-                    timestamp=datetime.datetime.now(datetime.timezone.utc)
+                    timestamp=datetime.datetime.now(datetime.timezone.utc),
+                    reference_type='workorder', reference_id=wo.id,
+                    workorder_id=wo.id, customer_id=wo.customer_id,
+                    vehicle_id=wo.vehicle_id, selling_price=po.price,
+                    hpp_snapshot=po.product.cost if po.product else None,
                 )
                 createProductMoveHistoryNew(db, move_data)
     
@@ -676,7 +692,11 @@ def update_workorder_lengkap(db: Session, workorder_id: str, data: CreateWorkOrd
                     quantity=po.quantity,
                     performed_by='system',
                     notes=f"WO:{wo.id} ({wo.no_wo}) complete → deduct for ProductOrdered:{po.id}",
-                    timestamp=datetime.datetime.now(datetime.timezone.utc)
+                    timestamp=datetime.datetime.now(datetime.timezone.utc),
+                    reference_type='workorder', reference_id=wo.id,
+                    workorder_id=wo.id, customer_id=wo.customer_id,
+                    vehicle_id=wo.vehicle_id, selling_price=po.price,
+                    hpp_snapshot=po.product.cost if po.product else None,
                 )
                 createProductMoveHistoryNew(db, move_data)
     else:

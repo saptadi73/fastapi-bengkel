@@ -1,6 +1,5 @@
 # Environment variables
 .env
-requirements.txt
 
 # Python
 __pycache__/

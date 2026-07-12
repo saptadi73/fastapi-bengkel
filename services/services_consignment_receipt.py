@@ -10,8 +10,10 @@ from datetime import datetime, date
 from decimal import Decimal
 from models.consignment import ConsignmentReceipt
 from models.workorder import Product
-from models.customer import Supplier
+from models.supplier import Supplier
 from schemas.consignment_receipt import ConsignmentReceiptCreate, ConsignmentReceiptUpdate
+from schemas.service_inventory import CreateProductMovedHistory
+from services.services_inventory import createProductMoveHistoryNew
 
 def create_consignment_receipt(db: Session, receipt_data: ConsignmentReceiptCreate, username: str) -> ConsignmentReceipt:
     """
@@ -50,8 +52,22 @@ def create_consignment_receipt(db: Session, receipt_data: ConsignmentReceiptCrea
         )
         
         db.add(new_receipt)
-        db.commit()
+        db.flush()
         db.refresh(new_receipt)
+
+        createProductMoveHistoryNew(db, CreateProductMovedHistory(
+            product_id=new_receipt.product_id,
+            type='income',
+            quantity=new_receipt.quantity_received,
+            timestamp=datetime.combine(new_receipt.receipt_date, datetime.min.time()),
+            performed_by=new_receipt.received_by,
+            notes=new_receipt.notes,
+            reference_type='consignment_receipt',
+            reference_id=new_receipt.id,
+            supplier_id=new_receipt.supplier_id,
+            purchase_price=new_receipt.unit_price,
+            hpp_snapshot=new_receipt.unit_price,
+        ))
         
         return new_receipt
     except Exception as e:

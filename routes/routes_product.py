@@ -2,13 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from models.database import SessionLocal
 from services.services_customer import create_customer_with_vehicles,getListCustomersWithvehicles, getListCustomersWithVehiclesCustomersID
-from services.services_product import CreateProductNew, get_all_products, get_product_by_id, createServicenya,get_all_services, createBrandnya, createCategorynya, createSatuannya, getAllBrands, getAllCategories, getAllSatuans, getAllInventoryProducts, getInventoryByProductID, createProductMoveHistoryNew, get_service_by_id, update_product_cost, getAllInventoryProductsConsignment,getAllInventoryProductsExcConsignment, update_service, delete_service, get_inventory_products_paginated
+from services.services_product import CreateProductNew, get_all_products, get_product_by_id, update_product, delete_product, ProductInUseError, createServicenya,get_all_services, createBrandnya, createCategorynya, createSatuannya, getAllBrands, getAllCategories, getAllSatuans, getAllInventoryProducts, getInventoryByProductID, createProductMoveHistoryNew, get_service_by_id, update_product_cost, getAllInventoryProductsConsignment,getAllInventoryProductsExcConsignment, update_service, delete_service, get_inventory_products_paginated
 from services.services_inventory import manual_adjustment_inventory
 from services.services_inventory_extended import update_inventory_adjustment, delete_inventory_adjustment, get_adjustment_by_id, get_inventory_adjustments
 from uuid import UUID
 from services.services_costing import get_product_cost_history, get_product_cost_summary
 from schemas.service_inventory import CreateProductMovedHistory, ManualAdjustment, CreateProductMovedHistories
-from schemas.service_product import CreateProduct, ProductResponse, CreateService, ServiceResponse, CreateBrand, CreateCategory, CreateSatuan, UpdateProductCost, ProductCostHistoryRequest, ProductCostHistoryResponse, InventoryListResponse
+from schemas.service_product import ApiErrorResponse, CreateProduct, UpdateProduct, ProductResponse, ProductMutationResponse, ProductDeleteResponse, CreateService, ServiceResponse, CreateBrand, CreateCategory, CreateSatuan, UpdateProductCost, ProductCostHistoryRequest, ProductCostHistoryResponse, InventoryListResponse
 from typing import Literal, Optional
 from datetime import datetime
 from supports.utils_json_response import success_response, error_response
@@ -67,6 +67,7 @@ def get_product(
         return error_response(message=str(e))
     finally:
         db.close()
+
 
 @router.post("/service/create/new", response_model=ServiceResponse, dependencies=[Depends(jwt_required)])
 def create_service_router(
@@ -539,6 +540,61 @@ def get_product_cost_summary_router(
         return error_response(message=str(e))
     finally:
         db.close()
+
+
+# Keep generic product mutation routes last so static paths such as /cost are
+# matched before /{product_id}.
+@router.put(
+    "/{product_id}",
+    response_model=ProductMutationResponse,
+    responses={
+        404: {"model": ApiErrorResponse, "description": "Product not found"},
+        422: {"model": ApiErrorResponse, "description": "Invalid product ID or update payload"},
+        500: {"model": ApiErrorResponse, "description": "Unexpected database error"},
+    },
+    dependencies=[Depends(jwt_required)],
+)
+def update_product_router(
+    product_id: UUID,
+    product_data: UpdateProduct,
+    db: Session = Depends(get_db),
+):
+    try:
+        result = update_product(db, product_id, product_data)
+        return success_response(data=result, message="Product updated successfully")
+    except LookupError as exc:
+        return error_response(message=str(exc), status_code=404)
+    except ValueError as exc:
+        return error_response(message=str(exc), status_code=422)
+    except Exception:
+        db.rollback()
+        return error_response(message="Failed to update product", status_code=500)
+
+
+@router.delete(
+    "/{product_id}",
+    response_model=ProductDeleteResponse,
+    responses={
+        404: {"model": ApiErrorResponse, "description": "Product not found"},
+        409: {"model": ApiErrorResponse, "description": "Product is referenced by transactional data"},
+        500: {"model": ApiErrorResponse, "description": "Unexpected database error"},
+    },
+    dependencies=[Depends(jwt_required)],
+)
+def delete_product_router(
+    product_id: UUID,
+    db: Session = Depends(get_db),
+):
+    try:
+        delete_product(db, product_id)
+        return success_response(message="Product deleted successfully")
+    except LookupError as exc:
+        return error_response(message=str(exc), status_code=404)
+    except ProductInUseError as exc:
+        return error_response(message=str(exc), status_code=409)
+    except Exception:
+        db.rollback()
+        return error_response(message="Failed to delete product", status_code=500)
 
 
 

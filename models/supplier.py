@@ -10,8 +10,9 @@ class Supplier(Base):
     __tablename__ = 'supplier'
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, index=True)
     nama = Column(String, nullable=False)
+    supplier_code = Column(String(50), nullable=True, unique=True, index=True)
     hp = Column(String, nullable=False)
-    alamat = Column(String, nullable=True)
+    alamat = Column(String, nullable=False)
     email = Column(String, nullable=True, unique=True)
     npwp = Column(String, nullable=True)
     perusahaan = Column(String, nullable=True)

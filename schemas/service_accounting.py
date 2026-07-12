@@ -487,9 +487,13 @@ class PurchaseOrderReportRequest(BaseModel):
 
 
 class PurchaseOrderReportItem(DecimalModel):
+    purchase_order_id: UUID
     po_no: str
     po_date: date
+    supplier_id: UUID
+    supplier_code: Optional[str] = None
     supplier_name: str
+    product_id: UUID
     product_name: str
     quantity: Decimal
     price: Decimal

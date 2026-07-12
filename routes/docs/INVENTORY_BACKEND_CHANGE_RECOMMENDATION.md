@@ -129,6 +129,8 @@ Backend perlu membedakan field berikut:
 | --- | --- |
 | `price` | Harga jual produk saat ini |
 | `purchase_price` | Harga beli dari transaksi pembelian/penerimaan terakhir yang valid |
+| `vendor_code` | Kode supplier/vendor dari sumber transaksi yang sama dengan `purchase_price`; fallback ke supplier master produk bila histori belum ada |
+| `supplier_name` | Nama supplier/vendor dari sumber transaksi yang sama dengan `purchase_price`; fallback ke supplier master produk bila histori belum ada |
 | `hpp` | Harga pokok inventory yang dipakai untuk pengakuan biaya/laba-rugi |
 | `margin` | Harga jual dikurangi HPP |
 | `margin_percentage` | Margin dibagi harga jual, dikali 100 |
@@ -205,6 +207,7 @@ Pilih satu pola canonical dan dokumentasikan secara konsisten.
       "category_name": "Sparepart",
       "satuan_id": "uuid-string",
       "satuan_name": "Botol",
+      "vendor_code": "VND-001",
       "supplier_id": "uuid-string",
       "supplier_name": "PT Supplier Maju",
       "price": 150000,
@@ -260,6 +263,11 @@ Empty result harus mengembalikan HTTP `200`, bukan `404`.
 
 Urutan transaksi harus menggunakan timestamp bisnis yang konsisten. Jika dua transaksi mempunyai
 timestamp yang sama, gunakan ID atau waktu pembuatan sebagai tie-breaker deterministik.
+
+`vendor_code` dan `supplier_name` pada payload inventory harus mengikuti supplier dari transaksi
+yang terpilih sebagai sumber `purchase_price`, agar frontend tidak menerima kombinasi harga beli
+dan identitas vendor dari sumber yang berbeda. Jika belum ada histori transaksi valid, backend
+boleh fallback ke supplier master pada produk.
 
 Jika belum pernah ada pembelian:
 
@@ -448,6 +456,8 @@ server-side pagination dengan membaca object `pagination` pada response.
   dan enum `stock_status` divalidasi oleh FastAPI/OpenAPI.
 - [x] `purchase_price` membandingkan PO valid (`diterima`/`dibayarkan`) dan penerimaan
   konsinyasi valid, kemudian memilih transaksi terbaru secara deterministik.
+- [x] `vendor_code` dan `supplier_name` inventory mengikuti supplier dari transaksi yang sama
+  dengan `purchase_price`, dengan fallback ke supplier master produk jika histori belum ada.
 - [x] Instalasi lama yang belum memiliki tabel `consignment_receipt` tetap dapat membuka
   inventory; backend melewati sumber konsinyasi dan menggunakan histori PO yang tersedia.
 - [x] Response model `InventoryListResponse` dan model turunannya ditambahkan.

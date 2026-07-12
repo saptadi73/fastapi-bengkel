@@ -36,6 +36,7 @@ def _inventory_item(index):
     return {
         "id": str(uuid4()),
         "name": f"Product {index:02d}",
+        "vendor_code": f"VND-{index:03d}",
         "price": 150000,
         "purchase_price": 95000,
         "hpp": 100000,
@@ -108,6 +109,7 @@ def test_route_has_single_envelope_and_validates_query(monkeypatch):
     assert isinstance(response.json()["data"], list)
     assert "pagination" in response.json()
     assert "data" not in response.json()["data"][0]  # no nested envelope
+    assert response.json()["data"][0]["vendor_code"] == "VND-001"
 
     assert client.get("/products/inventory/all?page=0").status_code == 422
     assert client.get("/products/inventory/all?limit=101").status_code == 422
@@ -173,3 +175,88 @@ def test_latest_purchase_price_skips_unmigrated_consignment_table(monkeypatch):
     )
 
     assert services_product._get_latest_purchase_price(FakeSession(), uuid4()) == 95000
+
+
+def test_build_inventory_item_uses_latest_purchase_supplier_instead_of_product_supplier(monkeypatch):
+    latest_supplier = SimpleNamespace(supplier_code="VND-PO", nama="Vendor PO")
+    product_supplier = SimpleNamespace(supplier_code="VND-PRODUCT", nama="Vendor Product")
+    product = SimpleNamespace(
+        id=uuid4(),
+        name="Product",
+        type="product",
+        description="desc",
+        price=150000,
+        cost=100000,
+        min_stock=10,
+        supplier=product_supplier,
+        category=None,
+        brand=None,
+        satuan=None,
+        inventory=[SimpleNamespace(quantity=50)],
+        is_consignment=False,
+    )
+
+    class FakeColumn:
+        def __init__(self, name):
+            self.name = name
+
+    product.__table__ = SimpleNamespace(
+        columns=[FakeColumn(name) for name in [
+            "id", "name", "type", "description", "price", "cost", "min_stock", "is_consignment"
+        ]]
+    )
+
+    monkeypatch.setattr(
+        services_product,
+        "_get_latest_purchase_source",
+        lambda db, product_id, consignment_available=None: {
+            "price": 95000,
+            "supplier": latest_supplier,
+        },
+    )
+
+    item = services_product._build_inventory_item(SimpleNamespace(), product, consignment_available=False)
+
+    assert item["vendor_code"] == "VND-PO"
+    assert item["supplier_name"] == "Vendor PO"
+    assert item["purchase_price"] == 95000
+
+
+def test_build_inventory_item_falls_back_to_product_supplier_when_no_purchase_history(monkeypatch):
+    product_supplier = SimpleNamespace(supplier_code="VND-PRODUCT", nama="Vendor Product")
+    product = SimpleNamespace(
+        id=uuid4(),
+        name="Product",
+        type="product",
+        description="desc",
+        price=150000,
+        cost=100000,
+        min_stock=10,
+        supplier=product_supplier,
+        category=None,
+        brand=None,
+        satuan=None,
+        inventory=[SimpleNamespace(quantity=50)],
+        is_consignment=False,
+    )
+
+    class FakeColumn:
+        def __init__(self, name):
+            self.name = name
+
+    product.__table__ = SimpleNamespace(
+        columns=[FakeColumn(name) for name in [
+            "id", "name", "type", "description", "price", "cost", "min_stock", "is_consignment"
+        ]]
+    )
+
+    monkeypatch.setattr(
+        services_product,
+        "_get_latest_purchase_source",
+        lambda db, product_id, consignment_available=None: None,
+    )
+
+    item = services_product._build_inventory_item(SimpleNamespace(), product, consignment_available=False)
+
+    assert item["vendor_code"] == "VND-PRODUCT"
+    assert item["supplier_name"] == "Vendor Product"

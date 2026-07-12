@@ -1,13 +1,13 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
 from uuid import UUID
 from decimal import Decimal
 from datetime import date
 
 class CreateCustomerWithVehicles(BaseModel):
-    nama: str
-    hp: str
-    alamat: Optional[str] = None
+    nama: str = Field(min_length=1)
+    hp: str = Field(min_length=1)
+    alamat: str = Field(min_length=1)
     email: Optional[str] = None
     tanggal_lahir: Optional[date] = None
     model: Optional[str] = None
@@ -27,10 +27,28 @@ class CreateCustomerWithVehicles(BaseModel):
             return None
         return v
 
+    @field_validator('nama', 'hp', 'alamat', mode='before')
+    @classmethod
+    def validate_required_text(cls, v):
+        if v is None:
+            raise ValueError("Field is required")
+        if isinstance(v, str):
+            v = v.strip()
+        if v == "":
+            raise ValueError("Field cannot be empty")
+        return v
+
+    @field_validator('email', 'model', 'type', 'kapasitas', 'no_pol', 'warna', 'no_mesin', 'no_rangka', mode='before')
+    @classmethod
+    def empty_optional_to_none(cls, v):
+        if isinstance(v, str):
+            v = v.strip()
+        return v or None
+
 class CreateCustomer(BaseModel):
-    nama: str
-    hp: str
-    alamat: Optional[str] = None
+    nama: str = Field(min_length=1)
+    hp: str = Field(min_length=1)
+    alamat: str = Field(min_length=1)
     email: Optional[str] = None
     tanggal_lahir: Optional[date] = None
 
@@ -40,6 +58,24 @@ class CreateCustomer(BaseModel):
         if v == "":
             return None
         return v
+
+    @field_validator('nama', 'hp', 'alamat', mode='before')
+    @classmethod
+    def validate_required_customer_text(cls, v):
+        if v is None:
+            raise ValueError("Field is required")
+        if isinstance(v, str):
+            v = v.strip()
+        if v == "":
+            raise ValueError("Field cannot be empty")
+        return v
+
+    @field_validator('email', mode='before')
+    @classmethod
+    def empty_email_to_none(cls, v):
+        if isinstance(v, str):
+            v = v.strip()
+        return v or None
 
 class CreateVehicle(BaseModel):
     model: Optional[str] = None

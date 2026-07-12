@@ -12,7 +12,7 @@ from models.workorder import Product, Brand, Satuan, Category, Service, Workorde
 from models.purchase_order import PurchaseOrderLine
 import uuid
 from models.database import get_db
-from schemas.service_product import CreateProduct, ProductResponse, BrandResponse, SatuanResponse, CategoryResponse, CreateService, ServiceResponse, CreateBrand, CreateCategory,CreateSatuan
+from schemas.service_product import CreateProduct, UpdateProduct, ProductResponse, BrandResponse, SatuanResponse, CategoryResponse, CreateService, ServiceResponse, CreateBrand, CreateCategory,CreateSatuan
 import decimal
 import datetime
 from decimal import Decimal
@@ -59,7 +59,7 @@ def _get_total_stock(product: Product) -> Decimal:
     return sum((inv.quantity for inv in product.inventory), Decimal("0.00")) if product.inventory else Decimal("0.00")
 
 
-def _get_latest_purchase_price(db: Session, product_id, consignment_available: bool | None = None):
+def _get_latest_purchase_source(db: Session, product_id, consignment_available: bool | None = None):
     from models.purchase_order import PurchaseOrderLine, PurchaseOrder, PurchaseOrderStatus
     from models.consignment import ConsignmentReceipt
 
@@ -99,14 +99,20 @@ def _get_latest_purchase_price(db: Session, product_id, consignment_available: b
             consignment_receipt.receipt_date,
             consignment_receipt.created_at,
             str(consignment_receipt.id),
-            consignment_receipt.unit_price,
+            {
+                'price': consignment_receipt.unit_price,
+                'supplier': getattr(consignment_receipt, 'supplier', None),
+            },
         ))
     if purchase_line is not None:
         candidates.append((
             purchase_line.purchase_order.date,
             purchase_line.purchase_order.created_at,
             str(purchase_line.id),
-            purchase_line.price,
+            {
+                'price': purchase_line.price,
+                'supplier': getattr(purchase_line.purchase_order, 'supplier', None),
+            },
         ))
 
     if not candidates:
@@ -124,6 +130,13 @@ def _get_latest_purchase_price(db: Session, product_id, consignment_available: b
     return candidates[0][3]
 
 
+def _get_latest_purchase_price(db: Session, product_id, consignment_available: bool | None = None):
+    source = _get_latest_purchase_source(db, product_id, consignment_available)
+    if source is None:
+        return None
+    return source['price']
+
+
 def _build_inventory_item(
     db: Session,
     product: Product,
@@ -133,11 +146,14 @@ def _build_inventory_item(
     p_dict['category_name'] = product.category.name if product.category else None
     p_dict['brand_name'] = product.brand.name if product.brand else None
     p_dict['satuan_name'] = product.satuan.name if product.satuan else None
-    p_dict['supplier_name'] = product.supplier.nama if product.supplier else None
+    latest_purchase_source = _get_latest_purchase_source(db, product.id, consignment_available)
+    latest_supplier = latest_purchase_source['supplier'] if latest_purchase_source else product.supplier
+    p_dict['vendor_code'] = latest_supplier.supplier_code if latest_supplier else None
+    p_dict['supplier_name'] = latest_supplier.nama if latest_supplier else None
 
     total_stock = _get_total_stock(product)
     price = _as_decimal(product.price)
-    purchase_price = _get_latest_purchase_price(db, product.id, consignment_available)
+    purchase_price = _as_decimal(latest_purchase_source['price']) if latest_purchase_source else None
     hpp = _as_decimal(product.cost) if product.cost is not None else _as_decimal(purchase_price)
 
     margin = None
@@ -210,6 +226,64 @@ def get_product_by_id(db: Session, product_id: str):
         p_dict['supplier_name'] = product.supplier.nama if product.supplier else None
         return p_dict
     return None
+
+
+class ProductInUseError(ValueError):
+    pass
+
+
+def update_product(db: Session, product_id: uuid.UUID, product_data: UpdateProduct):
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise LookupError("Product not found")
+
+    changes = product_data.model_dump(exclude_unset=True)
+    required_fields = {"name", "price", "min_stock", "brand_id", "satuan_id", "category_id"}
+    null_required = required_fields.intersection(
+        field for field, value in changes.items() if value is None
+    )
+    if null_required:
+        raise ValueError(f"Fields cannot be null: {', '.join(sorted(null_required))}")
+
+    for field, value in changes.items():
+        setattr(product, field, value)
+
+    db.commit()
+    db.refresh(product)
+    return get_product_by_id(db, str(product.id))
+
+
+def delete_product(db: Session, product_id: uuid.UUID) -> None:
+    from models.inventory import Inventory, ProductCostHistory, ProductMovedHistory
+    from models.packet_order import ProductLinePacketOrder
+    from models.consignment import ConsignmentReceipt
+
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise LookupError("Product not found")
+
+    references = [
+        (ProductOrdered, "work order"),
+        (PurchaseOrderLine, "purchase order"),
+        (Inventory, "inventory"),
+        (ProductMovedHistory, "inventory movement"),
+        (ProductCostHistory, "cost history"),
+        (ProductLinePacketOrder, "packet order"),
+    ]
+    for model, label in references:
+        if db.query(model.id).filter(model.product_id == product_id).first():
+            raise ProductInUseError(f"Product cannot be deleted because it is used by {label}")
+
+    if inspect(db.get_bind()).has_table(ConsignmentReceipt.__tablename__):
+        if db.query(ConsignmentReceipt.id).filter(
+            ConsignmentReceipt.product_id == product_id
+        ).first():
+            raise ProductInUseError(
+                "Product cannot be deleted because it is used by consignment receipt"
+            )
+
+    db.delete(product)
+    db.commit()
 
 def createServicenya(db: Session, service_data: CreateService):
     new_service = Service(

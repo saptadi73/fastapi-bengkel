@@ -12,7 +12,7 @@ class Customer(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, index=True)
     nama = Column(String, nullable=False)
     hp = Column(String, nullable=False)
-    alamat = Column(String, nullable=True)
+    alamat = Column(String, nullable=False)
     email = Column(String, nullable=True, unique=True)
     tanggal_lahir = Column(Date, nullable=True)
     

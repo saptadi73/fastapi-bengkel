@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from services.services_inventory import get_or_create_inventory, createProductMoveHistoryNew, generate_product_move_history_report, createProductMoveHistoryNewLoss, updateCostCostingMethodeAverage
 from services.services_inventory_extended import update_inventory_loss, delete_inventory_loss, get_loss_by_id, get_inventory_losses
 from uuid import UUID
-from schemas.service_inventory import CreateProductMovedHistory, ProductMoveHistoryReportRequest, ProductMoveHistoryReport, PurchaseOrderUpdateCost
+from schemas.service_inventory import CreateProductMovedHistory, ProductMoveHistoryReportRequest, ProductMoveHistoryReportResponse, InventoryReportErrorResponse, PurchaseOrderUpdateCost
 from models.database import SessionLocal
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
@@ -33,13 +33,29 @@ def get_inventory(
     except Exception as e:
         return error_response(message=str(e))
 
-@router.post("/product-move-history-report", response_model=ProductMoveHistoryReport)
+@router.post(
+    "/product-move-history-report",
+    response_model=ProductMoveHistoryReportResponse,
+    responses={
+        401: {"model": InventoryReportErrorResponse, "description": "Authentication required"},
+        403: {"model": InventoryReportErrorResponse, "description": "Insufficient permission"},
+        404: {"model": InventoryReportErrorResponse, "description": "Filter entity not found"},
+        422: {"model": InventoryReportErrorResponse, "description": "Invalid request"},
+        500: {"model": InventoryReportErrorResponse, "description": "Unexpected database error"},
+    },
+    dependencies=[Depends(jwt_required)],
+)
 def generate_product_move_history_report_route(request: ProductMoveHistoryReportRequest, db: Session = Depends(get_db)):
     try:
         result = generate_product_move_history_report(db, request)
-        return success_response(data=result.model_dump(mode='json'))
-    except Exception as e:
-        return error_response(message=str(e))
+        return success_response(
+            data=result.model_dump(mode='json'),
+            message="Laporan pergerakan barang berhasil dihasilkan",
+        )
+    except LookupError as e:
+        return error_response(message=str(e), status_code=404)
+    except Exception:
+        return error_response(message="Gagal menghasilkan laporan pergerakan barang", status_code=500)
     
 @router.post("/move/new", dependencies=[Depends(jwt_required)])
 def product_move_router(

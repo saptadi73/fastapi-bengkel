@@ -27,6 +27,16 @@ class ProductMovedHistory(Base):
     timestamp = Column(DateTime, nullable=False)
     performed_by = Column(String, nullable=False)  # User who performed the action
     notes = Column(String, nullable=True)
+    reference_type = Column(String(32), nullable=True)
+    reference_id = Column(UUID(as_uuid=True), nullable=True)
+    purchase_order_id = Column(UUID(as_uuid=True), ForeignKey('purchase_order.id'), nullable=True, index=True)
+    workorder_id = Column(UUID(as_uuid=True), ForeignKey('workorder.id'), nullable=True, index=True)
+    supplier_id = Column(UUID(as_uuid=True), ForeignKey('supplier.id'), nullable=True, index=True)
+    customer_id = Column(UUID(as_uuid=True), ForeignKey('customer.id'), nullable=True, index=True)
+    vehicle_id = Column(UUID(as_uuid=True), ForeignKey('vehicle.id'), nullable=True)
+    purchase_price = Column(Numeric(14,2), nullable=True)
+    selling_price = Column(Numeric(14,2), nullable=True)
+    hpp_snapshot = Column(Numeric(14,2), nullable=True)
 
 class ProductCostHistory(Base):
     __tablename__ = 'product_cost_history'

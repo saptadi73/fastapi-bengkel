@@ -744,6 +744,49 @@ Authorization: Bearer <your_jwt_token>
 **Endpoint:** `GET /products/{product_id}`  
 **Auth Required:** ❌ No
 
+### 7.3.1 Update Product
+
+**Endpoint:** `PUT /products/{product_id}`
+**Auth Required:** Yes
+
+Request bersifat parsial: kirim hanya field yang ingin diubah dan minimal satu field wajib ada.
+
+```json
+{
+  "name": "Oli Mesin 1L",
+  "type": "sparepart",
+  "description": "Oli mesin sintetis",
+  "price": 150000,
+  "cost": 100000,
+  "min_stock": 10,
+  "brand_id": "uuid-string",
+  "category_id": "uuid-string",
+  "satuan_id": "uuid-string",
+  "supplier_id": null,
+  "is_consignment": false,
+  "consignment_commission": 0,
+  "is_internal_consumption": false
+}
+```
+
+- HTTP `200`: produk berhasil diperbarui.
+- HTTP `404`: produk tidak ditemukan.
+- HTTP `422`: payload kosong, nilai negatif, atau field wajib diisi `null`.
+- HTTP `500`: kegagalan database yang tidak terduga.
+
+### 7.3.2 Delete Product
+
+**Endpoint:** `DELETE /products/{product_id}`
+**Auth Required:** Yes
+
+- HTTP `200`: produk yang belum pernah digunakan berhasil dihapus.
+- HTTP `404`: produk tidak ditemukan.
+- HTTP `409`: produk masih direferensikan Work Order, PO, inventory, pergerakan stok,
+  histori HPP, paket, atau penerimaan konsinyasi.
+- HTTP `500`: kegagalan database yang tidak terduga.
+
+Penghapusan tidak melakukan cascade terhadap histori transaksi.
+
 ### 7.4 Create New Service
 
 **Endpoint:** `POST /products/service/create/new`  
@@ -1044,66 +1087,55 @@ Kegagalan database atau mapper yang tidak terduga menghasilkan HTTP `500` dengan
 ### 8.2 Product Move History Report
 
 **Endpoint:** `POST /inventory/product-move-history-report`  
-**Auth Required:** ❌ No
+**Auth Required:** ✅ Yes
 
 **Request Body:**
 ```json
 {
-  "start_date": "2025-01-01",
-  "end_date": "2025-01-31"
+  "start_date": "2026-07-01",
+  "end_date": "2026-07-31",
+  "product_id": null,
+  "movement_type": null,
+  "reference_type": null,
+  "supplier_id": null,
+  "customer_id": null,
+  "search": null,
+  "page": 1,
+  "limit": 25,
+  "sort_order": "asc"
 }
 ```
 
 **Response Body:**
 ```json
 {
-  "total_entries": 5,
-  "items": [
-    {
-      "product_id": "550e8400-e29b-41d4-a716-446655440000",
-      "product_name": "Oli Shell 1L",
-      "type": "outcome",
-      "quantity": -5,
-      "timestamp": "2025-01-15T10:30:00",
-      "performed_by": "system",
-      "notes": "Product ordered in Workorder 550e8400-e29b-41d4-a716-446655440001",
-      "price": 150000,
-      "hpp": 100000,
-      "customer_name": "PT Maju Jaya",
-      "vendor_name": null,
-      "nopol": "B-1234-ABC"
-    },
-    {
-      "product_id": "550e8400-e29b-41d4-a716-446655440000",
-      "product_name": "Oli Shell 1L",
-      "type": "income",
-      "quantity": 20,
-      "timestamp": "2025-01-10T14:20:00",
-      "performed_by": "system",
-      "notes": "Purchase order PO001 received",
-      "price": 120000,
-      "hpp": 100000,
-      "customer_name": null,
-      "vendor_name": "PT Maju Supplier",
-      "nopol": null
-    }
-  ]
+  "status": "success",
+  "message": "Laporan pergerakan barang berhasil dihasilkan",
+  "data": {
+    "summary": {"opening_balance": 5, "total_in": 10, "total_out": 4, "total_adjustment": 0, "closing_balance": 11},
+    "total_entries": 1,
+    "items": [{
+      "movement_id": "uuid", "product_id": "uuid", "product_name": "Oli Mesin",
+      "type": "income", "quantity": 10, "quantity_in": 10, "quantity_out": 0,
+      "balance_before": 5, "balance_after": 15, "purchase_price": 100000,
+      "selling_price": null, "price": 100000, "hpp": 100000,
+      "reference_type": "purchase_order", "reference_id": "uuid", "reference_no": "PO-001",
+      "purchase_order_id": "uuid", "purchase_order_no": "PO-001",
+      "workorder_id": null, "workorder_no": null, "supplier_id": "uuid",
+      "vendor_code": "VND-001", "vendor_name": "PT Vendor", "customer_id": null,
+      "customer_name": null, "vehicle_id": null, "nopol": null,
+      "timestamp": "2026-07-12T10:00:00+07:00", "performed_by": "admin", "notes": "received"
+    }],
+    "pagination": {"page": 1, "limit": 25, "total": 1, "total_pages": 1, "has_previous": false, "has_next": false}
+  }
 }
 ```
 
-**Field Definitions:**
-- `product_id` (string): ID produk
-- `product_name` (string): Nama produk
-- `type` (string): Tipe pergerakan barang - "income" (masuk), "outcome" (keluar), "adjustment" (koreksi)
-- `quantity` (decimal): Jumlah barang yang bergerak (positif untuk income, negatif untuk outcome)
-- `timestamp` (datetime): Waktu transaksi
-- `performed_by` (string): Siapa yang melakukan transaksi
-- `notes` (string): Catatan/referensi transaksi (e.g., nomor WO atau PO)
-- `price` (decimal, nullable): Harga jual per unit (dari product atau purchase order line)
-- `hpp` (decimal, nullable): Harga pokok penjualan/cost dari product
-- `customer_name` (string, nullable): Nama pelanggan (diisi untuk transaksi outcome/sales)
-- `vendor_name` (string, nullable): Nama vendor/supplier (diisi untuk transaksi income/purchases)
-- `nopol` (string, nullable): Nomor polisi kendaraan pelanggan (diisi untuk transaksi outcome/sales)
+`movement_type`: `income`, `outcome`, `adjustment`, `loss`, atau `internal_consumption`.
+`reference_type`: `purchase_order`, `workorder`, `consignment_receipt`, `adjustment`, `loss`, atau `internal_consumption`.
+`page >= 1`, `1 <= limit <= 100`, dan `sort_order` hanya `asc`/`desc`.
+Harga dan HPP menggunakan snapshot transaksi. Data lama tanpa referensi mengembalikan field terkait sebagai `null`.
+OpenAPI mendokumentasikan response `200`, `401`, `403`, `404`, `422`, dan `500`.
 
 ### 8.3 Create Product Move
 
@@ -2324,8 +2356,15 @@ All accounting endpoints require authentication (✅).
 
 **Field Definitions (Summary):**
 - `total_quantity` (decimal): Total unit barang yang terjual
-- `total_sales` (decimal): Total pendapatan penjualan barang (setelah diskon)
-- `total_hpp` (decimal): Total harga pokok penjualan (cost × quantity) - untuk perhitungan margin/profit
+- `total_sales` (decimal): Total pendapatan penjualan barang, dihitung dengan `SUM(items[].subtotal)`
+- `total_hpp` (decimal): Total harga pokok penjualan, dihitung dengan `SUM(items[].hpp × items[].quantity)`; HPP `null` diperlakukan sebagai nol
+
+Rumus aggregate resmi:
+
+```text
+total_sales = SUM(item.subtotal)
+total_hpp   = SUM(COALESCE(item.hpp, 0) * item.quantity)
+```
 
 **Field Definitions (Items):**
 - `workorder_no` (string): Nomor Work Order

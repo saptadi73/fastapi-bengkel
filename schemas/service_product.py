@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field
-from typing import List, Literal, Optional
+from pydantic import BaseModel, Field, model_validator
+from typing import Any, List, Literal, Optional
 from uuid import UUID
 from decimal import Decimal
 from datetime import date,datetime
@@ -18,6 +18,28 @@ class CreateProduct(BaseModel):
     is_consignment: bool = False
     consignment_commission: Optional[Decimal] = None
     is_internal_consumption: Optional[bool] = False
+
+
+class UpdateProduct(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    type: Optional[str] = None
+    description: Optional[str] = None
+    price: Optional[Decimal] = Field(default=None, ge=0)
+    cost: Optional[Decimal] = Field(default=None, ge=0)
+    min_stock: Optional[Decimal] = Field(default=None, ge=0)
+    brand_id: Optional[UUID] = None
+    satuan_id: Optional[UUID] = None
+    category_id: Optional[UUID] = None
+    supplier_id: Optional[UUID] = None
+    is_consignment: Optional[bool] = None
+    consignment_commission: Optional[Decimal] = Field(default=None, ge=0)
+    is_internal_consumption: Optional[bool] = None
+
+    @model_validator(mode="after")
+    def require_at_least_one_field(self):
+        if not self.model_fields_set:
+            raise ValueError("At least one product field must be provided")
+        return self
 class UpdateProductCost(BaseModel):
     product_id: UUID
     cost: Decimal
@@ -55,6 +77,7 @@ class InventoryProductResponse(BaseModel):
     satuan_id: Optional[UUID] = None
     satuan_name: Optional[str] = None
     supplier_id: Optional[UUID] = None
+    vendor_code: Optional[str] = None
     supplier_name: Optional[str] = None
     price: Optional[Decimal] = None
     purchase_price: Optional[Decimal] = None
@@ -82,6 +105,24 @@ class InventoryListResponse(BaseModel):
     message: str = "Inventory retrieved successfully"
     data: List[InventoryProductResponse]
     pagination: InventoryPaginationResponse
+
+
+class ProductMutationResponse(BaseModel):
+    status: Literal["success"] = "success"
+    message: str
+    data: Optional[ProductResponse] = None
+
+
+class ProductDeleteResponse(BaseModel):
+    status: Literal["success"] = "success"
+    message: str
+    data: None = None
+
+
+class ApiErrorResponse(BaseModel):
+    status: Literal["error"] = "error"
+    message: str
+    data: Optional[Any] = None
 
 class BrandResponse(BaseModel):
     id: UUID

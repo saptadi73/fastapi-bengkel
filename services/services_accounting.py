@@ -1720,6 +1720,9 @@ def generate_product_sales_report(db: Session, request: ProductSalesReportReques
     total_hpp = Decimal("0.00")
 
     for row in results:
+        quantity = cast(Decimal, row.quantity)
+        subtotal = cast(Decimal, row.subtotal)
+        unit_hpp = cast(Decimal, row.hpp) if row.hpp is not None else Decimal("0.00")
         item = ProductSalesReportItem(
             workorder_no=row.no_wo,
             workorder_date=row.tanggal_masuk.date() if isinstance(row.tanggal_masuk, datetime.datetime) else row.tanggal_masuk,
@@ -1733,11 +1736,11 @@ def generate_product_sales_report(db: Session, request: ProductSalesReportReques
             discount=row.discount
         )
         items.append(item)
-        total_quantity += row.quantity
-        total_sales += row.subtotal
-        # Calculate total HPP based on quantity and cost
-        if row.hpp:
-            total_hpp += row.hpp * row.quantity
+        total_quantity += quantity
+        # Contract: total_sales = SUM(item.subtotal).
+        total_sales += subtotal
+        # Contract: total_hpp = SUM(item.hpp * item.quantity).
+        total_hpp += unit_hpp * quantity
 
     # Calculate margin
     total_margin = total_sales - total_hpp
@@ -2248,9 +2251,13 @@ def generate_purchase_order_report(db: Session, request: PurchaseOrderReportRequ
     """
     # Query purchase_order_line joined with purchase_order, product, supplier
     query = db.query(
+        PurchaseOrder.id.label('purchase_order_id'),
         PurchaseOrder.po_no,
         PurchaseOrder.date,
+        Supplier.id.label('supplier_id'),
+        Supplier.supplier_code,
         Supplier.nama.label('supplier_name'),
+        Product.id.label('product_id'),
         Product.name.label('product_name'),
         PurchaseOrderLine.quantity,
         PurchaseOrderLine.price,
@@ -2278,9 +2285,13 @@ def generate_purchase_order_report(db: Session, request: PurchaseOrderReportRequ
 
     for row in results:
         item = PurchaseOrderReportItem(
+            purchase_order_id=row.purchase_order_id,
             po_no=row.po_no,
             po_date=row.date,
+            supplier_id=row.supplier_id,
+            supplier_code=row.supplier_code,
             supplier_name=row.supplier_name,
+            product_id=row.product_id,
             product_name=row.product_name,
             quantity=row.quantity,
             price=row.price,
