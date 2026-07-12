@@ -6,8 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import joinedload
-from sqlalchemy import or_
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import inspect, or_
 from sqlalchemy import func, select
 from models.workorder import Product, Brand, Satuan, Category, Service, Workorder, ProductOrdered, ServiceOrdered
 from models.purchase_order import PurchaseOrderLine
@@ -60,35 +59,76 @@ def _get_total_stock(product: Product) -> Decimal:
     return sum((inv.quantity for inv in product.inventory), Decimal("0.00")) if product.inventory else Decimal("0.00")
 
 
-def _get_latest_purchase_price(db: Session, product_id):
-    from models.purchase_order import PurchaseOrderLine, PurchaseOrder
+def _get_latest_purchase_price(db: Session, product_id, consignment_available: bool | None = None):
+    from models.purchase_order import PurchaseOrderLine, PurchaseOrder, PurchaseOrderStatus
     from models.consignment import ConsignmentReceipt
 
-    try:
+    consignment_receipt = None
+    # Consignment is an optional module in older installations. Do not fail the
+    # complete inventory endpoint before its table migration has been applied.
+    if consignment_available is None:
+        consignment_available = inspect(db.get_bind()).has_table(ConsignmentReceipt.__tablename__)
+    if consignment_available:
         consignment_receipt = db.query(ConsignmentReceipt).filter(
             ConsignmentReceipt.product_id == product_id,
-            ConsignmentReceipt.quantity_received > 0
-        ).order_by(ConsignmentReceipt.receipt_date.desc(), ConsignmentReceipt.created_at.desc(), ConsignmentReceipt.id.desc()).first()
-        if consignment_receipt and consignment_receipt.unit_price is not None:
-            return consignment_receipt.unit_price
-    except SQLAlchemyError:
-        pass
+            ConsignmentReceipt.quantity_received > 0,
+            ConsignmentReceipt.unit_price.is_not(None),
+        ).order_by(
+            ConsignmentReceipt.receipt_date.desc(),
+            ConsignmentReceipt.created_at.desc(),
+            ConsignmentReceipt.id.desc(),
+        ).first()
 
-    try:
-        purchase_line = db.query(PurchaseOrderLine).join(PurchaseOrder).filter(
-            PurchaseOrderLine.product_id == product_id,
-            PurchaseOrderLine.quantity > 0
-        ).order_by(PurchaseOrder.date.desc(), PurchaseOrderLine.id.desc()).first()
+    purchase_line = db.query(PurchaseOrderLine).join(PurchaseOrder).filter(
+        PurchaseOrderLine.product_id == product_id,
+        PurchaseOrderLine.quantity > 0,
+        PurchaseOrderLine.price.is_not(None),
+        PurchaseOrder.status.in_([
+            PurchaseOrderStatus.diterima,
+            PurchaseOrderStatus.dibayarkan,
+        ]),
+    ).order_by(
+        PurchaseOrder.date.desc(),
+        PurchaseOrder.created_at.desc(),
+        PurchaseOrderLine.id.desc(),
+    ).first()
 
-        if purchase_line and purchase_line.price is not None:
-            return purchase_line.price
-    except SQLAlchemyError:
-        pass
+    candidates = []
+    if consignment_receipt is not None:
+        candidates.append((
+            consignment_receipt.receipt_date,
+            consignment_receipt.created_at,
+            str(consignment_receipt.id),
+            consignment_receipt.unit_price,
+        ))
+    if purchase_line is not None:
+        candidates.append((
+            purchase_line.purchase_order.date,
+            purchase_line.purchase_order.created_at,
+            str(purchase_line.id),
+            purchase_line.price,
+        ))
 
-    return None
+    if not candidates:
+        return None
+
+    # Compare the latest valid transaction across PO and consignment sources.
+    candidates.sort(
+        key=lambda item: (
+            item[0],
+            item[1] or datetime.datetime.min,
+            item[2],
+        ),
+        reverse=True,
+    )
+    return candidates[0][3]
 
 
-def _build_inventory_item(db: Session, product: Product) -> dict:
+def _build_inventory_item(
+    db: Session,
+    product: Product,
+    consignment_available: bool | None = None,
+) -> dict:
     p_dict = to_dict(product)
     p_dict['category_name'] = product.category.name if product.category else None
     p_dict['brand_name'] = product.brand.name if product.brand else None
@@ -97,7 +137,7 @@ def _build_inventory_item(db: Session, product: Product) -> dict:
 
     total_stock = _get_total_stock(product)
     price = _as_decimal(product.price)
-    purchase_price = _get_latest_purchase_price(db, product.id)
+    purchase_price = _get_latest_purchase_price(db, product.id, consignment_available)
     hpp = _as_decimal(product.cost) if product.cost is not None else _as_decimal(purchase_price)
 
     margin = None
@@ -312,6 +352,8 @@ def get_inventory_products_paginated(
                 Product.name.ilike(search_like),
                 Product.type.ilike(search_like),
                 Product.description.ilike(search_like),
+                Product.brand.has(Brand.name.ilike(search_like)),
+                Product.category.has(Category.name.ilike(search_like)),
             )
         )
 
@@ -319,7 +361,12 @@ def get_inventory_products_paginated(
         query = query.filter(Product.category_id == category_id)
 
     products = query.order_by(Product.name.asc()).all()
-    data = [_build_inventory_item(db, product) for product in products]
+    from models.consignment import ConsignmentReceipt
+    consignment_available = inspect(db.get_bind()).has_table(ConsignmentReceipt.__tablename__)
+    data = [
+        _build_inventory_item(db, product, consignment_available)
+        for product in products
+    ]
 
     if stock_status in {'safe', 'reorder'}:
         data = [item for item in data if item.get('stock_status') == stock_status]

@@ -440,3 +440,16 @@ Frontend sudah menampilkan:
 
 Saat backend pagination diaktifkan, frontend perlu dilanjutkan dari client-side pagination ke
 server-side pagination dengan membaca object `pagination` pada response.
+
+## 18. Verifikasi Tindakan Lanjutan Backend
+
+- [x] Double wrapper dihapus; `data` langsung berupa array dan `pagination` berada di level root.
+- [x] Query `page >= 1`, `1 <= limit <= 100`, panjang `search` 1–100, UUID kategori,
+  dan enum `stock_status` divalidasi oleh FastAPI/OpenAPI.
+- [x] `purchase_price` membandingkan PO valid (`diterima`/`dibayarkan`) dan penerimaan
+  konsinyasi valid, kemudian memilih transaksi terbaru secara deterministik.
+- [x] Instalasi lama yang belum memiliki tabel `consignment_receipt` tetap dapat membuka
+  inventory; backend melewati sumber konsinyasi dan menggunakan histori PO yang tersedia.
+- [x] Response model `InventoryListResponse` dan model turunannya ditambahkan.
+- [x] Test 26 barang memastikan halaman pertama berisi 25 dan halaman kedua berisi 1.
+- [x] OpenAPI dan kedua salinan `API_DOCUMENTATION_COMPLETE.md` diselaraskan.

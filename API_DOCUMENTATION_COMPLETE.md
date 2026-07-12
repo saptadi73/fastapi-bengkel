@@ -825,11 +825,13 @@ Authorization: Bearer <your_jwt_token>
 **Auth Required:** ❌ No
 
 **Query Parameters:**
-- `page` (optional, default `1`): halaman data inventory
-- `limit` (optional, default `25`): jumlah item per halaman
-- `search` (optional): pencarian nama, type, atau deskripsi produk
+- `page` (optional, default `1`): halaman data inventory, minimum `1`
+- `limit` (optional, default `25`): jumlah item per halaman, minimum `1`, maksimum `100`
+- `search` (optional): pencarian nama, type, deskripsi, brand, atau kategori produk; panjang `1` sampai `100` karakter
 - `category_id` (optional): filter berdasarkan kategori
 - `stock_status` (optional): `safe` atau `reorder`
+
+Query parameter yang melanggar batas atau enum di atas menghasilkan HTTP `422`.
 
 **Response Body:**
 ```json
@@ -870,7 +872,7 @@ Authorization: Bearer <your_jwt_token>
 
 **Field Definitions:**
 - `price` (decimal): harga jual saat ini
-- `purchase_price` (decimal): harga beli terakhir yang valid
+- `purchase_price` (decimal/null): harga transaksi terbaru antara PO berstatus `diterima`/`dibayarkan` dan penerimaan konsinyasi dengan quantity positif; `null` jika belum ada histori valid. Pada instalasi lama yang belum memiliki tabel konsinyasi, sumber tersebut dilewati tanpa menggagalkan endpoint.
 - `hpp` (decimal): harga pokok inventory yang dipakai untuk margin/laba-rugi
 - `margin` (decimal): selisih `price - hpp`
 - `margin_percentage` (decimal): persentase margin terhadap harga jual
@@ -881,6 +883,12 @@ Authorization: Bearer <your_jwt_token>
 - `brand_name` (string): nama brand
 - `satuan_name` (string): nama satuan
 - `supplier_name` (string): nama supplier/vendor
+
+Response menggunakan satu envelope saja. `data` langsung berupa array inventory dan `pagination`
+berada sejajar dengan `data`, bukan berada di dalam `data`.
+
+Kegagalan database atau mapper yang tidak terduga menghasilkan HTTP `500` dengan pesan umum
+`Failed to retrieve inventory`; detail internal tidak diekspos pada response production.
 
 **Empty Response:**
 ```json

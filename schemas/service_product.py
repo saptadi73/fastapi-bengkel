@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from typing import List, Optional
+from pydantic import BaseModel, Field
+from typing import List, Literal, Optional
 from uuid import UUID
 from decimal import Decimal
 from datetime import date,datetime
@@ -41,6 +41,47 @@ class ProductResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
+
+
+class InventoryProductResponse(BaseModel):
+    id: UUID
+    name: str
+    type: Optional[str] = None
+    description: Optional[str] = None
+    brand_id: Optional[UUID] = None
+    brand_name: Optional[str] = None
+    category_id: Optional[UUID] = None
+    category_name: Optional[str] = None
+    satuan_id: Optional[UUID] = None
+    satuan_name: Optional[str] = None
+    supplier_id: Optional[UUID] = None
+    supplier_name: Optional[str] = None
+    price: Optional[Decimal] = None
+    purchase_price: Optional[Decimal] = None
+    hpp: Optional[Decimal] = None
+    cost: Optional[Decimal] = Field(default=None, deprecated=True)
+    margin: Optional[Decimal] = None
+    margin_percentage: Optional[Decimal] = None
+    total_stock: Decimal
+    min_stock: Decimal
+    stock_status: Literal["safe", "reorder"]
+    is_consignment: bool = False
+
+
+class InventoryPaginationResponse(BaseModel):
+    page: int
+    limit: int
+    total: int
+    total_pages: int
+    has_previous: bool
+    has_next: bool
+
+
+class InventoryListResponse(BaseModel):
+    status: Literal["success"] = "success"
+    message: str = "Inventory retrieved successfully"
+    data: List[InventoryProductResponse]
+    pagination: InventoryPaginationResponse
 
 class BrandResponse(BaseModel):
     id: UUID

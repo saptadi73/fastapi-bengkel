@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from models.database import SessionLocal
 from services.services_customer import create_customer_with_vehicles,getListCustomersWithvehicles, getListCustomersWithVehiclesCustomersID
@@ -8,8 +8,8 @@ from services.services_inventory_extended import update_inventory_adjustment, de
 from uuid import UUID
 from services.services_costing import get_product_cost_history, get_product_cost_summary
 from schemas.service_inventory import CreateProductMovedHistory, ManualAdjustment, CreateProductMovedHistories
-from schemas.service_product import CreateProduct, ProductResponse, CreateService, ServiceResponse, CreateBrand, CreateCategory, CreateSatuan, UpdateProductCost, ProductCostHistoryRequest, ProductCostHistoryResponse
-from typing import Optional
+from schemas.service_product import CreateProduct, ProductResponse, CreateService, ServiceResponse, CreateBrand, CreateCategory, CreateSatuan, UpdateProductCost, ProductCostHistoryRequest, ProductCostHistoryResponse, InventoryListResponse
+from typing import Literal, Optional
 from datetime import datetime
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
@@ -226,17 +226,17 @@ def listCategories(
     finally:
         db.close()
 
-@router.get("/inventory/all")
+@router.get("/inventory/all", response_model=InventoryListResponse)
 def getInventoryAllProduct(
-    page: int = 1,
-    limit: int = 25,
-    search: Optional[str] = None,
+    page: int = Query(default=1, ge=1),
+    limit: int = Query(default=25, ge=1, le=100),
+    search: Optional[str] = Query(default=None, min_length=1, max_length=100),
     category_id: Optional[UUID] = None,
-    stock_status: Optional[str] = None,
+    stock_status: Optional[Literal["safe", "reorder"]] = None,
     db: Session = Depends(get_db)
 ):
     try:
-        result = get_inventory_products_paginated(
+        return get_inventory_products_paginated(
             db,
             page=page,
             limit=limit,
@@ -244,11 +244,11 @@ def getInventoryAllProduct(
             category_id=category_id,
             stock_status=stock_status,
         )
-        return success_response(data=result)
-    except Exception as e:
-        return error_response(message=str(e))
-    finally:
-        db.close()
+    except Exception:
+        return error_response(
+            message="Failed to retrieve inventory",
+            status_code=500,
+        )
 
 @router.get("/inventory/all/consignment")
 def getAllInventoryProductConsignment(
