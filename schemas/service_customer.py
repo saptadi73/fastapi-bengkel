@@ -77,6 +77,39 @@ class CreateCustomer(BaseModel):
             v = v.strip()
         return v or None
 
+
+class UpdateCustomer(BaseModel):
+    nama: Optional[str] = None
+    hp: Optional[str] = None
+    alamat: Optional[str] = None
+    email: Optional[str] = None
+    tanggal_lahir: Optional[date] = None
+
+    @field_validator('tanggal_lahir', mode='before')
+    @classmethod
+    def validate_update_tanggal_lahir(cls, v):
+        if v == "":
+            return None
+        return v
+
+    @field_validator('nama', 'hp', 'alamat', mode='before')
+    @classmethod
+    def validate_update_text(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            v = v.strip()
+        if v == "":
+            raise ValueError("Field cannot be empty")
+        return v
+
+    @field_validator('email', mode='before')
+    @classmethod
+    def empty_update_email_to_none(cls, v):
+        if isinstance(v, str):
+            v = v.strip()
+        return v or None
+
 class CreateVehicle(BaseModel):
     model: Optional[str] = None
     brand_id: Optional[UUID] = None

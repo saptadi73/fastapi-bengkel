@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from routes import routes_customer, routes_supplier
-from schemas.service_customer import CreateCustomer, CreateCustomerWithVehicles
+from schemas.service_customer import CreateCustomer, CreateCustomerWithVehicles, UpdateCustomer
 from schemas.service_supplier import CreateSupplier
 
 
@@ -146,3 +146,56 @@ def test_create_customer_routes_accept_minimal_payload(monkeypatch):
     assert customer_only_response.json()["data"]["alamat"] == "Jalan Melati"
     assert with_vehicle_response.status_code == 200
     assert with_vehicle_response.json()["data"]["customer"]["nama"] == "Customer B"
+
+
+def test_update_customer_schema_treats_other_fields_as_optional():
+    payload = UpdateCustomer(email="", nama=" Customer Updated ")
+
+    assert payload.email is None
+    assert payload.nama == "Customer Updated"
+
+
+def test_customer_crud_routes_exist_and_use_single_envelope(monkeypatch):
+    app = FastAPI()
+    app.include_router(routes_customer.router)
+    app.dependency_overrides[routes_customer.get_db] = lambda: object()
+    app.dependency_overrides[routes_customer.jwt_required] = lambda: None
+
+    monkeypatch.setattr(
+        routes_customer,
+        "getCustomerByID",
+        lambda db, customer_id: {
+            "id": customer_id,
+            "nama": "Customer A",
+            "hp": "08123",
+            "alamat": "Jalan Melati",
+        },
+    )
+    monkeypatch.setattr(
+        routes_customer,
+        "updateCustomer",
+        lambda db, customer_id, customer_data: {
+            "id": customer_id,
+            "nama": customer_data.nama or "Customer A",
+            "hp": customer_data.hp or "08123",
+            "alamat": customer_data.alamat or "Jalan Melati",
+        },
+    )
+    monkeypatch.setattr(
+        routes_customer,
+        "deleteCustomer",
+        lambda db, customer_id: {"message": "Customer deleted successfully", "id": customer_id},
+    )
+
+    client = TestClient(app)
+
+    get_response = client.get("/customers/customer-1")
+    update_response = client.post("/customers/customer-1", json={"nama": "Customer Updated"})
+    delete_response = client.delete("/customers/customer-1")
+
+    assert get_response.status_code == 200
+    assert get_response.json()["data"]["id"] == "customer-1"
+    assert update_response.status_code == 200
+    assert update_response.json()["data"]["nama"] == "Customer Updated"
+    assert delete_response.status_code == 200
+    assert delete_response.json()["data"]["message"] == "Customer deleted successfully"

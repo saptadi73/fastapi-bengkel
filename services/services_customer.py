@@ -3,7 +3,7 @@ from models.customer import Customer, Vehicle
 import uuid
 from schemas.service_customer import CreateCustomerWithVehicles
 from models.database import get_db
-from schemas.service_customer import CustomerWithVehicleResponse, CreateCustomer, CreateVehicle
+from schemas.service_customer import CustomerWithVehicleResponse, CreateCustomer, CreateVehicle, UpdateCustomer
 from schemas.service_vehicle import VehicleResponse, CreateVehicle
 import decimal
 import datetime
@@ -295,6 +295,42 @@ def getAllCustomers(db: Session):
         customer_dict = to_dict(customer)
         result.append(customer_dict)
     return result
+
+
+def getCustomerByID(db: Session, customer_id: str):
+    customer = db.query(Customer).filter(Customer.id == customer_id).first()
+    if not customer:
+        return None
+    return to_dict(customer)
+
+
+def updateCustomer(db: Session, customer_id: str, customer_data: UpdateCustomer):
+    customer = db.query(Customer).filter(Customer.id == customer_id).first()
+    if not customer:
+        raise ValueError(f"Customer with id '{customer_id}' not found")
+
+    for field, value in customer_data.model_dump(exclude_unset=True).items():
+        setattr(customer, field, value)
+
+    customer.updated_at = datetime.datetime.now()  # type: ignore
+    db.commit()
+    db.refresh(customer)
+    return to_dict(customer)
+
+
+def deleteCustomer(db: Session, customer_id: str):
+    customer = db.query(Customer).filter(Customer.id == customer_id).first()
+    if not customer:
+        raise ValueError(f"Customer with id '{customer_id}' not found")
+
+    if customer.vehicles:
+        raise ValueError("Customer cannot be deleted because it still has vehicles")
+    if customer.workorders:
+        raise ValueError("Customer cannot be deleted because it is used by work orders")
+
+    db.delete(customer)
+    db.commit()
+    return {"message": "Customer deleted successfully"}
 
 def createVehicletoCustomer(db: Session, CreateVehicle):
     new_vehicle = Vehicle(

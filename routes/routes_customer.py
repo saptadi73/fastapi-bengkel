@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from models.database import SessionLocal
-from services.services_customer import create_customer_with_vehicles,getListCustomersWithvehicles, getListCustomersWithVehiclesCustomersID, getServiceOrderedAndProductOrderedByVehicleID, createCustomerOnly, getListCustomersWithvehiclesId
+from services.services_customer import create_customer_with_vehicles,getListCustomersWithvehicles, getListCustomersWithVehiclesCustomersID, getServiceOrderedAndProductOrderedByVehicleID, createCustomerOnly, getListCustomersWithvehiclesId, getCustomerByID, updateCustomer, deleteCustomer
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
-from schemas.service_customer import CreateCustomerWithVehicles, CustomerWithVehicleResponse, CreateCustomer, CreateVehicle
+from schemas.service_customer import CreateCustomerWithVehicles, CustomerWithVehicleResponse, CreateCustomer, CreateVehicle, UpdateCustomer
 
 router = APIRouter(prefix="/customers", tags=["Customer"])
 
@@ -95,6 +95,42 @@ def getAllCustomersRouter(
     try:
         from services.services_customer import getAllCustomers
         result = getAllCustomers(db)
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+
+@router.get("/{customer_id}")
+def getCustomerByIDRouter(
+    customer_id: str,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = getCustomerByID(db, customer_id)
+        if not result:
+            return error_response(message="Customer not found", status_code=404)
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+
+@router.post("/{customer_id}", dependencies=[Depends(jwt_required)])
+def updateCustomerRouter(
+    customer_id: str,
+    customer_data: UpdateCustomer,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = updateCustomer(db, customer_id, customer_data)
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+
+@router.delete("/{customer_id}", dependencies=[Depends(jwt_required)])
+def deleteCustomerRouter(
+    customer_id: str,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = deleteCustomer(db, customer_id)
         return success_response(data=result)
     except Exception as e:
         return error_response(message=str(e))
