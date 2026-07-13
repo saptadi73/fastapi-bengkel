@@ -1,6 +1,6 @@
 """Require address on supplier and customer
 
-Revision ID: 20260713_require_supplier_customer_address
+Revision ID: 20260713_supplier_address
 Revises:
 Create Date: 2026-07-13 00:00:00
 """
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = "20260713_require_supplier_customer_address"
+revision = "20260713_supplier_address"
 down_revision = None
 branch_labels = None
 depends_on = None

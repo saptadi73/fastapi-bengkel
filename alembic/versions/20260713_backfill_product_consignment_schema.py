@@ -1,7 +1,7 @@
 """Backfill product consignment-related schema.
 
 Revision ID: 20260713_backfill_product_consignment_schema
-Revises: 20260713_require_supplier_customer_address
+Revises: 20260713_supplier_address
 Create Date: 2026-07-13 00:30:00
 """
 
@@ -15,7 +15,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = "20260713_backfill_product_consignment_schema"
-down_revision = "20260713_require_supplier_customer_address"
+down_revision = "20260713_supplier_address"
 branch_labels = None
 depends_on = None
 
