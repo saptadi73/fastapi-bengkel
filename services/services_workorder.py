@@ -160,7 +160,7 @@ def getAllWorkorders(db: Session):
         wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None
         wo_dict['karyawan_name'] = wo.karyawan.nama if wo.karyawan else None
         wo_dict['vehicle_model'] = wo.vehicle.model if wo.vehicle else None
-        wo_dict['vehicle_brand'] = wo.vehicle.brand.name if wo.vehicle else None
+        wo_dict['vehicle_brand'] = wo.vehicle.brand.name if wo.vehicle and wo.vehicle.brand else None
         wo_dict['vehicle_color'] = wo.vehicle.warna if wo.vehicle else None
         wo_dict['customer_hp'] = wo.customer.hp if wo.customer else None
 
@@ -200,7 +200,7 @@ def getWorkorderByID(db: Session, workorder_id: str):
     wo_dict['customer_hp'] = wo.customer.hp if wo.customer else None
     wo_dict['karyawan_name'] = wo.karyawan.nama if wo.karyawan else None
     wo_dict['vehicle_model'] = wo.vehicle.model if wo.vehicle else None
-    wo_dict['vehicle_brand'] = wo.vehicle.brand.name if wo.vehicle else None
+    wo_dict['vehicle_brand'] = wo.vehicle.brand.name if wo.vehicle and wo.vehicle.brand else None
     wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None
     wo_dict['vehicle_kapasitas'] = wo.vehicle.kapasitas if wo.vehicle else None
     wo_dict['vehicle_type'] = wo.vehicle.type if wo.vehicle else None
@@ -212,7 +212,7 @@ def getWorkorderByID(db: Session, workorder_id: str):
         # Tambahkan info produk jika perlu
         if po.product:
             po_dict['product_name'] = po.product.name
-            po_dict['satuan_name'] = po.satuan.name
+        po_dict['satuan_name'] = po.satuan.name if po.satuan else None
         product_ordered_list.append(po_dict)
     wo_dict['product_ordered'] = product_ordered_list
 
@@ -866,7 +866,7 @@ def getWorkordersByCustomerID(db: Session, customer_id: str):
         wo_dict['vehicle_no_pol'] = wo.vehicle.no_pol if wo.vehicle else None
         wo_dict['karyawan_name'] = wo.karyawan.nama if wo.karyawan else None
         wo_dict['vehicle_model'] = wo.vehicle.model if wo.vehicle else None
-        wo_dict['vehicle_brand'] = wo.vehicle.brand.name if wo.vehicle else None
+        wo_dict['vehicle_brand'] = wo.vehicle.brand.name if wo.vehicle and wo.vehicle.brand else None
         wo_dict['vehicle_color'] = wo.vehicle.warna if wo.vehicle else None
         wo_dict['customer_hp'] = wo.customer.hp if wo.customer else None
 
