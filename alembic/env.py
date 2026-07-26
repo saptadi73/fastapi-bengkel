@@ -1,27 +1,20 @@
 from __future__ import annotations
 
 from logging.config import fileConfig
-import os
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
-from dotenv import load_dotenv
 
+from config import get_database_url
 from models.database import Base
 import models  # noqa: F401
-
-
-load_dotenv()
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-database_url = os.getenv(
-    "DATABASE_URL",
-    "postgresql+psycopg2://openpg:openpgpwd@localhost:5432/bengkel",
-)
+database_url = get_database_url()
 config.set_main_option("sqlalchemy.url", database_url)
 
 target_metadata = Base.metadata

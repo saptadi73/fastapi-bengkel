@@ -8,16 +8,13 @@ import logging
 import os
 from logging.handlers import RotatingFileHandler
 from typing import Optional, Dict, Any
-from dotenv import load_dotenv
 
+from config import get_starsender_api_key
 from schemas.service_whatsapp import WhatsAppMessageCreate, WhatsAppMessageResponse
-
-# Load environment variables from .env file
-load_dotenv()
 
 # StarSender API Configuration
 STARSENDER_API_URL = "https://api.starsender.online/api/send"
-STARSENDER_API_KEY = os.getenv('STARSENDER_API_KEY', '')
+STARSENDER_API_KEY = get_starsender_api_key()
 REQUEST_TIMEOUT = 30
 
 logger = logging.getLogger(__name__)

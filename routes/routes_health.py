@@ -55,3 +55,21 @@ def db_check(db: Session = Depends(get_db)):
                 "connected": False,
             },
         )
+
+
+@router.get("/health/database")
+def health_database_check(db: Session = Depends(get_db)):
+    try:
+        database_status = check_database_connection(db)
+        return success_response(
+            data=database_status,
+            message="Database connection is healthy",
+        )
+    except Exception as exc:
+        return error_response(
+            message=f"Database connection failed: {str(exc)}",
+            status_code=503,
+            data={
+                "connected": False,
+            },
+        )

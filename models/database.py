@@ -1,13 +1,10 @@
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
-from dotenv import load_dotenv
-import os
 
-# Load environment variables from .env file
-load_dotenv()
+from config import get_database_url
 
-# Get database URL from environment variable
-URL_DATABASE = os.getenv('DATABASE_URL', 'postgresql+psycopg2://openpg:openpgpwd@localhost:5432/bengkel')
+
+URL_DATABASE = get_database_url()
 
 engine = create_engine(URL_DATABASE)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
