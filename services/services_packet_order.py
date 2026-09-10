@@ -35,7 +35,7 @@ def CreatePacketOrdernya(db: Session, data: CreatePacketOrder):
         name=data.name
     )
     db.add(packetorder)
-    db.commit()  # Commit to generate the packet_order.id
+    db.flush()  # Keep header and lines in one transaction
     db.refresh(packetorder)  # Refresh the packetorder object to get the generated id
 
     # Step 2: Add ProductLinePacketOrder, linking each product to the packet_order_id
@@ -83,12 +83,14 @@ def getAllPacketOrders(db: Session):
     for po in packetorders:
         po_dict = to_dict(po)
 
+        po_dict['product_line'] = []
+        po_dict['service_line'] = []
         product_line_list =[]
         for pr in po.product_line_packet_order:
             pr_dict = to_dict(pr)
 
             pr_dict['product_name'] = pr.product.name if pr.product else None
-            pr_dict['satuan_name'] = pr.product.satuan.name if pr.product.satuan else None
+            pr_dict['satuan_name'] = pr.satuan.name if pr.satuan else None
             product_line_list.append(pr_dict)
             po_dict['product_line'] = product_line_list
 
@@ -114,7 +116,7 @@ def getPacketOrderById(db: Session, packet_order_id: str):
     for pr in packetorder.product_line_packet_order:
         pr_dict = to_dict(pr)
         pr_dict['product_name'] = pr.product.name if pr.product else None
-        pr_dict['satuan_name'] = pr.product.satuan.name if pr.product.satuan else None
+        pr_dict['satuan_name'] = pr.satuan.name if pr.satuan else None
         product_line_list.append(pr_dict)
     po_dict['product_line'] = product_line_list
 
@@ -133,7 +135,7 @@ def deletePacketOrder(db: Session, packet_order_id: str):
         packet_order = db.query(PacketOrder).filter(PacketOrder.id == packet_order_id).first()
         
         if not packet_order:
-            return {"message": "PacketOrder not found"}
+            return None
 
         # Step 2: Delete associated ProductLinePacketOrder records
         for product_line in packet_order.product_line_packet_order:
@@ -153,7 +155,7 @@ def deletePacketOrder(db: Session, packet_order_id: str):
 
     except IntegrityError:
         db.rollback()
-        return {"message": "Error deleting PacketOrder, possible foreign key constraint violation"}
+        raise ValueError("Paket tidak dapat dihapus karena masih digunakan oleh data lain.")
 
 def updatePacketOrder(db: Session, packet_order_id: str, data: CreatePacketOrder):
     try:
@@ -161,7 +163,7 @@ def updatePacketOrder(db: Session, packet_order_id: str, data: CreatePacketOrder
         packet_order = db.query(PacketOrder).filter(PacketOrder.id == packet_order_id).first()
 
         if not packet_order:
-            return {"message": "PacketOrder not found"}
+            return None
 
         # Step 2: Update the PacketOrder fields
         packet_order.name = data.name
@@ -177,6 +179,7 @@ def updatePacketOrder(db: Session, packet_order_id: str, data: CreatePacketOrder
                 product_line = ProductLinePacketOrder(
                     id=uuid.uuid4(),
                     product_id=productnya.product_id,
+                    satuan_id=productnya.satuan_id,
                     price=productnya.price,
                     quantity=productnya.quantity,
                     discount=productnya.discount,
@@ -213,5 +216,5 @@ def updatePacketOrder(db: Session, packet_order_id: str, data: CreatePacketOrder
 
     except IntegrityError:
         db.rollback()
-        return {"message": "Error updating PacketOrder, possible foreign key constraint violation"}
+        raise ValueError("Paket gagal diperbarui. Periksa produk, jasa, dan satuan yang dipilih.")
 

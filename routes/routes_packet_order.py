@@ -24,10 +24,11 @@ def createNewPacketOrders(
 ):
     try:
         result = CreatePacketOrdernya(db, dataOrder)
-        if not result:
+        if result is None:
             return error_response(message="Failed to create Packet Orders")
         return success_response(data=result)
     except Exception as e:
+        db.rollback()
         return error_response(message=str(e))
     finally:
         db.close()
@@ -38,10 +39,11 @@ def getAllPacketOrderAllRouter(
 ):
     try:
         result = getAllPacketOrders(db)
-        if not result:
+        if result is None:
             return error_response(message="Failed to grt All Packet Orders")
         return success_response(data=result)
     except Exception as e:
+        db.rollback()
         return error_response(message=str(e))
     finally:
         db.close()
@@ -53,10 +55,11 @@ def getPacketOrderByIdRouter(
 ):
     try:
         result = getPacketOrderById(db, packet_id)
-        if not result:
+        if result is None:
             return error_response(message="Failed to grt All Packet Orders")
         return success_response(data=result)
     except Exception as e:
+        db.rollback()
         return error_response(message=str(e))
     finally:
         db.close()
@@ -70,10 +73,11 @@ def updatePacketOrderRouter(
 ):
     try:
         result = updatePacketOrder(db, packet_id, dataOrder)
-        if not result:
+        if result is None:
             return error_response(message="Failed to update Packet Order")
         return success_response(data=result, message="Packet Order updated successfully")
     except Exception as e:
+        db.rollback()
         return error_response(message=str(e))
     finally:
         db.close()
@@ -86,10 +90,11 @@ def deletePacketOrderRouter(
 ):
     try:
         result = deletePacketOrder(db, packet_id)
-        if not result:
+        if result is None:
             return error_response(message="Failed to delete Packet Order")
         return success_response(data=result, message="Packet Order deleted successfully")
     except Exception as e:
+        db.rollback()
         return error_response(message=str(e))
     finally:
         db.close()
