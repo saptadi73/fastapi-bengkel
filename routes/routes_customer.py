@@ -112,29 +112,6 @@ def getCustomerByIDRouter(
     except Exception as e:
         return error_response(message=str(e))
 
-@router.post("/{customer_id}", dependencies=[Depends(jwt_required)])
-def updateCustomerRouter(
-    customer_id: str,
-    customer_data: UpdateCustomer,
-    db: Session = Depends(get_db)
-):
-    try:
-        result = updateCustomer(db, customer_id, customer_data)
-        return success_response(data=result)
-    except Exception as e:
-        return error_response(message=str(e))
-
-@router.delete("/{customer_id}", dependencies=[Depends(jwt_required)])
-def deleteCustomerRouter(
-    customer_id: str,
-    db: Session = Depends(get_db)
-):
-    try:
-        result = deleteCustomer(db, customer_id)
-        return success_response(data=result)
-    except Exception as e:
-        return error_response(message=str(e))
-    
 @router.post("/add-vehicle", dependencies=[Depends(jwt_required)])
 def createVehicletoCustomerRouter(
     vehicle_data: CreateVehicle,
@@ -166,6 +143,29 @@ def send_maintenance_reminder_router(
     try:
         from services.services_customer import send_maintenance_reminder_whatsapp
         result = send_maintenance_reminder_whatsapp(db)
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+
+@router.post("/{customer_id}", dependencies=[Depends(jwt_required)])
+def updateCustomerRouter(
+    customer_id: str,
+    customer_data: UpdateCustomer,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = updateCustomer(db, customer_id, customer_data)
+        return success_response(data=result)
+    except Exception as e:
+        return error_response(message=str(e))
+
+@router.delete("/{customer_id}", dependencies=[Depends(jwt_required)])
+def deleteCustomerRouter(
+    customer_id: str,
+    db: Session = Depends(get_db)
+):
+    try:
+        result = deleteCustomer(db, customer_id)
         return success_response(data=result)
     except Exception as e:
         return error_response(message=str(e))
