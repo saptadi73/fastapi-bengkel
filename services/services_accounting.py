@@ -620,6 +620,44 @@ def edit_account(db: Session, account_id: str, account_data: CreateAccount):
 
     return to_dict(account)
 
+
+def edit_bank_cash_account(db: Session, account_id: str, account_data):
+    """Update only the code and name of an existing bank/cash account.
+
+    Bank/cash accounts currently use the ``10xx`` asset-code range. Their
+    account type and normal balance must not be changed because journal
+    history references the account record itself.
+    """
+    account = db.query(Account).filter(Account.id == account_id).first()
+    if not account:
+        raise ValueError(f"Account with id '{account_id}' not found")
+
+    account_type = getattr(account.account_type, "value", account.account_type)
+    if account_type != "asset" or not str(account.code).startswith("10"):
+        raise ValueError("Hanya account bank/cash (kode 10xx) yang dapat diedit")
+
+    if not str(account_data.code).strip().startswith("10"):
+        raise ValueError("Account code bank/cash harus berada pada rentang 10xx")
+
+    new_code = str(account_data.code).strip()
+    new_name = str(account_data.name).strip()
+    if not new_code or not new_name:
+        raise ValueError("Account code dan account name wajib diisi")
+
+    duplicate = db.query(Account).filter(
+        Account.code == new_code,
+        Account.id != account.id,
+    ).first()
+    if duplicate:
+        raise ValueError(f"Account code '{new_code}' sudah digunakan")
+
+    account.code = new_code
+    account.name = new_name
+
+    db.commit()
+    db.refresh(account)
+    return to_dict(account)
+
 def get_account(db: Session, account_id: str):
     account = db.query(Account).filter(Account.id == account_id).first()
     if not account:

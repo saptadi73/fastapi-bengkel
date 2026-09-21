@@ -70,6 +70,13 @@ class CreateAccount(BaseModel):
     account_type: str  # e.g., 'asset', 'liability', 'equity', 'revenue', 'expense'
     is_active: Optional[bool] = True
 
+
+class BankCashAccountUpdate(BaseModel):
+    """Fields an admin may change for a bank/cash account."""
+
+    code: str = Field(..., min_length=1, max_length=32)
+    name: str = Field(..., min_length=1, max_length=128)
+
 class JournalEntryOut(DecimalModel):
     id: str
     entry_no: str

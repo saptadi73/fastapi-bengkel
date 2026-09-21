@@ -19,6 +19,7 @@ from schemas.service_accounting import (
     MechanicSalesReportRequest, MechanicSalesReport,
     PurchaseOrderReportRequest, PurchaseOrderReport,
     DailyReportRequest, DailyReport,
+    BankCashAccountUpdate,
 )
 from services.services_accounting import (
     record_purchase, record_sale, receive_payment_ar,
@@ -36,6 +37,7 @@ from schemas.service_accounting import JournalEntryOut, CreateAccount
 from sqlalchemy import select
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
+from middleware.admin_required import admin_required
 
 router = APIRouter(prefix="/accounting", tags=["Accounting"])
 
@@ -183,13 +185,14 @@ def create_account_route(account_data: CreateAccount, db: Session = Depends(get_
     except Exception as e:
         return error_response(message=f"Gagal membuat akun: {str(e)}")
     
-@router.post("/account/edit/{account_id}", dependencies=[Depends(jwt_required)])
-def edit_account_route(account_id: str, account_data: CreateAccount, db: Session = Depends(get_db)):
+@router.post("/account/edit/{account_id}", dependencies=[Depends(admin_required)])
+def edit_account_route(account_id: str, account_data: BankCashAccountUpdate, db: Session = Depends(get_db)):
     try:
         existing_account = get_account(db, account_id)
         if not existing_account:
             return error_response(message="Akun tidak ditemukan", status_code=404)
-        result = edit_account(db, account_id=account_id, account_data=account_data)
+        from services.services_accounting import edit_bank_cash_account
+        result = edit_bank_cash_account(db, account_id=account_id, account_data=account_data)
         if not result:
             return error_response(message="Gagal mengedit akun")
         return success_response(data=result, message="Akun berhasil diedit")

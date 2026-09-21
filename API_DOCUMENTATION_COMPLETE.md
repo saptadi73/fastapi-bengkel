@@ -2192,7 +2192,57 @@ All accounting endpoints require authentication (✅).
 ### 16.18 Edit Account
 
 **Endpoint:** `POST /accounting/account/edit/{account_id}`  
-**Auth Required:** ✅ Yes
+**Auth Required:** ✅ Yes — role `admin` wajib
+
+Mengubah nama dan kode account bank/cash. Endpoint ini hanya dapat digunakan
+untuk account dengan `account_type = asset` dan kode account lama pada rentang
+`10xx`. Nilai `account_type` dan `normal_balance` tidak dapat diubah agar
+referensi jurnal historis tetap aman.
+
+**Path Parameters:**
+
+- `account_id` (UUID): ID account yang akan diedit
+
+**Request Body:**
+
+```json
+{
+  "code": "1006",
+  "name": "Bank Baru"
+}
+```
+
+**Catatan:**
+
+- `code` baru wajib tetap berada pada rentang `10xx`.
+- `code` tidak boleh sudah digunakan account lain.
+- `name` dan `code` wajib diisi.
+- Request tanpa role `admin` akan menerima HTTP `403`.
+
+**Response Success:**
+
+```json
+{
+  "status": "success",
+  "message": "Akun berhasil diedit",
+  "data": {
+    "id": "uuid-string",
+    "code": "1006",
+    "name": "Bank Baru",
+    "normal_balance": "debit",
+    "account_type": "asset",
+    "is_active": true
+  }
+}
+```
+
+**Response Error (403):**
+
+```json
+{
+  "detail": "Admin access required"
+}
+```
 
 ### 16.19 Get All Accounts
 
