@@ -22,8 +22,9 @@ from schemas.service_accounting import (
     BankCashAccountUpdate,
 )
 from services.services_accounting import (
+    AccountDeletionConflictError, AccountNotFoundError,
     record_purchase, record_sale, receive_payment_ar,
-    pay_ap, record_expense, consignment_payment, create_account, edit_account, get_account, get_all_accounts,
+    pay_ap, record_expense, consignment_payment, create_account, delete_account, edit_account, get_account, get_all_accounts,
     create_sales_journal_entry, create_sales_payment_journal_entry, create_purchase_journal_entry,
     create_purchase_payment_journal_entry, create_expense_journal_entry, create_expense_payment_journal_entry,
     cash_in, cash_out,
@@ -206,6 +207,20 @@ def get_all_accounts_route(db: Session = Depends(get_db)):
         return success_response(data=result, message="List akun berhasil diambil")
     except Exception as e:
         return error_response(message=f"Gagal mengambil list akun: {str(e)}")
+
+
+@router.delete("/account/{account_id}", dependencies=[Depends(admin_required)])
+def delete_account_route(account_id: str, db: Session = Depends(get_db)):
+    try:
+        result = delete_account(db, account_id=account_id)
+        return success_response(data=result, message="Akun berhasil dihapus")
+    except AccountNotFoundError as e:
+        return error_response(message=str(e), status_code=404)
+    except AccountDeletionConflictError as e:
+        return error_response(message=str(e), status_code=409)
+    except Exception as e:
+        db.rollback()
+        return error_response(message=f"Gagal menghapus akun: {str(e)}", status_code=500)
 
 @router.post("/cash-book-report", response_model=CashBookReport, dependencies=[Depends(jwt_required)])
 def generate_cash_book_report_route(request: CashBookReportRequest, db: Session = Depends(get_db)):

@@ -668,6 +668,68 @@ def get_all_accounts(db: Session):
     results = db.query(Account).all()
     return [to_dict(result) for result in results] if isinstance(results, Iterable) else []
 
+
+class AccountNotFoundError(ValueError):
+    pass
+
+
+class AccountDeletionConflictError(ValueError):
+    pass
+
+
+def delete_account(db: Session, account_id: str):
+    try:
+        normalized_account_id = uuid.UUID(str(account_id))
+    except (TypeError, ValueError):
+        raise AccountNotFoundError(f"Account with id '{account_id}' not found")
+
+    account = (
+        db.query(Account)
+        .filter(Account.id == normalized_account_id)
+        .with_for_update()
+        .first()
+    )
+    if not account:
+        raise AccountNotFoundError(f"Account with id '{account_id}' not found")
+
+    code = str(account.code).strip()
+    if len(code) < 2:
+        raise AccountDeletionConflictError(
+            "Account tidak dapat dihapus karena kode tidak memiliki prefix dua digit yang valid"
+        )
+
+    prefix = code[:2]
+    accounts_in_group = (
+        db.query(Account)
+        .filter(
+            Account.account_type == account.account_type,
+            func.substr(Account.code, 1, 2) == prefix,
+        )
+        .with_for_update()
+        .all()
+    )
+    if len(accounts_in_group) <= 1:
+        account_type = getattr(account.account_type, "value", account.account_type)
+        raise AccountDeletionConflictError(
+            f"Account terakhir untuk type '{account_type}' dengan prefix '{prefix}' tidak boleh dihapus"
+        )
+
+    journal_line_count = (
+        db.query(func.count(JournalLine.id))
+        .filter(JournalLine.account_id == account.id)
+        .scalar()
+        or 0
+    )
+    if journal_line_count > 0:
+        raise AccountDeletionConflictError(
+            "Account tidak dapat dihapus karena sudah digunakan dalam jurnal"
+        )
+
+    deleted_account = to_dict(account)
+    db.delete(account)
+    db.commit()
+    return deleted_account
+
 def generate_entry_no(db: Session, journal_type: str, date: date) -> str:
     """
     Generate a unique entry_no that is not affected by deletions.
