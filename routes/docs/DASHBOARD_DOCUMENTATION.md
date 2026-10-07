@@ -19,6 +19,58 @@ Dashboard API menyediakan endpoint untuk mengakses ringkasan data operasional be
 
 ## API Endpoints
 
+### Pencarian dashboard
+
+`GET /dashboard/search/{kind}?q=kata&page=1&limit=5` memerlukan JWT.
+Jenis pencarian:
+
+- `workorders`: nama pelanggan, nomor polisi, nomor HP, atau nomor WO.
+  Nomor polisi dan HP juga dicocokkan tanpa spasi, tanda hubung, titik,
+  tanda tambah, atau tanda kurung.
+- `purchase-orders`: nomor PO, nama vendor, perusahaan, atau toko.
+- `expenses`: nama, deskripsi, atau tipe biaya.
+
+Pencarian tidak membedakan huruf besar/kecil, mencakup semua tanggal,
+dan memperlakukan `%` serta `_` sebagai karakter literal, bukan wildcard.
+Hasil diurutkan tanggal terbaru, lalu ID untuk pagination yang konsisten.
+`q` wajib berisi 1-200 karakter (bukan hanya spasi), `page >= 1`,
+dan `limit` antara 1-100. Input tidak valid menghasilkan HTTP 422.
+
+Respons menggunakan bentuk:
+
+```json
+{
+  "status": "success",
+  "message": "Success",
+  "data": {
+    "items": [],
+    "pagination": {
+      "page": 1,
+      "limit": 5,
+      "total": 0,
+      "total_pages": 0,
+      "has_previous": false,
+      "has_next": false
+    }
+  }
+}
+```
+
+WO mengembalikan `id`, `no_wo`, `tanggal_masuk`, `status`, `customer_name`,
+`hp`, `no_pol`. PO mengembalikan `id`, `po_no`, `date`, `status`, `total`,
+`vendor_name`, `perusahaan`, `toko`. Biaya mengembalikan `id`, `name`,
+`description`, `expense_type`, `date`, `amount`, `status`.
+
+Daftar stok menipis menggunakan endpoint inventory yang sudah tersedia:
+`GET /products/inventory/all?stock_status=reorder&page=1&limit=5`.
+Barang masuk daftar jika `total_stock <= min_stock`, termasuk stok nol.
+Gunakan `search` untuk pencarian nama barang dan metadata inventory.
+Endpoint ini mengembalikan array pada `data` dan `pagination` di tingkat
+teratas, berbeda dengan respons pencarian dashboard.
+
+Frontend dan backend perlu dideploy bersama; restart backend untuk
+mengaktifkan endpoint baru. Tidak memerlukan migrasi database.
+
 ### Base URL
 
 ```

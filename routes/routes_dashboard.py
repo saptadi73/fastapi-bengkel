@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Literal, Optional
 
 from models.database import SessionLocal
 from services.services_dashboard import (
@@ -10,6 +10,7 @@ from services.services_dashboard import (
     get_purchase_monthly,
     get_expenses_monthly,
     get_combined_monthly,
+    search_dashboard_records,
 )
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
@@ -23,6 +24,20 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+@router.get("/search/{kind}", dependencies=[Depends(jwt_required)])
+def dashboard_search(
+    kind: Literal["workorders", "purchase-orders", "expenses"],
+    q: str = Query(..., min_length=1, max_length=200),
+    page: int = Query(1, ge=1),
+    limit: int = Query(5, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    if not q.strip():
+        raise HTTPException(status_code=422, detail="Kata pencarian tidak boleh kosong.")
+    data = search_dashboard_records(db, kind, q, page=page, limit=limit)
+    return success_response(data=data)
 
 
 @router.get("/summary", dependencies=[Depends(jwt_required)])
