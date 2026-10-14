@@ -1,7 +1,7 @@
 """Allow dynamic expense types.
 
 Revision ID: 20261014_dynamic_expense_types
-Revises: 20260713_backfill_product_consignment_schema
+Revises: 20260713_product_consignment
 Create Date: 2026-10-14 09:00:00
 """
 
@@ -12,7 +12,7 @@ from alembic import op
 
 
 revision = "20261014_dynamic_expense_types"
-down_revision = "20260713_backfill_product_consignment_schema"
+down_revision = "20260713_product_consignment"
 branch_labels = None
 depends_on = None
 
