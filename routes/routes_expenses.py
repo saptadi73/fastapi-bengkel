@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 import shutil
 import os
 from models.database import SessionLocal
-from schemas.service_expenses import CreateExpenses, UpdateExpenses, ExpenseStatus, ExpenseType
+from schemas.service_expenses import CreateExpenses, UpdateExpenses, ExpenseStatus
 from services.services_expenses import create_expenses, get_all_expenses, get_expenses_by_id, update_expenses, delete_expenses, get_expense_status
 from supports.utils_json_response import success_response, error_response
 from middleware.jwt_required import jwt_required
@@ -56,7 +56,7 @@ def create_expenses_router(
         create_data = CreateExpenses(
             name=name,
             description=description,
-            expense_type=ExpenseType(expense_type),
+            expense_type=expense_type,
             status=ExpenseStatus(status),
             amount=Decimal(amount),
             date=datetime.fromisoformat(date).date(),
@@ -134,7 +134,7 @@ def update_expenses_router(
         update_data = UpdateExpenses(
             name=name,
             description=description,
-            expense_type=ExpenseType(expense_type) if expense_type else None,
+            expense_type=expense_type if expense_type else None,
             status=ExpenseStatus(status) if status else None,
             amount=Decimal(amount) if amount else None,
             date=datetime.fromisoformat(date).date() if date else None,

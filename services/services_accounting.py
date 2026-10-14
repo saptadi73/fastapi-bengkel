@@ -1450,7 +1450,7 @@ def generate_expense_report(db: Session, request: ExpenseReportRequest) -> Expen
     total_count = 0
 
     for exp in expenses:
-        exp_type = exp.expense_type.value
+        exp_type = getattr(exp.expense_type, "value", exp.expense_type)
         summary[exp_type]["total_amount"] += exp.amount  # type: ignore
         summary[exp_type]["count"] += 1
         total_expenses += exp.amount  # type: ignore

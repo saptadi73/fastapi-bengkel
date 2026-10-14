@@ -1,7 +1,9 @@
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from models.expenses import Expenses
+from models.accounting import Account, AccountType
 from schemas.service_expenses import CreateExpenses, UpdateExpenses
 from models.expenses import ExpenseStatus
 from supports.utils_json_response import to_dict
@@ -91,7 +93,13 @@ def update_expenses(db: Session, expenses_id: str, data: UpdateExpenses):
             # Import here to avoid circular import
             from services.services_accounting import create_expense_journal_entry
 
-            # Map expense_type to account code (assuming some mapping, e.g., listrik -> 6001, etc.)
+            expense_type = str(getattr(exp.expense_type, "value", exp.expense_type)).strip()
+            expense_account = db.query(Account).filter(
+                Account.account_type == AccountType.expense,
+                Account.is_active.is_(True),
+                func.lower(func.trim(Account.name)) == expense_type.lower()
+            ).one_or_none()
+
             expense_account_map = {
                 "listrik": "6001",
                 "gaji": "6002",
@@ -104,7 +112,15 @@ def update_expenses(db: Session, expenses_id: str, data: UpdateExpenses):
                 "umum": "6009",
                 "lain_lain": "6010"
             }
-            expense_code = expense_account_map.get(exp.expense_type.value, "6009")  # Default to umum
+            expense_code = (
+                expense_account.code
+                if expense_account
+                else expense_account_map.get(expense_type.replace("-", "_").lower())
+            )
+            if not expense_code:
+                raise ValueError(
+                    f'Expense account for type "{expense_type}" was not found'
+                )
 
             journal_data = ExpenseJournalEntry(
                 date=exp.date,  # type: ignore
@@ -133,4 +149,3 @@ def get_expense_status(db: Session, expense_id: str):
     if not exp:
         return None
     return {"status": exp.status}
-

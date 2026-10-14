@@ -5,7 +5,7 @@ from .database import Base
 from sqlalchemy import text
 from enum import Enum as PyEnum
 
-class ExpenseType(PyEnum):
+class ExpenseType(str, PyEnum):
     listrik = "listrik"
     gaji = "gaji"
     air = "air"
@@ -26,7 +26,7 @@ class Expenses(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, index=True)
     name = Column(String, nullable=False)
     description = Column(String, nullable=False)
-    expense_type = Column(Enum(ExpenseType), nullable=False)
+    expense_type = Column(String(100), nullable=False)
     status = Column(Enum(ExpenseStatus), nullable=False, default=ExpenseStatus.open)
     amount = Column(Numeric(10,2), nullable=False)
     date = Column(Date, nullable=False)
